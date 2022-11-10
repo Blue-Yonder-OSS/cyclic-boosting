@@ -6,4 +6,4 @@ This package contains the implementation of the Machine Learning algorithm Cycli
 Usage
 -----
 
-It can be used in a [scikit-learn](https://scikit-learn.org/stable/)-like fashion. A usage example, including additional helper functionality, can be found [here](https://github.com/FelixWick/cyclic-boosting-example).
+It can be used in a [scikit-learn](https://scikit-learn.org/stable/)-like fashion. A usage example, including additional helper functionality, can be found [here](https://github.com/Blue-Yonder-OSS/cyclic-boosting-example).
