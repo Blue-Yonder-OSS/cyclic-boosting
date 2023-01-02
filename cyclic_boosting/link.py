@@ -2,8 +2,6 @@
 
 - :class:`~LogLinkMixin`
 - :class:`~LogitLinkMixin`
-- :class:`~InverseSquaredLinkMixin`
-- :class:`~InverseLinkMixin`
 """
 
 from __future__ import absolute_import, division, print_function
@@ -18,14 +16,6 @@ import six
 @six.add_metaclass(abc.ABCMeta)
 class LinkFunction(object):
     r"""Abstract base class for link function computations.
-
-    Link functions (:meth:`~link_func`) are meant for transformating
-    statistically distributed data to make it suitable for sstatistical
-    algorithms with assumptions about data distribution. The corresponding
-    inverse transformation (:meth:`~unlink_func`) is called the "mean function".
-
-    http://en.wikipedia.org/wiki/Generalized_linear_model#Link_function
-
     """
 
     @abc.abstractmethod
@@ -71,28 +61,6 @@ class LogLinkMixin(LinkFunction):
         """
         return numexpr.evaluate("log(m)")
 
-    def unlink_func_da(self, l):
-        r"""Calculates the inverse of the link function
-
-        .. math::
-
-           \mu = \exp(l)
-        """
-        from dask import array as da
-
-        return da.exp(l)
-
-    def link_func_da(self, m):
-        r"""Calculates the log-link
-
-        .. math::
-
-           l = \log(\mu)
-        """
-        from dask import array as da
-
-        return da.log(m)
-
 
 class Log2LinkMixin(LinkFunction):
     r"""Link function and mean function for example for Poisson-distributed
@@ -120,26 +88,6 @@ class Log2LinkMixin(LinkFunction):
            l = \log2(\mu)
         """
         return numexpr.evaluate("log(m)/log(2)")
-
-    def unlink_func_da(self, l):
-        r"""Calculates the inverse of the link function
-
-        .. math::
-
-           \mu = 2^l
-        """
-        return 2 ** l
-
-    def link_func_da(self, m):
-        r"""Calculates the log-link
-
-        .. math::
-
-           l = \log2(\mu)
-        """
-        from dask import array as da
-
-        return da.log2(m)
 
 
 class LogitLinkMixin(LinkFunction):
@@ -170,56 +118,6 @@ class LogitLinkMixin(LinkFunction):
         return numexpr.evaluate("1. / (1. + exp(-l))")
 
 
-class InverseSquaredLinkMixin(LinkFunction):
-    """Inverse squared link mixin"""
-
-    def is_in_range(self, m):
-        return np.all(numexpr.evaluate("m != 0.0"))
-
-    def link_func(self, m):
-        r"""Calculates the logit-link
-
-        .. math::
-
-           l = - \frac{1}{m^2}
-        """
-        return numexpr.evaluate("- 1. / m ** -2.")
-
-    def unlink_func(self, l):
-        r"""Calculates the inverse of the logit-link
-
-        .. math::
-
-           \mu = \sqrt{-l}
-        """
-        return numexpr.evaluate("sqrt(-l)")
-
-
-class InverseLinkMixin(LinkFunction):
-    """Inverse link mixin"""
-
-    def is_in_range(self, m):
-        return np.all(numexpr.evaluate("m != 0.0"))
-
-    def link_func(self, m):
-        r"""Calculates the logit-link
-
-        .. math::
-
-           l = - \frac{1}{m^2}
-        """
-        return numexpr.evaluate("-1. / m")
-
-    def unlink_func(self, l):
-        r"""Calculates the inverse of the logit-link
-
-        .. math::
-
-           \mu = -\frac{1}{l}
-        """
-        return numexpr.evaluate("-1. / l")
-
-
 class IdentityLinkMixin(LinkFunction):
     """Identity link"""
 
@@ -240,7 +138,5 @@ __all__ = [
     "LogLinkMixin",
     "Log2LinkMixin",
     "LogitLinkMixin",
-    # "InverseSquaredLinkMixin",
-    # "InverseLinkMixin",
     "IdentityLinkMixin",
 ]

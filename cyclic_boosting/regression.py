@@ -1,36 +1,3 @@
-r"""Cyclic-boosting regression core algorithm
-
-Introductions by example to the Cyclic Boosting core regressor can be
-found on our howto pages
-
- - A general introduction to Cyclic Boosting : :ref:`factor_model_howto`
- - An introduction using Cyclic Boosting with residuum emovs
-   :ref:`howto_residuum_emovs`
-
-For more information on the family of Cyclic Boosting algorithms see
-:ref:`cyclic_boosting_family` The Cyclic Boosting regressor can be found
-directly in the Cyclic Boosting package, see
-:class:`~cyclic_boosting.CBFixedVarianceRegressor`
-
-Assumptions of the CBFixedVarianceRegressor
----------------------------------------------------------------------------
-
-Cyclic Boosting assumes an underlying `gamma poisson distribution
-<http://en.wikipedia.org/wiki/Negative_binomial_distribution>`_ as conditional
-distribution of the target.  The gamma poisson distribution is a discrete
-version of the gamma distribution.  The prior values for the gamma distribution
-:math:`\alpha = 2.0` and :math:`\beta = 1.67834` are chosen such that the
-median of the gamma distribution is one
-:math:`\Gamma_{\text{median}}(\alpha, \beta) =1`, which is the
-neutral element of multiplication (Cyclic Boosting is a
-multiplicative model).  The estimate for the factors is the median of the gamma
-distribution with the measured values of :math:`\alpha` and :math:`\beta`.  To
-determine the uncertainties of the factors the variance is estimated from a log
-normal distribution that is approximated using the first two moments of the
-gamma distribution.
-
-**Original author of these algorithms**: Michael Feindt
-"""
 from __future__ import absolute_import, division, print_function
 
 import abc
@@ -40,36 +7,51 @@ import numexpr
 import numpy as np
 import six
 import sklearn.base
+import scipy.special
 
 from cyclic_boosting.base import CyclicBoostingBase
 from cyclic_boosting.link import LogLinkMixin
 
-from .cxx_regression import _calc_factors_from_posterior
-
 _logger = logging.getLogger(__name__)
 
 
-def _calc_factors_and_uncertainties(alpha, beta, link_func):
-    # pytest: disable=no-member
+def _calc_factors_from_posterior(alpha_posterior, beta_posterior):
+    # The posterior distribution of f_j (factor in bin j)
+    # follows a Gamma distribution. We want to use the median as estimate
+    # because it is more stable against the log transformation. But calculating
+    # the median is much more expensive for large values of alpha_posterior and
+    # beta_posterior. Therefore we omit calculating the median and take the
+    # mean instead (since mean -> median for large values of alpha_posterior
+    # and beta_posterior).
 
-    # The prior is chosen such that the median of the
-    # prior gamma distribution equals 1
+    noncritical_posterior = (alpha_posterior <= 1e12) & (beta_posterior <= 1e12)
+    # Median of the gamma distribution
+    posterior_gamma = (
+        scipy.special.gammaincinv(alpha_posterior[noncritical_posterior], 0.5)
+        / beta_posterior[noncritical_posterior]
+    )
+
+    factors = alpha_posterior / beta_posterior
+    factors[noncritical_posterior] = posterior_gamma
+    return np.log(factors)
+
+
+def _calc_factors_and_uncertainties(alpha, beta, link_func):
     alpha_prior, beta_prior = get_gamma_priors()
     alpha_posterior = alpha + alpha_prior
     beta_posterior = beta + beta_prior
 
     factors = _calc_factors_from_posterior(alpha_posterior, beta_posterior)
     # factor_uncertainties:
-    # The variance V used here was calculated by matching the
-    # first two moments of the
-    # gamma posterior with a lognormal distribution.
+    # The variance used here was calculated by matching the first two moments
+    # of the Gamma posterior with a log-normal distribution.
     uncertainties = np.sqrt(link_func(1 + alpha_posterior) - link_func(alpha_posterior))
 
     return factors, uncertainties
 
 
 def get_gamma_priors():
-    "prior values for gamma distribution with median 1"
+    "prior values for Gamma distribution with median 1"
     alpha_prior = 2
     beta_prior = 1.67834
     return alpha_prior, beta_prior
@@ -77,12 +59,9 @@ def get_gamma_priors():
 
 @six.add_metaclass(abc.ABCMeta)
 class CBBaseRegressor(CyclicBoostingBase, sklearn.base.RegressorMixin, LogLinkMixin):
-    r"""This is the base regressor for all cyclic boosting regression problems.
+    r"""This is the base regressor for all Cyclic Boosting regression problems.
     It implements :class:`cyclic_boosting.link.LogLinkMixin` and is usable
     for regression problems with a target range of: :math:`0 \leq y < \infty`.
-
-    Its interface, methods and arguments are described in
-    :class:`~CyclicBoostingBase`.
     """
 
     def _check_y(self, y):
@@ -103,12 +82,24 @@ class CBBaseRegressor(CyclicBoostingBase, sklearn.base.RegressorMixin, LogLinkMi
 
 
 class CBFixedVarianceRegressor(CBBaseRegressor):
-    r"""This regressor minimizes the mean squared error.
+    r"""This regressor minimizes the mean squared error. It is usable for
+    regressions of target-values :math:`0 \leq y < \infty`.
 
-    The algorithm is usable for regressions of target-values
-    :math:`0 \leq y < \infty`.  Its interface, methods and
-    arguments are described in :class:`~CyclicBoostingBase`.
+    This Cyclic Boosting mode assumes an underlying negative binomial (or
+    Gamma-Poisson) distribution as conditional distribution of the target. The
+    prior values for the Gamma distribution :math:`\alpha = 2.0` and
+    :math:`\beta = 1.67834` are chosen such that its median is
+    :math:`\Gamma_{\text{median}}(\alpha, \beta) =1`, which is the neutral
+    element of multiplication (Cyclic Boosting in this mode is a multiplicative
+    model). The estimate for each factor is the median of the Gamma
+    distribution with the measured values of :math:`\alpha` and :math:`\beta`.
+    To determine the uncertainties of the factors, the variance is estimated
+    from a log-normal distribution that is approximated using the first two
+    moments of the Gamma distribution.
 
+    In the default case of parameter settings :math:`a = 1.0` and
+    :math:`c = 0.0`, this regressor corresponds to the special case of a
+    Poisson regressor, as implemented in :class:`~.CBPoissonRegressor`.
     """
 
     def __init__(
@@ -151,13 +142,13 @@ class CBFixedVarianceRegressor(CBBaseRegressor):
         pass
 
     def calc_parameters(self, feature, y, pred, prefit_data):
-        prediction_link = pred.predict_link()  # noqa
-        weights = self.weights  # noqa
+        prediction_link = pred.predict_link()
+        weights = self.weights
         lex_binnumbers = feature.lex_binned_data
         minlength = feature.n_bins
-        prediction = self.unlink_func(prediction_link)  # noqa
-        a = self.a  # noqa
-        c = self.c  # noqa
+        prediction = self.unlink_func(prediction_link)
+        a = self.a
+        c = self.c
 
         w = numexpr.evaluate("weights * y / (a + c * prediction)")
         alpha = np.bincount(lex_binnumbers, weights=w, minlength=minlength)
@@ -165,21 +156,17 @@ class CBFixedVarianceRegressor(CBBaseRegressor):
         w = numexpr.evaluate("weights * prediction / (a + c * prediction)")
         beta = np.bincount(lex_binnumbers, weights=w, minlength=minlength)
 
-        factors, old_unc = _calc_factors_and_uncertainties(alpha, beta, self.link_func)
-        return factors, old_unc
+        return _calc_factors_and_uncertainties(alpha, beta, self.link_func)
 
 
 class CBPoissonRegressor(CBBaseRegressor):
-    r"""This regressor is an poisson regressor.
+    r"""This regressor minimizes the mean squared error. It is usable for
+    regressions of target-values :math:`0 \leq y < \infty`.
 
-    It assumes *purely* poisson distributed target-values
-    :math:`0 \leq y < \infty`.
-
-    Its interface, methods and arguments are described in
-    :class:`~CyclicBoostingBase`.
+    As Poisson regressor, it is a special case of the more general negative
+    binomial regressor :class:`~.CBFixedVarianceRegressor`, assuming *purely*
+    Poisson-distributed target values.
     """
-
-    # pylint: disable=no-member, invalid-name, missing-docstring
 
     def precalc_parameters(self, feature, y, pred):
         return np.bincount(

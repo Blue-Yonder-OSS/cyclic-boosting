@@ -1,6 +1,3 @@
-"""Tests for link functions"""
-
-
 from __future__ import absolute_import, division, print_function
 
 import unittest
@@ -8,8 +5,6 @@ import unittest
 import numpy as np
 
 from cyclic_boosting import link
-
-# pylint: disable = missing-docstring
 
 
 class TestLinkMixin(unittest.TestCase):
@@ -48,23 +43,6 @@ class TestLinkMixin(unittest.TestCase):
         assert not logitlink.is_in_range(np.asarray(np.linspace(0.5, 10)))
         assert not logitlink.is_in_range(np.linspace(-1, 2))
         assert not logitlink.is_in_range(np.ones(10) * 1.01)
-
-    def test_inverse_simple(self):
-        inv_link = link.InverseLinkMixin()
-
-        x = np.linspace(0.001, 1000)
-        np.testing.assert_allclose(inv_link.unlink_func(inv_link.link_func(x)), x)
-
-        assert not inv_link.is_in_range(np.zeros(3))
-
-    def test_inverse_squared_simple(self):
-        inv_link = link.InverseSquaredLinkMixin()
-
-        x = np.linspace(0.001, 1000)
-        np.testing.assert_allclose(inv_link.unlink_func(inv_link.link_func(x)), x)
-
-        assert not inv_link.is_in_range(np.zeros(3))
-        assert inv_link.is_in_range(np.arange(10) * 2 - 5.0)
 
     def test_identity_simple(self):
         inv_link = link.IdentityLinkMixin()
