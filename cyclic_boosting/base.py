@@ -67,16 +67,15 @@ class CyclicBoostingBase(
     sklearnb.BaseEstimator,
 ):
     r"""The ``CyclicBoostingBase`` class implements the core skeleton for all
-    cyclic boosting algorithms (e.g. regression, classification, location).
-    Basically it learns parameters (e.g. factors) for each
+    Cyclic Boosting algorithms. It learns parameters (e.g., factors) for each
     feature-bin combination and applies smoothing algorithms (supplied by the
-    ``smoother`` argument) on the parameters (see :ref:`cb_advisable_smoothers`).
+    ``smoother`` argument) on the parameters.
 
     By virtue of the ``feature_group`` parameter, each
-    :mod:`cyclic_boosting` estimator can consider one- and
-    higher dimensional feature combinations.
+    :mod:`cyclic_boosting` estimator can consider one- or higher-dimensional
+    feature combinations.
 
-    The factor estimates are iteratively optimized until one of the stop
+    The parameter estimates are iteratively optimized until one of the stop
     criteria (``min_loss_change``, ``minimal_factor_change``,
     ``maximal_iterations``) is reached.
 
