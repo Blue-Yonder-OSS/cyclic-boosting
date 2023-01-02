@@ -518,4 +518,4 @@ def test_plot_factor_2d_empty():
     plot_factor_2d((0, 0), feature)
     import matplotlib.pyplot as plt
 
-    plt.show()
+#    plt.show()
