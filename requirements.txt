@@ -1,5 +1,4 @@
 six
-dask
 decorator
 numba
 numba-scipy
