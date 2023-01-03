@@ -1,53 +1,47 @@
-import unittest
-
 import numpy as np
 import pandas as pd
 
 from cyclic_boosting.smoothing.onedim import OrthogonalPolynomialSmoother
 
 
-class TestOrthogonalPolynomialSmootherByBlobelExample(unittest.TestCase):
-    """Test case from the Blobel book"""
+def test_orthogonal_polynomial_smoother_blobel():
+    x = np.arange(20) + 1.0
+    y = np.asarray(
+        [
+            5.0935,
+            2.1777,
+            0.2089,
+            -2.3949,
+            -2.4457,
+            -3.0430,
+            -2.2731,
+            -2.0706,
+            -1.6231,
+            -2.5605,
+            -0.7703,
+            -0.3055,
+            1.16817,
+            1.8728,
+            3.6586,
+            3.2353,
+            4.2520,
+            5.2550,
+            3.8766,
+            4.2890,
+        ]
+    )
 
-    def setUp(self):
-        x = np.arange(20) + 1.0
-        self.y = np.asarray(
-            [
-                5.0935,
-                2.1777,
-                0.2089,
-                -2.3949,
-                -2.4457,
-                -3.0430,
-                -2.2731,
-                -2.0706,
-                -1.6231,
-                -2.5605,
-                -0.7703,
-                -0.3055,
-                1.16817,
-                1.8728,
-                3.6586,
-                3.2353,
-                4.2520,
-                5.2550,
-                3.8766,
-                4.2890,
-            ]
-        )
+    assert len(x) == len(y)
 
-        assert len(x) == len(self.y)
+    stddev = np.ones_like(x) * 0.6
+    w = stddev ** -2
 
-        stddev = np.ones_like(x) * 0.6
-        w = stddev ** -2
+    X_for_smoother = np.c_[x, w, w]
 
-        self.X_for_smoother = np.c_[x, w, w]
-
-    def test_cython_implementation(self):
-        est = OrthogonalPolynomialSmoother().fit(self.X_for_smoother, self.y)
-        y = est.predict(self.X_for_smoother)
-        mad = np.mean(np.abs(y - self.y))
-        np.testing.assert_allclose(mad, 1.315830289473684)
+    est = OrthogonalPolynomialSmoother().fit(X_for_smoother, y)
+    yhat = est.predict(X_for_smoother)
+    mad = np.mean(np.abs(yhat - y))
+    np.testing.assert_allclose(mad, 1.315830289473684)
 
 
 def generate_data_from_sinus(n_bins, n_modes):

@@ -112,7 +112,7 @@ def not_seen_events(x, wx, n_bins):
     else:
         x = np.asarray(x).reshape(-1)
     x = np.round(x)
-    x = np.asarray(x, dtype=np.int)
+    x = np.asarray(x, dtype=int)
     x = np.where(~finite_x | (x > max_lex_bins), max_lex_bins, x)
 
     res = not_seen[x].reshape(-1)
