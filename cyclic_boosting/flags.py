@@ -1,12 +1,6 @@
 """
-Handling of flags for the Neurobayes preprocessing and other estimators and for
-the ``fit_mode`` argument in estimators. Flags are bit-fields that can be
-handeld by binary operations. For a complete documentation see :ref:`nbpy_flags`.
-
-
-..seealso::
-
-    :ref:`nbpy_flags`
+Handling of flags for the ``fit_mode`` argument in estimators. Flags are
+bit-fields that can be handeld by binary operations.
 """
 from __future__ import absolute_import, division, print_function
 

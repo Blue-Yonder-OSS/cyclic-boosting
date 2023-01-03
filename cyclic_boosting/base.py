@@ -6,14 +6,14 @@ import warnings
 
 import numexpr
 import numpy as np
+import pandas as pd
 import scipy.special
 import six
 from sklearn import base as sklearnb
 
 from cyclic_boosting import common_smoothers, learning_rate, link, utils
-from cyclic_boosting.features import create_features
+from cyclic_boosting.features import create_features, FeatureTypes
 from cyclic_boosting.link import IdentityLinkMixin, LogLinkMixin
-from cyclic_boosting.link_predictions import CBLinkPredictionsFactors
 
 _logger = logging.getLogger(__name__)
 
@@ -1320,6 +1320,77 @@ def calc_factors_generic(
     variance_weighted_mean = sum_vw / sum_w ** 2
 
     return weighted_mean, np.sqrt(variance_weighted_mean)
+
+
+class UpdateMixin(object):
+    def include_price_contrib(self, pred):
+        self.df["exponents"] += pred
+        self.price_feature_seen = True
+
+    def include_factor_contrib(self, pred, influence_category):
+        self.df["factors"] += pred
+        if influence_category is not None:
+            if influence_category in self.df.columns:
+                self.df[influence_category] += pred
+            else:
+                self.df[influence_category] = pred
+
+    def remove_price_contrib(self, pred):
+        self.df["exponents"] -= pred
+
+    def remove_factor_contrib(self, pred, influence_category):
+        self.df["factors"] -= pred
+        if influence_category is not None:
+            if influence_category in self.df.columns:
+                self.df[influence_category] -= pred
+            else:
+                self.df[influence_category] = pred
+
+    def update_predictions(self, pred, feature, influence_categories=None):
+        if feature.feature_type == FeatureTypes.external:
+            self.include_price_contrib(pred)
+        else:
+            self.include_factor_contrib(
+                pred, get_influence_category(feature, influence_categories)
+            )
+
+    def remove_predictions(self, pred, feature, influence_categories=None):
+        if feature.feature_type == FeatureTypes.external:
+            self.remove_price_contrib(pred)
+        else:
+            self.remove_factor_contrib(
+                pred, get_influence_category(feature, influence_categories)
+            )
+
+
+class CBLinkPredictionsFactors(UpdateMixin):
+    """Support for prediction of type log(p) = factors"""
+
+    def __init__(self, predictions):
+        self.df = pd.DataFrame({"factors": predictions})
+
+    def predict_link(self):
+        return self.factors()
+
+    def factors(self):
+        return self.df["factors"].values
+
+
+def get_influence_category(feature, influence_categories):
+    influence_category = None
+    if influence_categories is not None:
+        influence_category = influence_categories.get(feature.feature_group, None)
+        if (
+            influence_category is None
+        ):  # this is due to the flaws in create features, i would propose to only allow tuple
+            if len(feature.feature_group) == 1:
+                fg = feature.feature_group[0]
+                influence_category = influence_categories.get(fg, None)
+        if influence_category is None:
+            raise KeyError(
+                f"Please add {feature.feature_group} to influence_categories"
+            )
+    return influence_category
 
 
 __all__ = [

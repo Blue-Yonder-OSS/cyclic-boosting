@@ -7,12 +7,13 @@ from __future__ import absolute_import, division, print_function
 import logging
 
 import numpy as np
+import pandas as pd
 from numexpr import evaluate
 from six.moves import range
 
 from cyclic_boosting import CBFixedVarianceRegressor
 from cyclic_boosting.features import FeatureTypes, create_feature_id
-from cyclic_boosting.link_predictions import CBLinkPredictions
+from cyclic_boosting.base import UpdateMixin
 from cyclic_boosting.regression import _calc_factors_and_uncertainties
 from cyclic_boosting.utils import get_X_column
 
@@ -476,3 +477,33 @@ def gamma_momemt_matching(factors, variance_factors, link_func):
     alpha[~is_finite] = 0
 
     return _calc_factors_and_uncertainties(alpha, beta, link_func)
+
+
+class CBLinkPredictions(UpdateMixin):
+    """Support for prediction of type log(p) = factors + base * exponents"""
+
+    def __init__(self, predictions, exponents, base):
+        self.df = pd.DataFrame(
+            {
+                "factors": predictions,
+                "prior_exponents": exponents,
+                "exponents": np.zeros_like(exponents, dtype=np.float64),
+                "base": base,
+            }
+        )
+
+    def predict_link(self):
+        return self.factors() + self.exponents() * self.base()
+
+    def factors(self):
+        return self.df["factors"].values
+
+    def exponents(self):
+        x = self.df["exponents"].values  # noqa
+        return self.df["prior_exponents"].values * evaluate("exp(x)")
+
+    def prior_exponents(self):
+        return self.df["prior_exponents"].values
+
+    def base(self):
+        return self.df["base"].values
