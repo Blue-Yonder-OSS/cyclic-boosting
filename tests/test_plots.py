@@ -10,7 +10,7 @@ from six.moves import range
 from cyclic_boosting import CBCoreClassifier, CBCoreLocationRegressor, \
     CBExponential, CBFixedVarianceRegressor, CBPoissonRegressor, flags, \
     observers, plots
-from cyclic_boosting.link import IdentityLinkMixin, Log2LinkMixin, LogitLinkMixin
+from cyclic_boosting.link import IdentityLinkMixin, LogitLinkMixin
 from cyclic_boosting.plots import _guess_suitable_number_of_histogram_bins
 from cyclic_boosting.plots._1dplots import _ensure_tuple,_format_tick, \
     _get_optimal_number_of_ticks, _get_x_axis, _get_y_axis, _plot_axes, \
@@ -316,54 +316,17 @@ def test_get_y_axis():
          0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0,]
     )
 
-    # identity link function
-    link_function = IdentityLinkMixin()
-    y_axis_range, y_labels = _get_y_axis(factors, link_function)
+    y_axis_range, y_labels = _get_y_axis(factors)
     assert np.allclose(y_axis_range, expected_y_axis_range)
     assert y_labels[0] == "-1"
     assert y_labels[-1] == "1"
 
-    # identity link function with uncertainty
-    link_function = IdentityLinkMixin()
     y_axis_range, y_labels = _get_y_axis(
-        factors, link_function, uncertainties
+        factors, uncertainties
     )
-
     assert np.allclose(y_axis_range, expected_y_axis_range_with_uncertainty)
     assert y_labels[0] == "-3"
     assert y_labels[-1] == "2"
-
-    # log2 link function
-    link_function = Log2LinkMixin()
-    y_axis_range, y_labels = _get_y_axis(factors, link_function)
-    assert np.allclose(y_axis_range, expected_y_axis_range)
-    assert y_labels[0] == "0.50"
-    assert y_labels[-1] == "2"
-
-    # log2 link function with uncertainty
-    link_function = Log2LinkMixin()
-    y_axis_range, y_labels = _get_y_axis(
-        factors, link_function, uncertainties
-    )
-    assert np.allclose(y_axis_range, expected_y_axis_range_with_uncertainty)
-    assert y_labels[0] == "0.12"
-    assert y_labels[-1] == "4"
-
-    # logit link function
-    link_function = LogitLinkMixin()
-    y_axis_range, y_labels = _get_y_axis(factors, link_function)
-    assert np.allclose(y_axis_range, expected_y_axis_range)
-    assert y_labels[0] == "0.27"
-    assert y_labels[-1] == "0.73"
-
-    # logit link function with uncertainty
-    link_function = LogitLinkMixin()
-    y_axis_range, y_labels = _get_y_axis(
-        factors, link_function, uncertainties
-    )
-    assert np.allclose(y_axis_range, expected_y_axis_range_with_uncertainty)
-    assert y_labels[0] == "0.05"
-    assert y_labels[-1] == "0.88"
 
 
 def test_ensure_tuple():

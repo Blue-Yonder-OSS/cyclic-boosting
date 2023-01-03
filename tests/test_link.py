@@ -16,19 +16,6 @@ def test_loglink_simple():
     assert not loglink.is_in_range(np.ones(10) * -1)
 
 
-def test_log2link_simple():
-    log2link = link.Log2LinkMixin()
-    x = np.linspace(1, 100)
-    np.testing.assert_allclose(log2link.unlink_func(log2link.link_func(x)), x)
-
-    assert log2link.link_func(2 ** 10) == 10.0
-    assert log2link.is_in_range(2 ** 10)
-    assert log2link.is_in_range(np.asarray(np.linspace(0.5, 10)))
-    assert not log2link.is_in_range(np.asarray(np.linspace(0.0, 10)))
-    assert not log2link.is_in_range(np.asarray(np.linspace(-10.0, 10)))
-    assert not log2link.is_in_range(np.ones(10) * -1)
-
-
 def test_logitlink_simple():
     logitlink = link.LogitLinkMixin()
     x = np.linspace(0.001, 0.999)

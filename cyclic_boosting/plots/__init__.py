@@ -289,23 +289,23 @@ def plot_analysis(
             )
             plt.savefig(pdf_pages, format="pdf", dpi=dpi)
 
-        plt.figure(figsize=figsize)
-        plot_factor_change(plot_observer)
-        plt.savefig(pdf_pages, format="pdf", dpi=dpi)
+        # plt.figure(figsize=figsize)
+        # plot_factor_change(plot_observer)
+        # plt.savefig(pdf_pages, format="pdf", dpi=dpi)
         plt.figure(figsize=figsize)
         plot_loss(plot_observer)
         plt.savefig(pdf_pages, format="pdf", dpi=dpi)
-        for feature in plot_observer.features:
-            plt.figure(figsize=figsize)
-            f_sum = feature.factor_sum
-            # f_sum /= f_sum[-1]
-            plt.plot(f_sum)
-            plt.title(
-                "absolute factor sum for {} over iterations".format(
-                    feature.feature_group
-                )
-            )
-            plt.savefig(pdf_pages, format="pdf", dpi=dpi)
+        # for feature in plot_observer.features:
+        #     plt.figure(figsize=figsize)
+        #     f_sum = feature.factor_sum
+        #     # f_sum /= f_sum[-1]
+        #     plt.plot(f_sum)
+        #     plt.title(
+        #         "absolute factor sum for {} over iterations".format(
+        #             feature.feature_group
+        #         )
+        #     )
+        #     plt.savefig(pdf_pages, format="pdf", dpi=dpi)
     plt.close("all")
 
 
@@ -408,7 +408,6 @@ def _plot_one_feature_group(
             n_bins_finite=plot_observer.n_feature_bins[feature.feature_group],
             feature=feature,
             grid_item=grid_item,
-            link_function=plot_observer.link_function,
         )
 
     else:

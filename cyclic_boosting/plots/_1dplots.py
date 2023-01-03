@@ -7,7 +7,6 @@ from six.moves import map
 from cyclic_boosting import flags
 from cyclic_boosting.link import (
     IdentityLinkMixin,
-    Log2LinkMixin,
     LogitLinkMixin,
     LogLinkMixin,
 )
@@ -60,7 +59,7 @@ def _get_optimal_number_of_ticks(distance):
     return 21
 
 
-def _get_y_axis(factors, link_function, uncertainties=None):
+def _get_y_axis(factors, uncertainties=None):
     """
     Get y axis range and tick labels
     """
@@ -81,10 +80,9 @@ def _get_y_axis(factors, link_function, uncertainties=None):
     distance_int = y_max_link_int - y_min_link_int
     n_ticks = _get_optimal_number_of_ticks(distance_int)
 
-    linspace_link = np.linspace(y_min_link_int, y_max_link_int, int(n_ticks))
-    linspace = link_function.unlink_func(linspace_link)
+    linspace = np.linspace(y_min_link_int, y_max_link_int, int(n_ticks))
 
-    return linspace_link, list(map(_format_tick, linspace))
+    return linspace, list(map(_format_tick, linspace))
 
 
 def _ensure_tuple(x):
@@ -147,14 +145,14 @@ def _plot_missing_factor(factors, x_axis_range, y_axis_range):
 
     # Plot single datapoint and shade the whole area around this point to mark it as "special"
     nan_style = dict(
-        marker="o",
+        marker="p",
         markeredgecolor="r",
         markersize=5.0,
         color="b",
         linestyle="none",
         fillstyle="none",
     )
-    nan_style["label"] = "smoothed factors"
+    nan_style["label"] = "smoothed nan factor"
     plt.plot([x_position], [missing_factor], **nan_style)
     plt.fill_between(
         [x_position - 0.5, x_position + 0.5],
@@ -209,22 +207,6 @@ def plot_factor_1d(
         Option to show the errorbars in the plot completely.
     plot_yp: bool
         Show deviation between truth and prediction in last iteration.
-
-    Example
-    -------
-
-    .. plot::
-        :include-source:
-
-        from nbpy.matplotlib_plotting import _nbpy_style_figure
-        from nbpy.testing import plotting as plot_testing
-        from cyclic_boosting import plots
-
-        plobs = plot_testing.get_plotting_observer_from_CBRegressor()
-        feature = plobs.features["continuous feature"]
-
-        with _nbpy_style_figure(figsize=(6., 5.)):
-            plots.plot_factor_1d(feature, link_function=plobs.link_function)
     """
     try:
         y = feature.y
@@ -258,17 +240,16 @@ def plot_factor_1d(
     number_of_factors = len(factors)
 
     if isinstance(link_function, IdentityLinkMixin):
+        plt.axhline(0, color="gray")
         plt.ylabel("Summand")
 
     elif isinstance(link_function, LogLinkMixin):
+        factors = link_function.unlink_func(factors)
+        smoothed_factors = link_function.unlink_func(smoothed_factors)
         if plot_yp:
-            y /= np.log(2)
-            p /= np.log(2)
-        factors /= np.log(2)
-        smoothed_factors /= np.log(2)
-        uncertainties /= np.log(2)
-        link_function = Log2LinkMixin()
-        plt.axhline(0, color="gray")
+            y = link_function.unlink_func(y)
+            p = link_function.unlink_func(p)
+        plt.axhline(1, color="gray")
         plt.ylabel("Factor")
 
     elif isinstance(link_function, LogitLinkMixin):
@@ -286,15 +267,14 @@ def plot_factor_1d(
             np.where(lower < 0.0, 0.0, lower),
             np.where(upper > 1.0, 1.0, upper),
         ]
-        link_function = IdentityLinkMixin()
+        if plot_yp:
+            y = link_function.unlink_func(y)
+            p = link_function.unlink_func(p)
         plt.axhline(0.5, color="gray")
         plt.ylabel("Probability")
 
     else:
         plt.ylabel("Unkown")
-
-    if link_function is None:
-        link_function = IdentityLinkMixin()
 
     # Too many factors make the plot unreadable. Thus we resort to plotting a
     # histogram of factors in these cases.
@@ -327,11 +307,11 @@ def plot_factor_1d(
         u = np.c_[uncertainties, uncertainties]
 
     y_axis_range, y_axis_labels = _get_y_axis(
-        f, link_function, u if ylimits_include_errors else None
+        f, u if ylimits_include_errors else None
     )
     x_axis_range, x_axis_labels = _get_x_axis(factors, bin_bounds, is_continuous)
 
-    if np.abs(factors[-1]) > 0.0001:
+    if "MISSING" in flags._convert_flags_to_string(feature.feature_property[0]):
         _plot_missing_factor(smoothed_factors, x_axis_range, y_axis_range)
     elif len(factors) > 1:
         factors = factors[:-1]

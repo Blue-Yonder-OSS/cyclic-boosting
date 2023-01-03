@@ -62,34 +62,6 @@ class LogLinkMixin(LinkFunction):
         return numexpr.evaluate("log(m)")
 
 
-class Log2LinkMixin(LinkFunction):
-    r"""Link function and mean function for example for Poisson-distributed
-    data. Using log to base 2.
-
-    Supported values are in the range :math:`x > 0`"""
-
-    def unlink_func(self, l):
-        r"""Calculates the inverse of the link function
-
-        .. math::
-
-           \mu = 2^l
-        """
-        return numexpr.evaluate("2**l")
-
-    def is_in_range(self, m):
-        return np.all(m > 0.0)
-
-    def link_func(self, m):
-        r"""Calculates the log-link
-
-        .. math::
-
-           l = \log2(\mu)
-        """
-        return numexpr.evaluate("log(m)/log(2)")
-
-
 class LogitLinkMixin(LinkFunction):
     r"""Link for the logit transformation.
 
@@ -136,7 +108,6 @@ class IdentityLinkMixin(LinkFunction):
 __all__ = [
     "LinkFunction",
     "LogLinkMixin",
-    "Log2LinkMixin",
     "LogitLinkMixin",
     "IdentityLinkMixin",
 ]

@@ -4,13 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import gridspec
 
-from cyclic_boosting.link import Log2LinkMixin, LogLinkMixin
 from cyclic_boosting.plots._1dplots import _get_y_axis
 
 from .plot_utils import add_missing_values_box, blue_cyan_green_cmap, colorful_histogram
 
-# for plotting, use an intuitive, multiplicative number
-binary_log_factor = 1.0 / np.log(2.0)
 
 _imshow_style = dict(aspect="auto", origin="lower", interpolation="nearest")
 _imshow_style_precisions = _imshow_style.copy()
@@ -94,7 +91,7 @@ def _plot_factors_histogram(ax, factors, extremal_absolute_factor):
     plt.xticks(ticks, ["{:.1f}".format(x) for x in 2 ** ticks])
 
 
-def plot_factor_2d(n_bins_finite, feature, grid_item=None, link_function=None):
+def plot_factor_2d(n_bins_finite, feature, grid_item=None):
     """
     Plots a single two dimensional factor plot. For an example see the
     :ref:`cyclic_boosting_analysis_plots`
@@ -108,13 +105,8 @@ def plot_factor_2d(n_bins_finite, feature, grid_item=None, link_function=None):
         ``features`` property.
     grid_item: :class:`matplotlib.gridspec.SubplotSpec`
         If the plot should be imbedded into a larger grid.
-
-
     """
     from cyclic_boosting.plots import _format_groupname_with_type
-
-    if link_function is None or isinstance(link_function, LogLinkMixin):
-        link_function = Log2LinkMixin()
 
     plot_yp = True
     try:
@@ -123,20 +115,20 @@ def plot_factor_2d(n_bins_finite, feature, grid_item=None, link_function=None):
     except AttributeError:
         plot_yp = False
     if plot_yp:
-        y2d = feature.y * binary_log_factor
-        prediction2d = feature.prediction * binary_log_factor
+        y2d = feature.y
+        prediction2d = feature.prediction
     if plot_yp:
-        factors = feature.mean_dev * binary_log_factor
+        factors = feature.mean_dev
     else:
-        factors = feature.unfitted_factors_link * binary_log_factor
+        factors = feature.unfitted_factors_link
 
-    smoothed_factors = feature.factors_link * binary_log_factor
-    uncertainties = feature.unfitted_uncertainties_link * binary_log_factor
+    smoothed_factors = feature.factors_link
+    uncertainties = feature.unfitted_uncertainties_link
     _ = _format_groupname_with_type(feature.feature_group, feature.feature_type)
     weights = feature.bin_weightsums
 
-    nan_factor_unfitted = feature.unfitted_factor_link_nan_bin * binary_log_factor
-    nan_factor = feature.factor_link_nan_bin * binary_log_factor
+    nan_factor_unfitted = feature.unfitted_factor_link_nan_bin
+    nan_factor = feature.factor_link_nan_bin
     nan_uncertainty = uncertainties[-1]
 
     def extremal_factor(x):
@@ -165,7 +157,7 @@ def plot_factor_2d(n_bins_finite, feature, grid_item=None, link_function=None):
         factors2d,
         nan_factor=nan_factor_unfitted,
         nan_uncertainty=nan_uncertainty,
-        title="log(predition / truth)",
+        title="final deviation of predition and truth in link space",
         clim=clim,
         feature=feature,
         nan_count=0 if len(feature.bin_weightsums) < 1 else feature.nan_bin_weightsum,
@@ -176,7 +168,7 @@ def plot_factor_2d(n_bins_finite, feature, grid_item=None, link_function=None):
         smoothed2d,
         nan_factor=nan_factor,
         nan_uncertainty=None,
-        title="smoothed log-factors",
+        title="smoothed parameters in link space",
         clim=clim,
         feature=feature,
         nan_count=0 if len(feature.bin_weightsums) < 1 else feature.nan_bin_weightsum,
@@ -188,10 +180,7 @@ def plot_factor_2d(n_bins_finite, feature, grid_item=None, link_function=None):
         w = np.sum(w1, axis=axis)
 
         def f(x):
-            return (
-                np.log(np.sum(w1 * np.exp(x / binary_log_factor), axis=axis) / w)
-                * binary_log_factor
-            )
+            return np.log(np.sum(w1 * np.exp(x), axis=axis) / w)
 
         marginal_smoothed = f(smoothed2d)
         marginal_dev = f(factors2d)
@@ -222,7 +211,7 @@ def plot_factor_2d(n_bins_finite, feature, grid_item=None, link_function=None):
             all_arrays = np.r_[marginal_smoothed, marginal_dev, smoothed2d.flatten()]
         minmax = np.r_[np.min(all_arrays), np.max(all_arrays)]
         y_axis_range, y_axis_labels = _get_y_axis(
-            np.r_[minmax, marginal_smoothed], link_function
+            np.r_[minmax, marginal_smoothed]
         )
         plt.yticks(y_axis_range, y_axis_labels)
         plt.title(
