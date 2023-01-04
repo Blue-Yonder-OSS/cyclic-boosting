@@ -1,35 +1,5 @@
 """
-Plots for the :ref:`cyclic_boosting_family`
-
-**Examples**
-
-.. plot::
-    :include-source:
-    :context:
-
-    import os
-
-    from cyclic_boosting import CBFixedVarianceRegressor
-    from cyclic_boosting.observers import PlottingObserver
-    from cyclic_boosting.plots import plot_analysis
-    from cyclic_boosting.testing_utils import generate_binned_data, temp_dirname_created_and_removed
-    from cyclic_boosting.flags import IS_CONTINUOUS, IS_UNORDERED, IS_LINEAR, IS_SEASONAL
-
-    import matplotlib.pyplot as plt
-
-    X, y = generate_binned_data(10000, 4)
-    plobs = PlottingObserver()
-    est = CBFixedVarianceRegressor(feature_groups=["0", "1", "2", "3", ("1", "0"), ("2", "3", "0")],
-                            feature_properties={"0": IS_CONTINUOUS,
-                                                "1": IS_UNORDERED,
-                                                "2": IS_CONTINUOUS | IS_LINEAR,
-                                                "3": IS_CONTINUOUS | IS_SEASONAL},
-                            observers=[plobs])
-    est.fit(X, y)
-
-    with temp_dirname_created_and_removed() as dirname:
-        plot_analysis(plot_observer=plobs,
-                      file_obj=os.path.join(dirname, 'cyclic_boosting_analysis'))
+Plots for the Cyclic Boosting family
 """
 from __future__ import absolute_import, division, print_function
 
@@ -49,12 +19,9 @@ from .plot_utils import append_extension, nbpy_style
 
 
 def _guess_suitable_number_of_histogram_bins(n):
-    """Guesses a suitable number of histograms for a given number of samples.
-
-    https://en.wikipedia.org/wiki/Histogram#Number_of_bins_and_width for more
-    information."""
-    # sturges' rule is probably a bit better than the square-root choice in
-    # many cases.
+    """
+    Guesses a suitable number of histograms for a given number of samples.
+    """
     sturges = int(np.ceil(np.log(n) / np.log(2) + 1))
     return np.clip(sturges, 5, 30)
 
@@ -96,21 +63,6 @@ def plot_iteration_info(plot_observer):
     ----------
     plot_observer: :class:`~cyclic_boosting.observers.PlottingObserver`
         A fitted plotting observer.
-
-    Example
-    -------
-
-    .. plot::
-        :include-source:
-
-        from cyclic_boosting.plots.plot_utils import _nbpy_style_figure
-        from nbpy.testing import plotting as plot_testing
-        from cyclic_boosting import plots
-
-        plobs = plot_testing.get_plotting_observer_from_CBRegressor()
-
-        with _nbpy_style_figure(figsize=(13., 8.)):
-            plots.plot_iteration_info(plobs)
     """
     plt.subplot(211)
     plot_loss(plot_observer)
@@ -127,21 +79,6 @@ def plot_factor_change(plot_observer):
     ----------
     plot_observer: :class:`~cyclic_boosting.observers.PlottingObserver`
         A fitted plotting observer.
-
-    Example
-    -------
-
-    .. plot::
-        :include-source:
-
-        from cyclic_boosting.plots.plot_utils import _nbpy_style_figure
-        from nbpy.testing import plotting as plot_testing
-        from cyclic_boosting import plots
-
-        plobs = plot_testing.get_plotting_observer_from_CBRegressor()
-
-        with _nbpy_style_figure(figsize=(13., 5.)):
-            plots.plot_factor_change(plobs)
     """
     factor_changes = plot_observer.factor_change
     n = len(factor_changes)
@@ -166,21 +103,6 @@ def plot_loss(plot_observer):
     ----------
     plot_observer: :class:`~cyclic_boosting.observers.PlottingObserver`
         A fitted plotting observer.
-
-    Example
-    -------
-
-    .. plot::
-        :include-source:
-
-        from cyclic_boosting.plots.plot_utils import _nbpy_style_figure
-        from nbpy.testing import plotting as plot_testing
-        from cyclic_boosting import plots
-
-        plobs = plot_testing.get_plotting_observer_from_CBRegressor()
-
-        with _nbpy_style_figure(figsize=(13., 5.)):
-            plots.plot_loss(plobs)
     """
     loss = plot_observer.loss
     n = len(loss)
@@ -203,35 +125,29 @@ def plot_in_sample_diagonal_plot(plot_observer):
     ----------
     plot_observer: :class:`~cyclic_boosting.observers.PlottingObserver`
         A fitted plotting observer.
-
-    Example
-    -------
-
-    .. plot::
-        :include-source:
-
-        from cyclic_boosting.plots.plot_utils import _nbpy_style_figure
-        from nbpy.testing import plotting as plot_testing
-        from cyclic_boosting import plots
-
-        plobs = plot_testing.get_plotting_observer_from_CBRegressor()
-
-        with _nbpy_style_figure(figsize=(4., 4.)):
-            plots.plot_in_sample_diagonal_plot(plobs)
     """
     plot_observer.check_fitted()
     means, bin_centers, errors, _ = plot_observer.histograms
 
     plt.plot(bin_centers, means, "o", color="b")
     ymin, ymax = plt.ylim()
-    plt.errorbar(
-        bin_centers,
-        means,
-        yerr=[-errors[0], errors[1]],
-        fmt="none",
-        ecolor="b",
-        capsize=2.5,
-    )
+    if errors is not None:
+        plt.errorbar(
+            bin_centers,
+            means,
+            yerr=[-errors[0], errors[1]],
+            fmt="none",
+            ecolor="b",
+            capsize=2.5,
+        )
+    else:
+        plt.errorbar(
+            bin_centers,
+            means,
+            fmt="none",
+            ecolor="b",
+            capsize=2.5,
+        )
     xmin, xmax = plt.xlim()
     plt.ylim(min(xmin, ymin), max(xmax, ymax))
     plt.xlim(xmin, xmax)
@@ -338,21 +254,6 @@ def plot_factors(
         The number of factor plots in one row.
     use_tightlayout: bool
         If true the tightlayout option of matplotlib is used.
-
-    Example
-    -------
-
-    .. plot::
-        :include-source:
-
-        from cyclic_boosting.plots.plot_utils import _nbpy_style_figure
-        from nbpy.testing import plotting as plot_testing
-        from cyclic_boosting import plots
-
-        plobs = plot_testing.get_plotting_observer_from_CBRegressor()
-
-        with _nbpy_style_figure(figsize=(13., 10.)):
-            plots.plot_factors(plobs)
     """
     plot_observer.check_fitted()
     if feature_groups_or_ids is None:
@@ -427,21 +328,6 @@ def plot_factor_histogram(feature):
     feature: cyclic_boosting.base.Feature
         Feature object from as it can be obtained from a plotting
         observer
-
-    Example
-    -------
-    .. plot::
-        :include-source:
-
-        from cyclic_boosting.plots.plot_utils import _nbpy_style_figure
-        from nbpy.testing import plotting as plot_testing
-        from cyclic_boosting import plots
-
-        plobs = plot_testing.get_plotting_observer_from_CBRegressor()
-        feature = plobs.features["continuous feature"]
-
-        with _nbpy_style_figure(figsize=(6., 5.)):
-            plots.plot_factor_histogram(feature)
     """
     factors = feature.unfitted_factors_link
     smoothed_factors = feature.factors_link

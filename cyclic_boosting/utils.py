@@ -431,9 +431,9 @@ def digitize(x, bins):
     return bin_numbers
 
 
-def calc_errors_from_quantiles(binnumbers, y, weights=None):
-    """Calculate the y-errors for the values in `binnumbers` from the quantiles
-    of `y`.
+def calc_means_medians(binnumbers, y, weights=None):
+    """Calculate the means, medians, counts, and errors for y grouped over the
+    binnumbers.
 
     Parameters
     ----------
@@ -451,8 +451,8 @@ def calc_errors_from_quantiles(binnumbers, y, weights=None):
 
     >>> binnumbers = np.array([0.0, 0., 0., 1., 1., 1., 2., 2., 3., 3.])
     >>> y = np.array([0.0, 0.2, 0.5, 0.6, 0.7, 0.85, 1.0, 1.2, 1.4, 1.6])
-    >>> from cyclic_boosting.utils import calc_errors_from_quantiles
-    >>> means, medians, errors, counts = calc_errors_from_quantiles(
+    >>> from cyclic_boosting.utils import calc_means_medians
+    >>> means, medians, counts, errors = calc_means_medians(
     ...     binnumbers, y)
     >>> means
     0.0    0.233333
@@ -494,28 +494,6 @@ def calc_errors_from_quantiles(binnumbers, y, weights=None):
     3.0    2
     dtype: int64
     """
-    means, medians, counts, errors = _calc_means_medians(binnumbers, y, weights)
-    return means, medians, errors, counts
-
-
-def _calc_means_medians(binnumbers, y, weights=None):
-    """Calculate the means, medians and counts for y grouped over the
-    binnumbers.
-
-    Parameters
-    ----------
-
-    binnumbers: :obj:`list` or :class:`numpy.ndarray` (float64, dim=1)
-        binnumbers
-
-    y: :obj:`list` or :class:`numpy.ndarray` (float64, dim=1)
-        target values
-
-    weights: :obj:`list` or :class:`numpy.ndarray` (float64, dim=1)
-        array of event weights
-    """
-    # Introduces scipy warning: DeprecationWarning: using non-integer
-    # number instead of an integer number
     with warnings.catch_warnings(record=False):
         warnings.simplefilter("ignore")
         if weights is None or len(np.unique(weights)) == 1:
@@ -525,7 +503,7 @@ def _calc_means_medians(binnumbers, y, weights=None):
 
 
 def _calc_means_medians_evenly_weighted(binnumbers, y):
-    """Calculate the means, medians and counts for y grouped over the
+    """Calculate the means, medians, counts, and errors for y grouped over the
     binnumbers.
 
     Parameters
@@ -555,7 +533,7 @@ def _calc_means_medians_evenly_weighted(binnumbers, y):
 
 
 def _calc_means_medians_with_weights(binnumbers, y, weights):
-    """Calculate the means, medians and counts for y grouped over the
+    """Calculate the means, medians, counts, and errors for y grouped over the
     binnumbers using weights.
 
     Parameters

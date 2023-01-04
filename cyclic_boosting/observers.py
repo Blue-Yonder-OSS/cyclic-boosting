@@ -226,15 +226,18 @@ def calc_in_sample_histograms(y, pred, weights):
         * errors
         * counts
     """
-
     nbins = 100
     bin_boundaries, bin_centers = utils.calc_linear_bins(pred, nbins)
     bin_numbers = utils.digitize(pred, bin_boundaries)
-    means, _, errors, counts = utils.calc_errors_from_quantiles(bin_numbers, y, weights)
+    means, _, counts, errors = utils.calc_means_medians(bin_numbers, y, weights)
     bin_centers = bin_centers[
         np.where(~np.isnan(means.reindex(np.arange(1, nbins + 1))))
     ]
-    return means, bin_centers, errors, counts
+    # quantiles do not work for classification mode
+    if np.isin(y, [0,1]).all():
+        return means, bin_centers, None, counts
+    else:
+        return means, bin_centers, errors, counts
 
 
 __all__ = ["PlottingObserver", "BaseObserver", "calc_in_sample_histograms"]
