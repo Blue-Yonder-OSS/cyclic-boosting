@@ -36,26 +36,6 @@ def add_missing_values_box(ax, nan_value=None, nan_uncert=None, nan_count=None):
 
     matplotlib.axes.Axes
         axes object of the NaN-box
-
-    Example
-    -------
-
-    .. plot::
-        :include-source:
-        :context:
-
-        import scipy
-        import matplotlib.pyplot as plt
-        from nbpy.matplotlib_plotting import _nbpy_style_figure
-        from nbpy import plots
-
-        imgdata = scipy.misc.face()
-        plt.close("all")
-        with _nbpy_style_figure(figsize=(8.27, 5.85)):
-            plt.imshow(imgdata, cmap=plt.cm.gray)
-            ax = plt.gca()
-            plt.colorbar()
-            nanax = plots.add_missing_values_box(ax, 1.0, 0.5)
     """
     xmin, xmax = ax.get_xlim()
     ymin, ymax = ax.get_ylim()

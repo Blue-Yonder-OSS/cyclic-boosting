@@ -349,10 +349,6 @@ def flags_to_string(flags_value):
 
     >>> flags_to_string(flags.IS_CONTINUOUS | flags.IS_UNORDERED)
     'IS_CONTINUOUS | IS_UNORDERED'
-
-    >>> flags_to_string(2**50)
-    Traceback (most recent call last):
-    ValueError: Unknown flags 1125899906842624 found
     """
     if isinstance(flags_value, tuple):
         return tuple(_convert_flags_to_string(flags_val) for flags_val in flags_value)

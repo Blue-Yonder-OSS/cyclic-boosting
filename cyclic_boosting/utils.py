@@ -10,10 +10,9 @@ import six
 
 _logger = logging.getLogger(__name__)
 
+
 LOWER_1_SIGMA_QUANTILE = (1.0 - 0.6827) / 2
 LOWER_2_SIGMA_QUANTILE = (1.0 - 0.9545) / 2
-
-MISSING_VALUE_AS_BINNO = -1
 
 
 class ConvergenceError(RuntimeError):
@@ -21,56 +20,10 @@ class ConvergenceError(RuntimeError):
     and therefore its result cannot be trusted."""
 
 
-def get_feature_column_names_or_indices(X, exclude_columns=None):
-    """
-    Extract the column names from `X`. If `X` is a numpy matrix
-    each column is labeled with an integer starting from zero.
-
-    :param X: input matrix
-    :type X: numpy.ndarray(dim=2) or pandas.DataFrame
-
-    :param exclude_columns: column names or indices to omit.
-    :type exclude_columns: list of int or str
-
-    :rtype: list
-
-    >>> X = np.c_[[0, 1], [1,0], [3, 5]]
-    >>> from cyclic_boosting.utils import get_feature_column_names_or_indices
-    >>> get_feature_column_names_or_indices(X)
-    [0, 1, 2]
-
-    >>> get_feature_column_names_or_indices(X, exclude_columns=[1])
-    [0, 2]
-
-    >>> get_feature_column_names_or_indices(X, exclude_columns=[1, 1])
-    [0, 2]
-
-    >>> get_feature_column_names_or_indices(X, exclude_columns=[0, 1, 2])
-    []
-
-    >>> X = pd.DataFrame(X, columns = ['b', 'c', 'a'])
-    >>> get_feature_column_names_or_indices(X, exclude_columns=['a'])
-    ['b', 'c']
-
-    >>> get_feature_column_names_or_indices(X, exclude_columns=['d'])
-    ['b', 'c', 'a']
-    """
-    if isinstance(X, pd.DataFrame):
-        columns = list(X.columns)
-    else:
-        columns = list(range(0, X.shape[1]))
-
-    if exclude_columns is not None:
-        exclude_columns = set(exclude_columns)
-        return [x for x in columns if x not in exclude_columns]
-    else:
-        return columns
-
-
 def not_seen_events(x, wx, n_bins):
     """
     Return a boolean array that slices x so that only values with
-    a non finite weightsum `wx` are used.
+    a non-finite weightsum `wx` are used.
 
     Parameters
     ----------
@@ -405,27 +358,6 @@ def arange_multi(stops):
     return result
 
 
-def anynan(x):
-    """True if x contains :obj:`numpy.NaN`
-
-    **Example**
-
-    >>> x = np.array([np.NaN, 0, 1, 10 ,14])
-    >>> from cyclic_boosting.utils import anynan
-    >>> anynan(x)
-    True
-    >>> x = np.array([6, 0, 1, 10 ,14])
-    >>> anynan(x)
-    False
-
-    :param x: any numerical array
-    :type x: list or :class:`numpy.ndarray`
-
-    :rtype: :obj:`bool`
-    """
-    return np.isnan(x).any()
-
-
 def calc_linear_bins(x, nbins):
     """Calculate a linear binning for all values in x with nbins
 
@@ -748,7 +680,7 @@ def weighted_stddev(values, weights):
     weights: :class:`numpy.ndarray` (float64, dim=1)
         Weights of the samples :math:`w_i`.
     """
-    mean_w = weighted_mean(values, weights)
+    mean_w = np.sum(weights * values) / np.sum(weights)
     numerator = np.sum(weights * (values - mean_w) ** 2)
     denominator = np.sum(weights)
     stddev_w = np.sqrt(numerator / denominator)
@@ -973,7 +905,7 @@ def regularize_to_error_weighted_mean(values, uncertainties, prior_prediction=No
             # if all values are the same,
             # regularizing to the mean makes no sense
             return x
-        x_mean = weighted_mean(x, wx)
+        x_mean = np.sum(wx * x) / np.sum(wx)
     else:
         if np.allclose(x, prior_prediction):
             return x
@@ -982,23 +914,6 @@ def regularize_to_error_weighted_mean(values, uncertainties, prior_prediction=No
     res = (wx * x + wx_incl * x_mean) / (wx + wx_incl)
 
     return res
-
-
-def weighted_mean(values, weights):
-    r"""Calculates the weighted mean :math:`\mu`:
-
-    .. math::
-
-        \mu = \frac{\sum_i w_i\cdot x_i}{\sum_i w_i}
-
-    Parameters
-    ----------
-    values: :class:`numpy.ndarray` (float64, dim=1)
-        Values of the samples :math:`x_i`.
-    weights: :class:`numpy.ndarray` (float64, dim=1)
-        Weights of the samples :math:`w_i`.
-    """
-    return np.sum(weights * values) / np.sum(weights)
 
 
 def neutralize_one_dim_influence(values, uncertainties):

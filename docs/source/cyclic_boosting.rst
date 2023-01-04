@@ -46,14 +46,6 @@ cyclic\_boosting.common\_smoothers module
    :undoc-members:
    :show-inheritance:
 
-cyclic\_boosting.cxx\_regression module
----------------------------------------
-
-.. automodule:: cyclic_boosting.cxx_regression
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 cyclic\_boosting.features module
 --------------------------------
 
@@ -78,26 +70,10 @@ cyclic\_boosting.learning\_rate module
    :undoc-members:
    :show-inheritance:
 
-cyclic\_boosting.linear module
-------------------------------
-
-.. automodule:: cyclic_boosting.linear
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 cyclic\_boosting.link module
 ----------------------------
 
 .. automodule:: cyclic_boosting.link
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-cyclic\_boosting.link\_predictions module
------------------------------------------
-
-.. automodule:: cyclic_boosting.link_predictions
    :members:
    :undoc-members:
    :show-inheritance:
@@ -138,14 +114,6 @@ cyclic\_boosting.regression module
 ----------------------------------
 
 .. automodule:: cyclic_boosting.regression
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-cyclic\_boosting.testing\_utils module
---------------------------------------
-
-.. automodule:: cyclic_boosting.testing_utils
    :members:
    :undoc-members:
    :show-inheritance:
