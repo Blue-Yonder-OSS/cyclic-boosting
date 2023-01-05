@@ -24,10 +24,7 @@ def _read_feature_property(col, feature_properties=None):
         Dictionary listing the names of all features as keys and their
         preprocessing flags as values. When using a numpy feature matrix X with
         no column names the keys of the feature properties are the column
-        indices.  For more information about feature properties:
-
-        .. seealso::
-            :mod:`nbpy.flags`
+        indices.
 
     Returns
     -------

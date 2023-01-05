@@ -33,8 +33,8 @@ class Feature(object):
     feature_property: int
         feature property, see :mod:`flags`
 
-    smoother: subclass of :class:`nbpy.smoothing.onedim.AbstractBinSmoother`
-        smoother for the bins of the feature group, see :mod:`nbpy.smoothing`
+    smoother: subclass of :class:`cyclic_boosting.smoothing.onedim.AbstractBinSmoother`
+        smoother for the bins of the feature group
 
     minimal_factor_change: float
         minimum change of the results in the feature group's bins that are
@@ -44,7 +44,6 @@ class Feature(object):
     ----
 
     The suffix ``_link`` in attributes refers to values valid in link space.
-
     """
 
     def __init__(
@@ -208,8 +207,6 @@ class Feature(object):
 
         neutral_factor_link: float
             neutral value in link space, currently always 0
-
-
         """
         self.learn_rate = learn_rate
         self.factors_link_old = self.factors_link.copy()
@@ -239,7 +236,6 @@ class Feature(object):
 def create_feature_id(feature_group_or_id, default_type=None):
     """Convenience function to convert feature_groups
     into :class:`FeatureID`s
-
     """
     if isinstance(feature_group_or_id, FeatureID):
         return feature_group_or_id
@@ -261,8 +257,6 @@ def create_features(feature_groups_or_ids, feature_properties, smoother_choice):
         multidimensional case.
 
     feature_properties: dict of feature properties
-        The matching to the feature groups is performed using
-        :func:`nbpy.flags.read_feature_property` .
 
     smoother_choice: subclass of :class:`cyclic_boosting.SmootherChoice`
         Selects smoothers

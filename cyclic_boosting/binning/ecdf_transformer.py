@@ -118,7 +118,6 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
 
     **Estimated parameters**
 
-
     Attributes
     ----------
     bins_and_cdfs_
@@ -156,7 +155,7 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
     >>> X = np.c_[feature_1]
     >>> eps = 1e-8
 
-    >>> from nbpy.binning import ECdfTransformer
+    >>> from cyclic_boosting.binning import ECdfTransformer
     >>> trans = ECdfTransformer(n_bins=4, epsilon=eps)
     >>> trans = trans.fit(X)
 
@@ -179,69 +178,6 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
            [ 0.66666667],
            [ 0.96428571],
            [ 1.        ]])
-
-    **Examples with plots for a continuous feature**
-
-    Gamma function:
-
-    .. plot::
-        :include-source:
-        :context:
-
-        from nbpy.binning import ECdfTransformer
-        import matplotlib.pyplot as plt
-        import nbpy.flags as flags
-        import numpy as np
-        from nbpy.matplotlib_plotting import _nbpy_style_figure
-
-        X = np.random.gamma(1, 2, 10000)[:, None]
-        plt.close("all")
-        with _nbpy_style_figure():
-            plt.hist(X, bins=50)
-            plt.title("Histogram of gamma distribution before "
-                      "transformation to empirical CDF")
-
-    .. plot::
-        :include-source:
-        :context:
-
-        ecdf_trans = ECdfTransformer()
-        ecdf_trans.fit(X)
-        X_transformed = ecdf_trans.transform(X)
-        plt.close("all")
-        with _nbpy_style_figure():
-            plt.hist(X_transformed, bins=50)
-            plt.title("Histogram of gamma distribution after "
-                      "transformation to empirical CDF")
-
-    **Examples with plots for a discrete feature**
-
-    .. plot::
-        :include-source:
-        :context:
-
-        X = np.asarray(np.random.poisson(10, 10000)[:, None],
-            dtype = np.float64)
-        plt.close("all")
-        with _nbpy_style_figure():
-            plt.hist(X, bins=100)
-            plt.title("Histogram of poisson distribution before "
-                      "transformation to empirical CDF")
-
-    .. plot::
-        :include-source:
-        :context:
-
-        ecdf_trans = ECdfTransformer(
-            feature_properties={0: flags.IS_ORDERED})
-        ecdf_trans.fit(X)
-        X_transformed = ecdf_trans.transform(X)
-        plt.close("all")
-        with _nbpy_style_figure():
-            plt.hist(X_transformed, bins=100)
-            plt.title("Histogram of poisson distribution after "
-                      "transformation to empirical CDF")
-
     """
 
     def __init__(
@@ -342,10 +278,6 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
             )
 
     def transform(self, X, y=None, fit_mode=0):
-        """Transform `X`.
-
-        For the parameters, see :meth:`nbpy.estimator.Transformer.transform`
-        """
         self._check_input_for_transform(X)
 
         if check_frame_empty(X):
@@ -465,7 +397,6 @@ def get_weight_column(X, weight_column=None):
 
     >>> get_weight_column(X, 'c')
     array([ 1.,  0.])
-
     """
     if weight_column is not None:
         if isinstance(X, pd.DataFrame):
@@ -530,7 +461,6 @@ def reduce_cdf_and_boundaries_to_nbins(bins_x, cdf_x, n_bins, epsilon, tolerance
     -------
     The ``reduced`` input arrays `bins_x` and `cdf_x`, now with **maximum**
     length n_bins, tuple of numpy.ndarrays(dim=1)
-
     """
     if n_bins < 2:
         raise ValueError("N_bins = %s has to greater than 1!", n_bins)

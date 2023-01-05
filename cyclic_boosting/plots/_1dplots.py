@@ -105,7 +105,7 @@ def _plot_factors(factors, x_axis_range, label, uncertainties=None):
     else:
         unsmoothed_style = dict(markersize=2, marker="o", color="k", alpha=0.6)
         unsmoothed_style["label"] = label
-        plt.plot(x_axis_range, factors, "o", **unsmoothed_style)
+        plt.plot(x_axis_range, factors, **unsmoothed_style)
 
 
 def _plot_smoothed_factors(factors, x_axis_range, is_continuous, uncertainties=None):

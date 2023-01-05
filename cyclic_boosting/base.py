@@ -41,7 +41,6 @@ def predict_factors(feature, X_for_smoother, neutral_factor):
 
 
 def _dummy_choice_function(*args):
-    "A dummy choice function"
     return 0
 
 
@@ -93,14 +92,10 @@ class CyclicBoostingBase(
         ``weight_column`` are considered as one-dimensional feature_groups.
 
     feature_properties: :obj:`dict` of :obj:`int`
-        Dictionary listing the names of all features
-        for the Neurobayes training as keys and their preprocessing flags as
-        values. When using a numpy feature matrix X with no column names
-        the keys of the feature properties are the column indices.
-        For more information about Neurobayes preprocessing flags:
-
-        .. seealso::
-            :mod:`nbpy.flags`
+        Dictionary listing the names of all features for the training as keys
+        and their prep-rocessing flags as values. When using a numpy feature
+        matrix X with no column names the keys of the feature properties are
+        the column indices.
 
         By default, ``flags.HAS_MISSING`` is assumed.
         If ``flags.MISSING_NOT_LEARNED`` is set for a feature group,
@@ -156,8 +151,9 @@ class CyclicBoostingBase(
     * The number of unique values in each feature column ``n_unique_feature``
       should be much smaller than the number of samples ``n``.
 
-    Features transformed by :class:`nbpy.binning.BinNumberTransformer`
-    satisfy these preconditions.
+    Features transformed by
+    :class:`cyclic_boosting.binning.BinNumberTransformer` satisfy these
+    preconditions.
 
     * The target ``y`` has to be positive semi-definite.
 
@@ -721,8 +717,6 @@ class CyclicBoostingBase(
         """Fit the estimator to the training samples.
 
         Iterate to calculate the factors and the global scale.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
         """
         self._init_fit(X, y)
         pred = CBLinkPredictionsFactors(self._get_prior_predictions(X))
@@ -743,10 +737,6 @@ class CyclicBoostingBase(
             return pred
 
     def predict(self, X, y=None, fit_mode=0, actions=None):
-        """Predictions of the cyclic boosting regressor for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         pred = self.predict_extended(X, None)
         return self.unlink_func(pred.predict_link())
 
@@ -798,8 +788,8 @@ class CyclicBoostingBase(
 
     def _check_stop_criteria(self, iterations, delta, loss_change):
         """
-        Checks the stop criteria of the :class:`CBFixedVarianceRegressor`
-        and returns True if none are satisfied.
+        Checks the stop criteria and returns True if none are satisfied.
+
         You can check the stop criteria in the estimated parameter
         `stop_criteria_`.
 
@@ -870,9 +860,6 @@ class CyclicBoostingBase(
 
     def get_subestimators_as_items(self, prototypes=True):
         """
-        For the parameters, see
-        :meth:`nbpy.combine.MetaEstimatorMixin.get_subestimators`.
-
         For prototypes=False, the clones are indexed by the column name
         or index.
         """
@@ -1014,12 +1001,11 @@ def gaussian_matching_by_quantiles(dist, link_func, perc1, perc2):
     Example
     -------
 
-    This example considers the case of a beta distribution with link function
-    logit which is used in :mod:`cyclic_boosting.classification`. It
-    compares the old and new Gaussian matching for different alphas and betas.
+    As example, consider the case of a beta distribution with link function
+    logit which is used in :mod:`cyclic_boosting.classification`. It compares
+    the old and new Gaussian matching for different alphas and betas.
 
-    Let's first derive the transformation of the beta distribution to logit
-    space:
+    Derivation of the transformation of the beta distribution to logit space:
 
     .. math::
         y = \text{logit}(x) = \log(x / (1 - x))
@@ -1036,88 +1022,6 @@ def gaussian_matching_by_quantiles(dist, link_func, perc1, perc2):
 
         = p_{\text{beta}(\alpha, \beta)}\left(\left(1 + e^{-y}\right)^2\right)
         \frac{e^{-y}}{\left(1 + e^{-y}\right)^2}\,\mathrm{d} y
-
-    .. plot::
-        :include-source:
-        :context:
-        :nofigs:
-
-        import numpy as np
-        import scipy.stats
-        import matplotlib.pyplot as plt
-
-        from nbpy.ext import plots
-        from nbpy.matplotlib_plotting import _nbpy_style_figure
-        from cyclic_boosting import base, link
-
-        def compare_gaussian_matching(alpha, beta):
-            dist = scipy.stats.beta(alpha, beta)
-
-            # Choose perc1 and perc2 for gaussian_matching_by_quantiles
-            # such that for an asymmetric beta distribution, the quantiles
-            # are rather far from the unsafe boundaries 0 and 1.
-            shift = (alpha / (alpha + beta) - 0.5) * 0.4
-            perc1 = 0.75 - shift
-            perc2 = 0.25 - shift
-
-            link_func = link.LogitLinkMixin().link_func
-
-            # new Gaussian matching (based on quantiles)
-            mu1, sigma1 = base.gaussian_matching_by_quantiles(
-                dist, link_func, perc1, perc2)
-            dist_norm1 = scipy.stats.norm(loc=mu1, scale=sigma1)
-
-            # old Gaussian matching (using moment matching)
-            mu2 = link_func(dist.median())
-            pi0 = alpha / (alpha + beta)
-            sigma2 = dist.std() / (pi0 * (1 - pi0))
-            dist_norm2 = scipy.stats.norm(loc=mu2, scale=sigma2)
-
-            quant1 = link_func(dist.ppf(perc1))
-            quant2 = link_func(dist.ppf(perc2))
-
-            p = np.linspace(0.0001, 0.9999, 1000)
-            y = link_func(p)
-
-            pdf_beta = dist.pdf(p)
-            pdf_link = dist.pdf(p) * np.exp(- y) / (1 + np.exp( -y))**2
-
-            grid = plots.PlotGrid(n_plots=2, n_cols=1)
-            grid.subplot(0)
-            plt.plot(p, pdf_beta)
-            plt.title("Beta distribution: alpha = {}, beta = {}"
-                .format(alpha, beta))
-            grid.subplot(1)
-            plt.plot(y, pdf_link, label='transformed beta')
-            plt.plot(y, dist_norm1.pdf(y), label='new Gaussian matching')
-            plt.plot(y, dist_norm2.pdf(y), label='old Gaussian matching')
-            plt.plot([quant1, quant2], [0, 0], 'o', label='quantiles matched')
-            plt.title("corresponding distribution in logit space, "
-                "perc1 = {:.3f}, perc2 = {:.3f}".format(perc1, perc2))
-            plt.legend()
-            plt.xlim([-10, 10])
-            plt.tight_layout()
-
-    .. plot::
-        :context:
-
-        plt.close("all")
-        with _nbpy_style_figure():
-            compare_gaussian_matching(2.001, 2.001)
-
-    .. plot::
-        :context:
-
-        plt.close("all")
-        with _nbpy_style_figure():
-            compare_gaussian_matching(10.001, 1.001)
-
-    .. plot::
-        :context:
-
-        plt.close("all")
-        with _nbpy_style_figure():
-            compare_gaussian_matching(10.001, 100.001)
     """
     quant1_link = link_func(dist.ppf(perc1))
     quant2_link = link_func(dist.ppf(perc2))
@@ -1271,8 +1175,8 @@ def calc_factors_generic(
     Note
     ----
 
-    The quadratic sum is split in summands because parts of it may
-    not be finite(e.g. in slope estimation).
+    The quadratic sum is split in summands because parts of it may not be
+    finite (e.g. in slope estimation).
 
 
     Parameters

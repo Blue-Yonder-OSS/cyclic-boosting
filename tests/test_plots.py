@@ -10,7 +10,6 @@ from six.moves import range
 from cyclic_boosting import CBCoreClassifier, CBCoreLocationRegressor, \
     CBExponential, CBFixedVarianceRegressor, CBPoissonRegressor, flags, \
     observers, plots
-from cyclic_boosting.link import IdentityLinkMixin, LogitLinkMixin
 from cyclic_boosting.plots import _guess_suitable_number_of_histogram_bins
 from cyclic_boosting.plots._1dplots import _ensure_tuple,_format_tick, \
     _get_optimal_number_of_ticks, _get_x_axis, _get_y_axis, _plot_axes, \

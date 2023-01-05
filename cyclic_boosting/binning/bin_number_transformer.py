@@ -84,8 +84,6 @@ class BinNumberTransformer(ECdfTransformer):
         required to have only 0.95% of the total bin weights instead of
         1.0%)
 
-
-
     Examples
     --------
 
@@ -171,26 +169,6 @@ class BinNumberTransformer(ECdfTransformer):
     14    4   -1
     15    0   -1
     16   -1   -1
-
-    **BinNumberTransformer with weights**
-
-    .. plot::
-        :include-source:
-
-        from nbpy.matplotlib_plotting import _nbpy_style_figure
-        import matplotlib.pyplot as plt
-        from nbpy import binning
-        import pandas as pd
-        import numpy as np
-
-        x = np.random.gamma(1, 20, 10000)[:, None]
-        X = pd.DataFrame(np.c_[x, np.sqrt(x)], columns=['x', 'weight_x'])
-        trans = binning.BinNumberTransformer(weight_column='weight_x',
-                                             n_bins = 100)
-        Xt = trans.fit_transform(X)
-        with _nbpy_style_figure():
-            plt.hist(Xt["x"], bins=50)
-
     """
 
     def __init__(

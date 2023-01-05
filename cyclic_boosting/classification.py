@@ -14,8 +14,6 @@ from cyclic_boosting import base as cyclic_boosting_base
 from cyclic_boosting.base import CyclicBoostingBase
 from cyclic_boosting.link import LogitLinkMixin
 
-# from cyclic_boosting.regression import bincount
-
 
 def get_beta_priors():
     r"""Prior values for beta distribution. The prior distribution was chosen
@@ -64,9 +62,6 @@ class CBCoreClassifier(
     Its interface, methods and arguments are described in
     :class:`~CyclicBoostingBase`.
     """
-
-    # pylint: disable=too-many-locals
-
     def _check_y(self, y):
         """Check that y has only values 0 or 1"""
         if not ((y == 0.0) | (y == 1.0)).all():
@@ -137,11 +132,6 @@ class CBCoreClassifier(
         return factors_link, uncertainties_l
 
     def predict_proba(self, X, y=None, fit_mode=0):
-        """Probability predictions of a classifier for test samples.
-
-        For the parameters, see
-        :meth:`nbpy.estimator.ClassifierWithPredictProba.predict_proba`.
-        """
         probability_signal = super(CBCoreClassifier, self).predict(
             X, y=y, fit_mode=fit_mode, actions=None
         )

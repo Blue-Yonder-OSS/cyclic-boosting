@@ -766,35 +766,6 @@ def regularize_to_prior_expectation(
     >>> np.allclose(1 + np.sqrt(((values[-1] - 1) / 0.1)**2 - 2.5**2) * 0.1,
     ...     regularized_values[-1])
     True
-
-    **Plots**
-
-    .. plot::
-        :include-source:
-
-        from nbpy.matplotlib_plotting import _nbpy_style_figure
-        import matplotlib.pyplot as plt
-        import numpy as np
-        import nbpy._numpy_utils as np_utils
-
-        n = 200
-        for i, (values, uncertainty, prior_expectation) in enumerate([
-                (np.linspace(0, 2, n), 0.1, 1),
-                (np.linspace(-5, 5, n), 0.5, [-0.5]*100 + [0.5]*100)]):
-
-            uncertainties = np.ones_like(values) * uncertainty
-            regularized_values = np_utils.regularize_to_prior_expectation(
-            values, uncertainties, prior_expectation)
-            title = ("Regularization with constant prior expectation" if i == 0
-                else "Regularization with varying prior expectation")
-            with _nbpy_style_figure(num=i):
-                plt.title(title)
-                plt.plot(values, regularized_values,
-                    label='regularized_values')
-                plt.plot(values, np.ones_like(values) * prior_expectation,
-                    label='prior_expectation')
-                plt.plot(values, values, label='values')
-                plt.legend(loc=2)
     """
     significance = (values - prior_expectation) / uncertainties
     return prior_expectation + uncertainties * np.where(
@@ -1008,54 +979,6 @@ def linear_regression(x, y, w):
 
     :returns: The coefficients `alpha` and `beta`.
     :rtype: :obj:`tuple` of 2 :obj:`float`
-
-    **Example plots**
-
-    1. No uncertainties:
-
-    .. plot::
-        :include-source:
-        :context:
-
-        from nbpy.matplotlib_plotting import _nbpy_style_figure
-        import matplotlib.pyplot as plt
-        import numpy as np
-        from nbpy import math_utils
-
-        alpha = 3.0
-        beta = 0.5
-        n = 100
-        x = np.linspace(0, 10., n)
-        y = alpha + beta * x
-        w = np.ones(n)
-
-        a, b = math_utils.linear_regression(x, y, w)
-        with _nbpy_style_figure(num=0):
-            plt.errorbar(x, y, color='k', fmt='o', capsize=2.5)
-            plt.plot(x, a + b * x, color='r')
-            plt.title("a = {0}, b = {1}".format(a, b))
-
-    2. With uncertainties:
-
-    .. plot::
-        :include-source:
-        :context:
-
-        np.random.seed(123)
-        from six.moves import range
-        alpha = 3.0
-        beta = 0.5
-        n = 100
-        x = np.linspace(0, 10., n)
-        y = alpha + beta * x
-        err = np.array([np.mean(np.random.randn(n)) for i in range(n)])
-        w = 1.0 / err ** 2
-
-        a, b = math_utils.linear_regression(x, y+err, w)
-        with _nbpy_style_figure(num=1):
-            plt.errorbar(x, y+err, yerr=err, color='k', fmt='o', capsize=2.5)
-            plt.plot(x, a + b * x, color='r')
-            plt.title("a = {0}, b = {1}".format(a, b))
     """
     s_w = np.sum(w)
     s_wx = np.dot(w, x)

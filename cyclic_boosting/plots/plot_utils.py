@@ -155,24 +155,6 @@ def blue_cyan_green_cmap():
     """Colormap from blue over cyan to green
 
     :rtype: :class:`matplotlib.colors.LinearSegmentedColormap`
-
-    .. plot::
-       :include-source:
-
-       import numpy as np
-       import matplotlib.pyplot as plt
-       from nbpy import plots
-       from nbpy.matplotlib_plotting import _nbpy_style_figure
-
-       n = 1001
-       values = np.linspace(0,1, n)[np.newaxis, :]
-       with _nbpy_style_figure():
-           cmap = plots.blue_cyan_green_cmap()
-           plt.imshow(values, cmap=cmap,
-                      aspect='auto', interpolation=None)
-           plt.yticks([])
-
-
     """
     return _colormap_gen(blue_red=False)
 
@@ -296,18 +278,6 @@ def append_extension(file, extension):
     Returns
     -------
     result : object of same type as `file`
-
-    Example
-    -------
-
-    >>> from nbpy.matplotlib_plotting import append_extension
-    >>> append_extension('abc', 'def')
-    'abcdef'
-    >>> append_extension('abcde', 'de')
-    'abcde'
-    >>> append_extension(42, 'fgh')
-    42
-
     """
     if isinstance(file, six.string_types):
         if not file.endswith(extension):

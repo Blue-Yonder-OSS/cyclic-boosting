@@ -25,8 +25,7 @@ def _simplify_flags(feature_property, feature_group=None):
     Parameters
     ----------
     feature_property:
-        A single feature property out of the `nbpy.flags` or `nbpy.ext.flags`
-        module.
+        A single feature property.
 
     feature_group:
         Optional argument for the name of the feature/feature_group
@@ -105,8 +104,7 @@ def determine_reg_type(feature_group, feature_property, feature_type):
         Name of the feature_group
 
     feature_property: tuple
-        Tuple of feature properties from the `nbpy.flags`
-        module.
+        Tuple of feature properties.
 
     feature_type:
         Type of the feature.
@@ -243,8 +241,7 @@ class SmootherChoice(object):
             Name of the feature_group
 
         feature_property: tuple
-            Tuple of feature properties from the `nbpy.flags`
-            module.
+            Tuple of feature properties.
 
         feature_type:
             Type of the feature.
@@ -274,8 +271,7 @@ class SmootherChoice(object):
         ----------
 
         feature_property: int
-            Feature property defined as flag from the `nbpy.flags`
-            module.
+            Feature property defined as flag.
 
         feature_name: str
             Name of the feature
@@ -303,8 +299,7 @@ class SmootherChoice(object):
             Name of the feature_group
 
         feature_property: tuple
-            Tuple of feature properties from the `nbpy.flags`
-            module.
+            Tuple of feature properties.
 
         feature_type:
             Type of the feature.
@@ -325,8 +320,7 @@ class SmootherChoice(object):
             Name of the feature_group
 
         feature_property: tuple
-            Tuple of feature properties from the `nbpy.flags`
-            module.
+            Tuple of feature properties.
 
         feature_type:
             Type of the feature.

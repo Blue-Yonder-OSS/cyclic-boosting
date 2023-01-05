@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Cyclic Boosting Negative Binomial c regressor. var = mu + c * mu * mu
 """
@@ -51,17 +50,17 @@ class CBNBinomC(CyclicBoostingBase, sklearn.base.RegressorMixin, LogitLinkMixin)
     Estimator predicts c with the constraint: c in (0,1)
     Follows https://en.wikipedia.org/wiki/Negative_binomial_distribution notation with c = 1/r
 
-     Parameters
-     ----------
+    Parameters
+    ----------
 
-     mean_prediction_column: string or None
-         Column for the mean of the Negative Binomial
+    mean_prediction_column: string or None
+        Column for the mean of the Negative Binomial
 
-     gamma: float
-         Lasso term, zero for non-penalized fit. The larger the value the harder the regularization.
+    gamma: float
+        Lasso term, zero for non-penalized fit. The larger the value the harder the regularization.
 
-     bayes: bool
-         use expectation of the posterior instead of maximum likelihood in each cyclic boosting step
+    bayes: bool
+        use expectation of the posterior instead of maximum likelihood in each cyclic boosting step
 
     The rest of the parameters are documented in CyclicBoostingBase.
     """

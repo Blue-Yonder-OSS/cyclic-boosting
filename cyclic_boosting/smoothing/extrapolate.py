@@ -11,11 +11,11 @@ feature `time`.
     extrapolation originates at the end of the training interval and will
     become more and more uncertain over time.
 
-    Please don't use
+    don't use
 
-    * :class:`nbpy.binning.ECdfTransformer`
-    * :class:`nbpy.binning.BinNumberTransformer`
-    * :class:`nbpy.binning.FractionalBinNumberTransformer`
+    * :class:`cyclic_boosting.binning.ECdfTransformer`
+    * :class:`cyclic_boosting.binning.BinNumberTransformer`
+    * :class:`cyclic_boosting.binning.FractionalBinNumberTransformer`
 
     on features these smoothers operate on, because they just assign the
     largest bin number to feature values beyond the upper bound seen in the
@@ -54,8 +54,7 @@ class LinearExtrapolator(onedim.AbstractBinSmoother):
 
     **Required columns** in the ``X_for_smoother`` passed to :meth:`fit`:
 
-    * column 0: See description in
-      :ref:`BinnedTargetProfile <target_profile_binnumber_columns>`
+    * column 0: ...
     * column 1: ignored
     * column 2: uncertainty of the average ``y`` in each bin
 
@@ -65,8 +64,7 @@ class LinearExtrapolator(onedim.AbstractBinSmoother):
 
     **Used column** in the :meth:`predict`:
 
-    * column 0: See description in
-      :ref:`BinnedTargetProfile <target_profile_binnumber_columns>`
+    * column 0: ...
 
     **Estimated parameters**
 
@@ -110,41 +108,6 @@ class LinearExtrapolator(onedim.AbstractBinSmoother):
              2.97124605,   3.49467626,   4.01810647,   4.54153668,
              5.06496689,   5.5883971 ,   6.11182731,   6.63525752,
              7.15868773,   7.68211794,  13.43985026])
-
-
-    **Bigger data example with plots**
-
-    .. plot::
-        :include-source:
-
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from nbpy.matplotlib_plotting import _nbpy_style_figure
-        from nbpy.smoothing import extrapolate
-
-        np.random.seed(4)
-        n = 25
-        x = np.linspace(0, 5, n)
-        alpha = 3.0
-        beta = 0.5
-        y = alpha + beta * x
-
-        y_err = np.array([np.mean(np.random.randn(n)) for i in range(n)])
-        y_smeared = y + y_err
-
-        X = np.c_[x, np.ones(n), y_err]
-
-        est = extrapolate.LinearExtrapolator()
-        est.fit(X, y_smeared)
-
-        x1 = np.linspace(-5, 10, 20)
-        X1 = np.c_[x1]
-        pred = est.predict(X1)
-
-        with _nbpy_style_figure(num=0):
-            plt.errorbar(x, y, yerr=y_err, color='k', fmt='o', capsize=2.5)
-            plt.plot(x1, pred, color='b', marker='o')
-            plt.title("a = {0}, b = {1}".format(est.alpha_, est.beta_))
     """
 
     def __init__(self, epsilon=1e-4):

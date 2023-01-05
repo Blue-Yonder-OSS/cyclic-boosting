@@ -40,10 +40,6 @@ class PredictingBinValueMixin(object):
     """
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         if not hasattr(self, "smoothed_y_"):
             raise ValueError(
                 "The {} has not been fitted!".format(self.__class__.__name__)
@@ -95,10 +91,6 @@ class BinValuesSmoother(AbstractBinSmoother, PredictingBinValueMixin):
     elem = "smoothed_y_"
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self.smoothed_y_ = y
         return self
 
@@ -122,8 +114,6 @@ class RegularizeToPriorExpectationSmoother(
     r"""Smoother of one-dimensional bins regularizing values with uncertainties
     to a prior expectation.
 
-    For details, see :func:`nbpy.utils.regularize_to_prior_expectation`.
-
     :param prior_expectation: The prior dominate the regularized value if the
         uncertainties are large.
     :type prior_expectation: :class:`numpy.ndarray` (float64, dim=1) or float
@@ -141,8 +131,7 @@ class RegularizeToPriorExpectationSmoother(
 
     **Required columns** in the ``X_for_smoother`` passed to :meth:`fit`:
 
-    * column 0: See description in
-      :ref:`BinnedTargetProfile <target_profile_binnumber_columns>`
+    * column 0: ...
     * column 1: ignored
     * column 2: uncertainty of the average ``y`` in each bin
 
@@ -172,10 +161,6 @@ class RegularizeToPriorExpectationSmoother(
         self.threshold = threshold
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self.smoothed_y_ = utils.regularize_to_prior_expectation(
             y, X_for_smoother[:, 2], self.prior_expectation, threshold=self.threshold
         )
@@ -186,16 +171,9 @@ class RegularizeToOneSmoother(RegularizeToPriorExpectationSmoother):
     """Smoother for one-dimensional bins regularizing values with uncertainties
     to the mean of the values.
 
-    For details, see the superclass
-    :class:`RegularizeToPriorExpectationSmoother` and the
-    underlying function
-    :func:`nbpy.utils.regularize_to_prior_expectation`.
-
     :param threshold: threshold in terms of sigma.
-        If the significance of a factor
-        is below the threshold, the global measurement replaces the factor.
-        Internally :func:`nbpy.utils.regularize_to_prior_expectation`
-        is used.
+        If the significance of a factor is below the threshold, the global
+        measurement replaces the factor.
     :type threshold: float
     """
 
@@ -208,8 +186,6 @@ class RegularizeToOneSmoother(RegularizeToPriorExpectationSmoother):
 class WeightedMeanSmoother(AbstractBinSmoother, PredictingBinValueMixin):
     r"""Smoother for one-dimensional bins regularizing values with
     uncertainties to the weighted mean or a user defined value.
-
-    For details see :func:`nbpy.utils.regularize_to_error_weighted_mean`.
 
     :param prior_prediction: If the `prior_prediction` is specified, all values
         are regularized with it and not with the error weighted mean.
@@ -251,10 +227,6 @@ class WeightedMeanSmoother(AbstractBinSmoother, PredictingBinValueMixin):
         self.prior_prediction = prior_prediction
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self.smoothed_y_ = utils.regularize_to_error_weighted_mean(
             y, X_for_smoother[:, 2], self.prior_prediction
         )
@@ -263,16 +235,10 @@ class WeightedMeanSmoother(AbstractBinSmoother, PredictingBinValueMixin):
 class OrthogonalPolynomialSmoother(AbstractBinSmoother):
     """A polynomial fit that uses orthogonal polynomials as basis functions.
 
-    This smoother is a reimplementation of old Neurobayes routines in Cython.
-
     Ansatz, see Blobel (http://www.desy.de/~blobel/eBuch.pdf)
     """
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         x = np.ascontiguousarray(X_for_smoother[:, 0], dtype=np.float64)
 
         self.minimal_x = np.nanmin(x)
@@ -286,10 +252,6 @@ class OrthogonalPolynomialSmoother(AbstractBinSmoother):
         return self
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         assert X.ndim == 2
         if not hasattr(self, "pp_"):
             raise ValueError(
@@ -383,8 +345,7 @@ class SeasonalSmoother(AbstractBinSmoother):
 
     **Required columns** in the ``X_for_smoother`` passed to :meth:`fit`:
 
-    * column 0: See description in
-      :ref:`BinnedTargetProfile <target_profile_binnumber_columns>`
+    * column 0: ...
     * column 1: ignored
     * column 2: uncertainty of the average ``y`` in each bin
 
@@ -401,48 +362,6 @@ class SeasonalSmoother(AbstractBinSmoother):
 
     par_: numpy.ndarray
         Parameters from the fit.
-
-    Example
-    -------
-
-    .. plot::
-        :context:
-        :include-source:
-
-        import matplotlib.pyplot as plt
-        import numpy as np
-        from nbpy.matplotlib_plotting import _nbpy_style_figure
-        from nbpy.smoothing.onedim import SeasonalSmoother
-
-        np.random.seed(10)
-        n = 200
-        value_range = np.arange(n)
-        omega = 2 * np.pi * value_range / n
-        y_truth = np.sin(omega) + 0.3 * np.cos(3 * omega)
-
-        sigma = 1./10.
-        y_noise = np.random.standard_normal(n) * sigma
-        y = y_truth + y_noise
-
-        y_errors = np.ones(n) * sigma
-
-        smoother = SeasonalSmoother(order=3)
-
-        X = np.c_[value_range,
-                  np.ones(n),
-                  y_errors]
-
-        smoother.fit(X, y)
-
-        # Calculate smoothed values at seen values in fit
-        result = smoother.predict(X)
-
-        plt.close('all')
-        with _nbpy_style_figure():
-            val_plot = plt.plot(y, 'o', label = 'Noisy measurements')
-            truth_plot = plt.plot(y_truth, label = 'Truth')
-            res_plot = plt.plot(result, label = 'Smoothed measurements')
-            plt.legend()
     """
 
     def __init__(
@@ -467,10 +386,6 @@ class SeasonalSmoother(AbstractBinSmoother):
         return 2 * np.pi * X[:, 0] * self.frequency_
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self.frequency_ = 1.0 / len(X_for_smoother)
         xdata = self.transform_X(X_for_smoother)
         try:
@@ -488,10 +403,6 @@ class SeasonalSmoother(AbstractBinSmoother):
         return self
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         if self.converged or self.converged is None:
             if not hasattr(self, "par_"):
                 raise ValueError(
@@ -523,8 +434,7 @@ class SeasonalLassoSmoother(AbstractBinSmoother):
 
     **Required columns** in the ``X_for_smoother`` passed to :meth:`fit`:
 
-    * column 0: See description in
-      :ref:`BinnedTargetProfile <target_profile_binnumber_columns>`
+    * column 0: ...
     * column 1: The number of samples in the bin
     * column 2: uncertainty of the average ``y`` in each bin (ignored)
 
@@ -556,10 +466,6 @@ class SeasonalLassoSmoother(AbstractBinSmoother):
         return np.zeros(len(X), dtype=np.float64)
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         if not self.fallback_mode:
             if not self.est:
                 raise ValueError(
@@ -571,10 +477,6 @@ class SeasonalLassoSmoother(AbstractBinSmoother):
             return self._fallback_predict(X)
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self.max_bin = X_for_smoother[-1, 0]
         days_with_samples = X_for_smoother[:, 1] > 0
         X_for_smoother = X_for_smoother[days_with_samples, :]
@@ -592,8 +494,8 @@ class SeasonalLassoSmoother(AbstractBinSmoother):
 
 class PriorExpectationMetaSmoother(AbstractBinSmoother, PredictingBinValueMixin):
     """Meta-Smoother that takes another one-dimensional smoother which
-    results are addionally smoothed using
-    :func:`nbpy.utils.regularize_to_prior_expectation`.
+    results are additionally smoothed using
+    :func:`cyclic_boosting.utils.regularize_to_prior_expectation`.
 
     :param prior_expectation: The prior dominate the regularized value if the
         uncertainties are large.
@@ -617,7 +519,6 @@ class PriorExpectationMetaSmoother(AbstractBinSmoother, PredictingBinValueMixin)
         self.threshold = threshold
 
     def fit(self, X_for_smoother, y):
-        """ """
         self.est.fit(X_for_smoother.copy(), y)
         self.smoothed_y_ = utils.regularize_to_prior_expectation(
             self.est.predict(X_for_smoother.copy()),
@@ -637,8 +538,7 @@ class UnivariateSplineSmoother(AbstractBinSmoother):
 
     **Required columns** in the ``X_for_smoother`` passed to :meth:`fit`:
 
-    * column 0: See description in
-      :ref:`BinnedTargetProfile <target_profile_binnumber_columns>`
+    * column 0: ...
     * column 1: weight sum in each bin
 
     These are provided by the following **profile functions**:
@@ -669,36 +569,6 @@ class UnivariateSplineSmoother(AbstractBinSmoother):
 
     :param `spline_`: spline function that can be applied to ``x`` values
     :type `spline_`: :class:`scipy.interpolate.UnivariateSpline`
-
-    **Example**
-
-    .. plot::
-        :include-source:
-
-        from __future__ import print_function, division
-
-        import numpy as np
-        import matplotlib.pyplot as plt
-        from cyclic_boosting.plots.plot_utils import _nbpy_style_figure
-        from cyclic_boosting import smoothing
-
-        n = 100
-        x = np.arange(n)
-        np.random.seed(10)
-        y = np.exp(- ((x / n * 6) - 3)**2) + np.random.randn(n) / 10
-
-        smoother = smoothing.onedim.UnivariateSplineSmoother(s=1)
-
-        X = np.c_[x, np.ones(n)]
-
-        assert smoother.fit(X, y) is smoother
-
-        result = smoother.predict(X)
-
-        with _nbpy_style_figure():
-            val_plot = plt.plot(y, 'o', label = 'Noisy measurements')
-            res_plot = plt.plot(result, label = 'Smoothed measurements')
-            plt.legend()
     """
 
     def __init__(self, k=3, s=None):
@@ -706,10 +576,6 @@ class UnivariateSplineSmoother(AbstractBinSmoother):
         self.s = s
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self.spline_ = scipy.interpolate.UnivariateSpline(
             np.asarray(X_for_smoother[:, 0], dtype=np.float64),
             np.asarray(y, dtype=np.float64),
@@ -721,10 +587,6 @@ class UnivariateSplineSmoother(AbstractBinSmoother):
         return self
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         if not hasattr(self, "spline_"):
             raise ValueError(
                 "The {} has not been fitted!".format(self.__class__.__name__)
@@ -743,8 +605,7 @@ class PolynomialSmoother(AbstractBinSmoother):
 
     **Required columns** in the ``X_for_smoother`` passed to :meth:`fit`:
 
-    * column 0: See description in
-      :ref:`BinnedTargetProfile <target_profile_binnumber_columns>`
+    * column 0: ...
     * column 1: ignored
     * column 2: uncertainty of the average ``y`` in each bin
 
@@ -766,10 +627,6 @@ class PolynomialSmoother(AbstractBinSmoother):
         self.k = k
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         sigma = np.asarray(X_for_smoother[:, 2], dtype=np.float64)
         w = 1.0 / (sigma * sigma)
         self.coefficients_ = np.polyfit(
@@ -781,10 +638,6 @@ class PolynomialSmoother(AbstractBinSmoother):
         return self
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         if not hasattr(self, "coefficients_"):
             raise ValueError(
                 "The {} has not been fitted!".format(self.__class__.__name__)
@@ -804,8 +657,7 @@ class LinearSmoother(PolynomialSmoother):
 
     **Required columns** in the ``X_for_smoother`` passed to :meth:`fit`:
 
-    * column 0: See description in
-      :ref:`BinnedTargetProfile <target_profile_binnumber_columns>`
+    * column 0: ...
     * column 1: ignored
     * column 2: uncertainty of the average ``y`` in each bin
 
@@ -823,10 +675,6 @@ class LinearSmoother(PolynomialSmoother):
         self.fallback_when_negative_slope = fallback_when_negative_slope
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         sigma = np.asarray(X_for_smoother[:, 2], dtype=np.float64)
         w = 1.0 / (sigma * sigma)
         x = X_for_smoother[:, 0]
@@ -860,28 +708,6 @@ class LSQUnivariateSpline(AbstractBinSmoother):
 
     interior_knots : list
         Interior knots of the spline. Must be in ascending order.
-
-    Example
-    -------
-
-    .. plot::
-        :include-source:
-
-        >>> import matplotlib.pyplot as plt
-        >>> import numpy as np
-        >>> from cyclic_boosting.plots.plot_utils import _nbpy_style_figure
-        >>> from cyclic_boosting import smoothing
-        >>> x = np.linspace(-3, 3, 50)
-        >>> X = np.c_[x, np.ones(50)]
-        >>> y = np.exp(-x ** 2) + 0.2 * np.random.randn(50)
-        >>> interior_knots = [-1, 0, 1]
-        >>> degree = 3
-        >>> lsq = smoothing.onedim.LSQUnivariateSpline(interior_knots, degree)
-        >>> result = lsq.fit(X, y).predict(X)
-        >>> with _nbpy_style_figure():
-        ...    val_plt = plt.plot(x, y, 'r.', label='noisy measurements')
-        ...    res_plt = plt.plot(x, result, 'b', label='smoothed measurements')
-        ...    assert plt.legend()
     """
 
     def __init__(self, interior_knots, degree=3):
@@ -890,10 +716,6 @@ class LSQUnivariateSpline(AbstractBinSmoother):
         self.fitted_spline = None
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         check_spline_degree = self.degree <= 5 and self.degree < len(X_for_smoother)
         if check_spline_degree:
             X = X_for_smoother.astype(np.float64)
@@ -911,10 +733,6 @@ class LSQUnivariateSpline(AbstractBinSmoother):
         return self
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         if self.fitted_spline is None:
             raise ValueError("LSQUnivariateSpline has not been fitted!")
         return self.fitted_spline(X.astype(np.float64)[:, 0])
@@ -942,36 +760,11 @@ class IsotonicRegressor(AbstractBinSmoother):
     X requires the following columns.
 
     column0 :
-        See description in :ref:`BinnedTargetProfile <target_profile_binnumber_columns>`
+        ...
     column1 :
         ignored
     column2 :
         weights
-
-    Example
-    -------
-
-    .. plot::
-        :include-source:
-
-        >>> import matplotlib.pyplot as plt
-        >>> import numpy as np
-        >>> from cyclic_boosting.plots.plot_utils import _nbpy_style_figure
-        >>> from cyclic_boosting import smoothing
-        >>> n = 100
-        >>> sigma = 1./10
-        >>> weights = np.ones(n) * sigma
-        >>> x = np.arange(n-1, -1, -1)
-        >>> X = np.c_[x,
-        ...         np.ones(n),
-        ...         weights]
-        >>> y = np.random.randint(-50, 50, n) + 100. * np.log(1 + np.arange(n))
-        >>> iso_r = smoothing.onedim.IsotonicRegressor()
-        >>> pred = iso_r.fit(X, y).predict(X)
-        >>> with _nbpy_style_figure():
-        ...    val_plt = plt.plot(x, y, 'r.', label='noisy measurements')
-        ...    res_plt = plt.plot(x, pred, 'b', label='isotonic regression')
-        ...    assert plt.legend()
     """
 
     def __init__(self, increasing="auto"):
@@ -979,10 +772,6 @@ class IsotonicRegressor(AbstractBinSmoother):
         self.increasing = increasing
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         X = X_for_smoother.astype(np.float64)
         sigma = X[:, 2]
         sigma = np.where(sigma > 0, sigma, 1e12)
@@ -994,10 +783,6 @@ class IsotonicRegressor(AbstractBinSmoother):
         return self
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         if self.est_ is None:
             raise ValueError("IsotonicRegressor has not been fitted!")
         return self.est_.predict(X.astype(np.float64)[:, 0])

@@ -285,13 +285,6 @@ def _format_groupname_with_type(feature_group, feature_type):
 def _plot_one_feature_group(
     plot_observer, grid_item, feature, binners=None, use_tightlayout=True, plot_yp=True
 ):
-    """
-    Create a factor subplot for one feature group. This function is probably
-    bet not called by the user directly. The user will invoke a plotting
-    method of the estimator directly that will indirectly invoke this
-    method. :meth:`nbpy.factor_model.CBFixedVarianceRegressor.plot_factors`.
-    """
-
     if len(feature.feature_group) == 1:
         # treatment of one-dimensional features
         plt.subplot(grid_item)

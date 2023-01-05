@@ -20,8 +20,6 @@ _logger = logging.getLogger(__name__)
 class CBCoreLinearPoissonRegressor(
     CyclicBoostingBase, sklearn.base.RegressorMixin, IdentityLinkMixin
 ):
-
-    # pylint: disable=no-member, invalid-name, missing-docstring
     def precalc_parameters(self, feature, y, pred):
         lex_binnumbers = feature.lex_binned_data
         minlength = feature.n_bins

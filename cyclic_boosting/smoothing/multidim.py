@@ -105,10 +105,6 @@ class BinValuesSmoother(AbstractBinSmoother, PredictingBinValueMixin):
     elems = ["smoothed_y_", "bin_weights_"]
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self.set_n_bins(X_for_smoother)
         self.smoothed_y_ = y
         return self
@@ -154,9 +150,7 @@ class RegularizeToPriorExpectationSmoother(
 
     **Required columns** in the ``X_for_smoother`` passed to :meth:`fit`:
 
-    * columns 0 to``n_dim - 1``: coordinates of the bin centers (ignored here);
-      see the description in :ref:`BinnedTargetProfile
-      <target_profile_binnumber_columns>`
+    * columns 0 to``n_dim - 1``: coordinates of the bin centers (ignored here)
     * column ``n_dim``: ignored
     * column ``n_dim + 1``, which must be the last: uncertainty of the average
       ``y`` in each bin
@@ -251,10 +245,6 @@ class WeightedMeanSmoother(AbstractBinSmoother, PredictingBinValueMixin):
         self.prior_prediction = prior_prediction
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self.set_n_bins(X_for_smoother)
         self.smoothed_y_ = utils.regularize_to_error_weighted_mean(
             y, X_for_smoother[:, -1], self.prior_prediction
@@ -312,8 +302,6 @@ def _fit_est_on_group(X, n_group_columns, est):
 
 def _predict_groups(x, gb, n_group_columns):
     try:
-        # Pandas bug note: gb.loc[x.name] can crash with "Too many indexers"
-        # https://github.com/pandas-dev/pandas/issues/14885
         est = gb.loc(axis=0)[x.name]
     except KeyError:
         p = np.nan
@@ -326,7 +314,6 @@ class GroupBySmoother(AbstractBinSmoother):
     """Multidimensional smoother that groups on the *first* k-1 columns
     of a k dimensional feature and smoothes a clone of the specified 1-dimensional
     smoother on each group.
-
 
     Parameters
     ----------
@@ -402,8 +389,6 @@ class Neutralize2DMetaSmoother(AbstractBinSmoother, PredictingBinValueMixin):
 
     def fit(self, X_for_smoother, y):
         """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
         """
         d = X_for_smoother.shape[1] - 2
         if d < 2:

@@ -7,44 +7,20 @@ from cyclic_boosting import smoothing, utils
 def check_sklearn_style_cloning(est):
     """Verify that an estimator is correctly cloned.
 
-    :func:`sklearn.base.clone()` and :func:`nbpy.estimator.clone` clone an
-    estimator or transformer by passing attributes with the same names as the
-    constructor parameters (as determined by the method
-    :meth:`sklearn.base.BaseEstimator.get_params`) to its constructor.
-
-    This cloning is used in meta-estimators such as
-    :class:`nbpy.nclassify.NClassify` and :class:`nbpy.ext.group_by.GroupBy`.
+    Cloning of an estimator or transformer by passing attributes with the same
+    names as the constructor parameters to its constructor. This cloning is
+    used in meta-estimators.
 
     This function also verifies that attributes mentioned in the :obj:`set`
     ``no_deepcopy`` (optionally defined statically in the estimator class), if
     present, are not deeply copied but referenced.
 
     An :class:`AssertionError` is raised if the cloning is incorrect.
-
-    This test fails for some `sklearn` estimators such as
-    :class:`sklearn.linear_model.SGDClassifier` that save deprecated
-    constructor parameters (in this case ``rho``) in attributes corresponding
-    to other constructor parameters.
-
-    Please call this test for all estimators you write if you want them to be
-    usable in cloning meta-estimators.
-
-    :param est: Estimator to check.
-    :type est: :class:`nbpy.estimator.Estimator` or
-        :class:`nbpy.estimator.Transformer`
     """
 
     def _compare_clones(est, cloned_est):
         """Auxiliary function for :func:`check_sklearn_style_cloning` comparing
         an estimator and its clone.
-
-        :param est: Estimator to check.
-        :type est: :class:`nbpy.estimator.Estimator` or
-            :class:`nbpy.estimator.Transformer`
-
-        :param est: The corresponding clone.
-        :type est: :class:`nbpy.estimator.Estimator` or
-            :class:`nbpy.estimator.Transformer`
         """
         class_name = est.__class__.__name__
 
