@@ -24,16 +24,17 @@ class BinNumberTransformer(ECdfTransformer):
     column with ``10, 11, 12`` would be binned as ``0, 1, 2``).
 
     If no ``feature_properties`` are passed, all columns in ``X`` are treated
-    as :obj:`nbpy.flags.IS_CONTINUOUS`. If a ``feature_properties`` dictionary
-    is supplied, it must contain feature properties for each feature in ``X``.
+    as :obj:`cyclic_boosting.flags.IS_CONTINUOUS`. If a ``feature_properties``
+    dictionary is supplied, it must contain feature properties for each feature
+    in ``X``.
 
     Not-a-number values in the input feature matrix are mapped to
-    :obj:`nbpy.binning.MISSING_VALUE_AS_BINNO` in the transform step. This
-    value can then be treated as a missing value by Cyclic Boosting.
+    :obj:`cyclic_boosting.binning.MISSING_VALUE_AS_BINNO` in the transform
+    step. This value can then be treated as a missing value by Cyclic Boosting.
 
-    The feature property :obj:`nbpy.flags.HAS_MAGIC_INT_MISSING` enables
-    missing-value treatment for values of -999 and -9 in integer-typed feature
-    columns (for both continuous and non-continuous features).
+    The feature property :obj:`cyclic_boosting.flags.HAS_MAGIC_INT_MISSING`
+    enables missing-value treatment for values of -999 and -9 in integer-typed
+    feature columns (for both continuous and non-continuous features).
 
     Binning is performed for each feature-column individually. For example, two
     columns with the same value range can end up with totally different bin
@@ -114,61 +115,6 @@ class BinNumberTransformer(ECdfTransformer):
            [2],
            [3],
            [3]], dtype=int8)
-
-    **Feature properties handling**
-
-    >>> from nbpy import _pandas_utils, flags
-    >>> X = pd.DataFrame.from_dict(OrderedDict([
-    ...     ('a', np.linspace(10., 20, 50, endpoint=False)),
-    ...     ('b', [3.] * 30 + [1] * 10 + [4] * 10)]))
-
-    >>> trans = BinNumberTransformer(n_bins=5, feature_properties={
-    ...     'a': flags.IS_CONTINUOUS, 'b': flags.IS_ORDERED}, epsilon=1e-8)
-    >>> trans = trans.fit(X)
-
-    >>> column, epsilon, bins_cdfs = trans.bins_and_cdfs_[0]
-    >>> assert column == 'a' and np.allclose(epsilon, 1e-8 * 1.8)
-    >>> bins_cdfs
-    array([[ 10. ,   0. ],
-           [ 11.8,   0.2],
-           [ 13.8,   0.4],
-           [ 15.8,   0.6],
-           [ 17.8,   0.8],
-           [ 19.8,   1. ]])
-
-    >>> column, epsilon, bins_cdfs = trans.bins_and_cdfs_[1]
-    >>> assert column == 'b' and np.allclose(epsilon, 1e-8 * 1)
-    >>> bins_cdfs
-    array([[ 1. ,  0. ],
-           [ 1. ,  0.2],
-           [ 3. ,  0.8],
-           [ 4. ,  1. ]])
-
-    >>> X_test = dataframe_from_items([
-    ...     ('a', [9., 10., 10.3, 10.8, 12, 12.6, 13, 15, 17, 17.8, 18.0,
-    ...            19.5, 19.8, 20., 100., -5, np.inf]),
-    ...     ('b', [3., 4,   1,    3,    4,  1,    3,  4,  1,  3,    4,
-    ...            1.,   3,    4, 10, -5, np.nan])])
-    >>> Xt = trans.transform(X_test)
-    >>> Xt
-          a    b
-    0     0    1
-    1     0    2
-    2     0    0
-    3     0    1
-    4     1    2
-    5     1    0
-    6     1    1
-    7     2    2
-    8     3    0
-    9     3    1
-    10    4    2
-    11    4    0
-    12    4    1
-    13    4    2
-    14    4   -1
-    15    0   -1
-    16   -1   -1
     """
 
     def __init__(

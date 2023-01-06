@@ -11,7 +11,7 @@ import pandas as pd
 from numexpr import evaluate
 from six.moves import range
 
-from cyclic_boosting import CBFixedVarianceRegressor
+from cyclic_boosting import CBNBinomRegressor
 from cyclic_boosting.features import FeatureTypes, create_feature_id
 from cyclic_boosting.base import UpdateMixin
 from cyclic_boosting.regression import _calc_factors_and_uncertainties
@@ -230,7 +230,7 @@ def newton_step(
     return lnew, jacobian, hessian
 
 
-class CBExponential(CBFixedVarianceRegressor):
+class CBExponential(CBNBinomRegressor):
     def __init__(
         self,
         external_colname,
@@ -261,7 +261,7 @@ class CBExponential(CBFixedVarianceRegressor):
 
         self.external_colname = external_colname
 
-        CBFixedVarianceRegressor.__init__(
+        CBNBinomRegressor.__init__(
             self,
             feature_groups=feature_id_list,
             feature_properties=feature_properties,
@@ -285,7 +285,7 @@ class CBExponential(CBFixedVarianceRegressor):
         self.starting_bound_bisect = 2
 
     def required_columns(self):
-        required_columns = CBFixedVarianceRegressor.required_columns(self)
+        required_columns = CBNBinomRegressor.required_columns(self)
         required_columns.add(self.external_colname)
         if self.prior_exponent_colname is not None:
             required_columns.add(self.prior_exponent_colname)
@@ -356,7 +356,7 @@ class CBExponential(CBFixedVarianceRegressor):
             return expo, variance
         else:
             _logger.debug("Demand Feature {}".format(feature.feature_group))
-            return CBFixedVarianceRegressor.calc_parameters(
+            return CBNBinomRegressor.calc_parameters(
                 self, feature, y, pred, None
             )
 
@@ -421,10 +421,6 @@ class CBExponential(CBFixedVarianceRegressor):
         return gamma_momemt_matching(factors, variance_factors, self.link_func)
 
     def predict(self, X, y=None, fit_mode=0, actions=None):
-        """Predictions of the cyclic boosting regressor for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         pred = self.predict_extended(X, None)
         return self.unlink_func(pred.predict_link())
 
@@ -443,12 +439,6 @@ class CBExponential(CBFixedVarianceRegressor):
         return pred
 
     def fit(self, X, y=None, fit_mode=0):
-        """Fit the estimator to the training samples.
-
-        Iterate to calculate the factors and the global scale.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self._init_fit(X, y)
         pred = CBLinkPredictions(
             self._get_prior_predictions(X),

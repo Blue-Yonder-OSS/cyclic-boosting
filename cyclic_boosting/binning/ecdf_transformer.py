@@ -43,16 +43,17 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
 
     In :meth:`transform`, each feature value is associated with the
     corresponding bin by binary search. For features with
-    :obj:`nbpy.flags.IS_CONTINUOUS` set the empirical CDF is then interpolated
-    between the left and the right bin boundary.  For out-of-range features, the
-    bin boundaries are taken.  For features with :obj:`nbpy.flags.IS_ORDERED` or
-    :obj:`nbpy.flags.IS_UNORDERED` only values that have been seen in the fit
-    are transformed to the corresponding empirical CDF values. For all values,
-    not within epsilon of the values seen in the fit, `numpy.nan` is returned.
-    Missing values(:obj:`numpy.nan`) stay missing values and are not transformed
-    regardless of the ``feature_properties`` set and feature values seen in
-    :meth:`fit`. For all features the feature property
-    :obj:`nbpy.flags.HAS_MISSING` is assumed.
+    :obj:`cyclic_boosting.flags.IS_CONTINUOUS` set the empirical CDF is then
+    interpolated between the left and the right bin boundary.  For out-of-range
+    features, the bin boundaries are taken.  For features with
+    :obj:`cyclic_boosting.flags.IS_ORDERED` or
+    :obj:`cyclic_boosting.flags.IS_UNORDERED` only values that have been seen
+    in the fit are transformed to the corresponding empirical CDF values. For
+    all values, not within epsilon of the values seen in the fit, `numpy.nan`
+    is returned. Missing values(:obj:`numpy.nan`) stay missing values and are
+    not transformed regardless of the ``feature_properties`` set and feature
+    values seen in :meth:`fit`. For all features the feature property
+    :obj:`cyclic_boosting.flags.HAS_MISSING` is assumed.
 
     Parameters
     ----------
@@ -68,11 +69,11 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
         preprocessing flags as values. When using a numpy feature matrix X with
         no column names the keys of the feature properties are the column
         indices.  If no ``feature_properties`` are passed, all columns in ``X``
-        are treated as `nbpy.flags.IS_CONTINUOUS`.  For more information about
-        feature properties:
+        are treated as `cyclic_boosting.flags.IS_CONTINUOUS`.  For more
+        information about feature properties:
 
         .. seealso::
-            :mod:`nbpy.flags`
+            :mod:`cyclic_boosting.flags`
 
     weight_column
         Optional column label or column index for the weight column.  If not set
@@ -95,7 +96,7 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
 
 
     **Guarantees for continuous features**
-    (nbpy.flags.IS_CONTINUOUS set for feature)
+    (cyclic_boosting.flags.IS_CONTINUOUS set for feature)
 
     * The estimated number of bins :math:`n_\text{bins\_estimated}` is always
       smaller equal than the number of bins
@@ -203,11 +204,6 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
             return n_bins
 
     def fit(self, X, y=None, fit_mode=0):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Transformer.fit`
-        """
-
         self._nbins_per_feature = self._normalize_bins(self.n_bins)
         self.bins_and_cdfs_ = []
 
@@ -335,7 +331,7 @@ def get_feature_column_names_or_indices(X, exclude_columns=None):
     :rtype: list
 
     >>> X = np.c_[[0, 1], [1,0], [3, 5]]
-    >>> from nbpy.binning import get_feature_column_names_or_indices
+    >>> from cyclic_boosting.binning import get_feature_column_names_or_indices
     >>> get_feature_column_names_or_indices(X)
     [0, 1, 2]
 
@@ -383,7 +379,7 @@ def get_weight_column(X, weight_column=None):
     :rtype: numpy.ndarray
 
     >>> X = np.c_[[0., 1], [1,0], [3, 5]]
-    >>> from nbpy.binning import get_weight_column
+    >>> from cyclic_boosting.binning import get_weight_column
     >>> get_weight_column(X)
     array([ 1.,  1.])
     >>> get_weight_column(X, 0)

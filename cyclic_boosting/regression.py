@@ -81,7 +81,7 @@ class CBBaseRegressor(CyclicBoostingBase, sklearn.base.RegressorMixin, LogLinkMi
         return None
 
 
-class CBFixedVarianceRegressor(CBBaseRegressor):
+class CBNBinomRegressor(CBBaseRegressor):
     r"""This regressor minimizes the mean squared error. It is usable for
     regressions of target-values :math:`0 \leq y < \infty`.
 
@@ -164,7 +164,7 @@ class CBPoissonRegressor(CBBaseRegressor):
     regressions of target-values :math:`0 \leq y < \infty`.
 
     As Poisson regressor, it is a special case of the more general negative
-    binomial regressor :class:`~.CBFixedVarianceRegressor`, assuming *purely*
+    binomial regressor :class:`~.CBNBinomRegressor`, assuming *purely*
     Poisson-distributed target values.
     """
 
@@ -187,4 +187,4 @@ class CBPoissonRegressor(CBBaseRegressor):
         )
 
 
-__all__ = ["get_gamma_priors", "CBPoissonRegressor", "CBFixedVarianceRegressor"]
+__all__ = ["get_gamma_priors", "CBPoissonRegressor", "CBNBinomRegressor"]

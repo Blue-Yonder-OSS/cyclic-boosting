@@ -677,24 +677,8 @@ def clone(estimator, safe=True):
     Clone performs a deep copy of the model in an estimator
     without actually copying attached data. It yields a new estimator
     with the same parameters that has not been fit on any data.
-
-    Attributes mentioned in the set :attr:`nbpy.estimator.Estimator.no_deepcopy`
-    (optionally defined statically in the estimator class), if present, are not
-    deeply copied but referenced.
-
-    Parameters
-    ----------
-
-    estimator: :class:`nbpy.estimator.Estimator` object, or list, tuple or set
-                of objects The estimator or group of estimators to be cloned
-
-    safe: bool
-        If safe is false, clone will fall back to a deepcopy on objects that are
-        not estimators.
-
     """
     estimator_type = type(estimator)
-    # XXX: not handling dictionaries
     if estimator_type in (list, tuple, set, frozenset):
         return estimator_type([clone(e, safe=safe) for e in estimator])
     elif not hasattr(estimator, "get_params"):

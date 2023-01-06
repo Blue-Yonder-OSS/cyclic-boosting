@@ -1,15 +1,11 @@
-from __future__ import absolute_import, division, print_function
 
 import matplotlib.pyplot as plt
 import numpy as np
 from six.moves import map
 
 from cyclic_boosting import flags
-from cyclic_boosting.link import (
-    IdentityLinkMixin,
-    LogitLinkMixin,
-    LogLinkMixin,
-)
+from cyclic_boosting.link import IdentityLinkMixin, LogitLinkMixin,\
+    LogLinkMixin
 
 
 def _format_tick(tick, precision=1e-2):
@@ -268,7 +264,9 @@ def plot_factor_1d(
             np.where(upper > 1.0, 1.0, upper),
         ]
         if plot_yp:
-            y = link_function.unlink_func(y)
+            # do not unlink for nbinom width mode
+            if np.isin(y, [0, 1]).all():
+                y = link_function.unlink_func(y)
             p = link_function.unlink_func(p)
         plt.axhline(0.5, color="gray")
         plt.ylabel("Probability")

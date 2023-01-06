@@ -15,7 +15,7 @@ from cyclic_boosting.link import IdentityLinkMixin
 _logger = logging.getLogger(__name__)
 
 
-class CBCoreGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
+class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
     r"""
     Variant form of Cyclic Boosting's location regressor, that corresponds to
     the regression of the outcome of a previous statistical subtraction of two
@@ -109,4 +109,4 @@ class CBCoreGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
         return None
 
 
-__all__ = ["CBCoreGBSRegressor"]
+__all__ = ["CBGBSRegressor"]

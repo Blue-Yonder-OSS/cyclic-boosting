@@ -234,7 +234,7 @@ def calc_in_sample_histograms(y, pred, weights):
         np.where(~np.isnan(means.reindex(np.arange(1, nbins + 1))))
     ]
     # quantiles do not work for classification mode
-    if np.isin(y, [0,1]).all():
+    if np.isin(y, [0, 1]).all():
         return means, bin_centers, None, counts
     else:
         return means, bin_centers, errors, counts

@@ -121,10 +121,6 @@ class LinearExtrapolator(onedim.AbstractBinSmoother):
             raise ValueError("You have to call fit before predict.")
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         weights = 1.0 / (np.square(np.asarray(X_for_smoother[:, 2])) + self.epsilon)
         self.alpha_, self.beta_ = linear_regression(
             np.asarray(X_for_smoother[:, 0], dtype=np.float64),
@@ -134,10 +130,6 @@ class LinearExtrapolator(onedim.AbstractBinSmoother):
         return self
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         self._check_fitted()
         y = self.alpha_ + np.asarray(X[:, 0], dtype=np.float64) * self.beta_
         return y

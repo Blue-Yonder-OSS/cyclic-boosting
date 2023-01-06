@@ -9,14 +9,14 @@ API reference of the different Cyclic Boosting methods:
 
 Multiplicative Regression
 
-- :class:`~.CBFixedVarianceRegressor`
 - :class:`~.CBPoissonRegressor`
+- :class:`~.CBNBinomRegressor`
 - :class:`~.CBExponential`
 
 Additive Regression
 
-- :class:`~.CBCoreLocationRegressor`
-- :class:`~.CBCoreLinearPoissonRegressor`
+- :class:`~.CBLocationRegressor`
+- :class:`~.CBLocPoissonRegressor`
 
 PDF Prediction
 
@@ -24,35 +24,32 @@ PDF Prediction
 
 Classification
 
-- :class:`~.CBCoreClassifier`
+- :class:`~.CBClassifier`
 
 Background Subtraction
 
-- :class:`~.CBCoreGBSRegressor`
+- :class:`~.CBGBSRegressor`
 """
 
 from __future__ import division, print_function
 
 from cyclic_boosting.base import CyclicBoostingBase
-from cyclic_boosting.regression import CBFixedVarianceRegressor,\
-    CBPoissonRegressor
+from cyclic_boosting.regression import CBNBinomRegressor, CBPoissonRegressor
 from cyclic_boosting.price import CBExponential
-from cyclic_boosting.location import CBCoreLocationRegressor,\
-    CBCoreLinearPoissonRegressor
+from cyclic_boosting.location import CBLocationRegressor, CBLocPoissonRegressor
 from cyclic_boosting.nbinom import CBNBinomC
-from cyclic_boosting.classification import CBCoreClassifier
-from cyclic_boosting.GBSregression import CBCoreGBSRegressor
+from cyclic_boosting.classification import CBClassifier
+from cyclic_boosting.GBSregression import CBGBSRegressor
 
 __all__ = [
-    "CyclicBoostingBase",
-    "CBFixedVarianceRegressor",
     "CBPoissonRegressor",
+    "CBNBinomRegressor",
     "CBExponential",
-    "CBCoreLocationRegressor",
-    "CBCoreLinearPoissonRegressor",
+    "CBLocationRegressor",
+    "CBLocPoissonRegressor",
     "CBNBinomC",
-    "CBCoreClassifier",
-    "CBCoreGBSRegressor",
+    "CBClassifier",
+    "CBGBSRegressor",
 ]
 
 __version__ = "1.0"

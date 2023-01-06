@@ -100,7 +100,7 @@ def eq_multi(z, z_searched, u, epsilon, result):
     :type u: :class:`numpy.ndarray` `(float64, ndim=1)`
 
     :param epsilon: In order to avoid issues with float64 precision, this
-        epsilon is used in the :func:`nbpy.math_utils.check_equal` function.
+        epsilon is used.
     :type epsilon: float64
 
     :param result: where to put the results; passing the same array as

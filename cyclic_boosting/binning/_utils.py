@@ -51,16 +51,6 @@ def minimal_difference(values):
 
     :param values: Array values
     :type values: :class:`numpy.ndarray` with dim=1.
-
-    >>> from nbpy.binning import minimal_difference
-    >>> values = np.array([0.5, 0.5, 0.8, 1])
-    >>> np.allclose(minimal_difference(values), 0.2)
-    True
-
-    >>> values = np.array([3])
-    >>> from nbpy.binning import minimal_difference
-    >>> minimal_difference(values)
-    1
     """
     bin_widths = values[1:] - values[:-1]
     bin_widths = bin_widths[bin_widths > 0]
@@ -81,23 +71,6 @@ def get_column_index(X, column_name_or_index):
     :type column_name_or_index: string or int
 
     :rtype: int
-
-    >>> X = np.c_[[0, 1], [1,0], [3, 5]]
-    >>> from nbpy.binning import get_column_index
-    >>> get_column_index(X, 2)
-    2
-
-    >>> X = np.c_[[0, 1], [1,0], [3, 5]]
-    >>> get_column_index(X, 1)
-    1
-
-    >>> X = pd.DataFrame(X, columns = ['b', 'c', 'a'])
-
-    >>> get_column_index(X, 'a')
-    2
-
-    >>> get_column_index(X, 'b')
-    0
     """
     if isinstance(X, pd.DataFrame):
         return list(X.columns).index(column_name_or_index)

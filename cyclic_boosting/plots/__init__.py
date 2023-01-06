@@ -12,6 +12,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from cyclic_boosting.features import create_feature_id
 from cyclic_boosting.utils import get_bin_bounds
+from cyclic_boosting import CBNBinomC
 
 from ._1dplots import plot_factor_1d
 from ._2dplots import plot_factor_2d
@@ -188,9 +189,14 @@ def plot_analysis(
     dpi = 200
     with contextlib.closing(PdfPages(filepath_or_object)) as pdf_pages:
 
-        plt.figure(figsize=figsize)
-        plot_in_sample_diagonal_plot(plot_observer)
-        plt.savefig(pdf_pages, format="pdf", dpi=dpi)
+        plot_observer.check_fitted()
+        means, bin_centers, errors, _ = plot_observer.histograms
+
+        # do not show for nbinom width mode
+        if plot_observer.link_function.__class__ != CBNBinomC:
+            plt.figure(figsize=figsize)
+            plot_in_sample_diagonal_plot(plot_observer)
+            plt.savefig(pdf_pages, format="pdf", dpi=dpi)
 
         for feature in plot_observer.features:
             plt.figure(figsize=figsize)

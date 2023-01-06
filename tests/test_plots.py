@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 from six.moves import range
 
-from cyclic_boosting import CBCoreClassifier, CBCoreLocationRegressor, \
-    CBExponential, CBFixedVarianceRegressor, CBPoissonRegressor, flags, \
+from cyclic_boosting import CBClassifier, CBLocationRegressor, \
+    CBExponential, CBNBinomRegressor, CBPoissonRegressor, flags, \
     observers, plots
 from cyclic_boosting.plots import _guess_suitable_number_of_histogram_bins
 from cyclic_boosting.plots._1dplots import _ensure_tuple,_format_tick, \
@@ -90,7 +90,7 @@ def get_inputs():
 def test_analysis_core_regressor():
     X, y, feature_prop, feature_groups = get_inputs()
     plobs = observers.PlottingObserver()
-    est = CBFixedVarianceRegressor(
+    est = CBNBinomRegressor(
         feature_groups=feature_groups,
         feature_properties=feature_prop,
         observers=[plobs],
@@ -142,7 +142,7 @@ def test_analysis_exponential_regressor():
 def test_analysis_regressor_with_file_handle():
     X, y, feature_prop, feature_groups = get_inputs()
     plobs = observers.PlottingObserver()
-    est = CBFixedVarianceRegressor(
+    est = CBNBinomRegressor(
         feature_groups=feature_groups,
         feature_properties=feature_prop,
         observers=[plobs],
@@ -161,7 +161,7 @@ def test_analysis_location():
     X, y, feature_prop, feature_groups = get_inputs()
     y = np.sin(y) * 5.3
     plobs = observers.PlottingObserver()
-    est = CBCoreLocationRegressor(
+    est = CBLocationRegressor(
         feature_groups=feature_groups,
         feature_properties=feature_prop,
         observers=[plobs],
@@ -177,7 +177,7 @@ def test_analysis_classification():
     X, y, feature_prop, feature_groups = get_inputs()
     y = y > 5
     plobs = observers.PlottingObserver()
-    est = CBCoreClassifier(
+    est = CBClassifier(
         feature_groups=feature_groups,
         feature_properties=feature_prop,
         observers=[plobs],
@@ -395,7 +395,7 @@ def test_plotting_does_not_crash_when_only_nan_feature_is_used(tmpdir):
         }
         observer = observers.PlottingObserver()
 
-        regressor = CBFixedVarianceRegressor(
+        regressor = CBNBinomRegressor(
             feature_groups=X.columns,
             feature_properties=feature_properties,
             observers=[observer],

@@ -17,7 +17,7 @@ from cyclic_boosting.utils import weighted_stddev
 _logger = logging.getLogger(__name__)
 
 
-class CBCoreLinearPoissonRegressor(
+class CBLocPoissonRegressor(
     CyclicBoostingBase, sklearn.base.RegressorMixin, IdentityLinkMixin
 ):
     def precalc_parameters(self, feature, y, pred):
@@ -83,7 +83,7 @@ class CBCoreLinearPoissonRegressor(
         return summands, uncertainties
 
     def predict(self, X, y=None, fit_mode=0, actions=None):
-        result = super(CBCoreLinearPoissonRegressor, self).predict(
+        result = super(CBLocPoissonRegressor, self).predict(
             X, y=y, fit_mode=fit_mode, actions=actions
         )
         return np.where(result > 0, result, 0)
@@ -176,7 +176,7 @@ def calc_parameters_intercept(
     )
 
 
-class CBCoreLocationRegressor(
+class CBLocationRegressor(
     sklearn.base.RegressorMixin, CyclicBoostingBase, IdentityLinkMixin
 ):
     def _check_y(self, y):
@@ -254,4 +254,4 @@ class CBCoreLocationRegressor(
         return calibrated_factors_link
 
 
-__all__ = ["CBCoreLocationRegressor", "CBCoreLinearPoissonRegressor"]
+__all__ = ["CBLocationRegressor", "CBLocPoissonRegressor"]

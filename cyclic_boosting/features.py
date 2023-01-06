@@ -199,11 +199,11 @@ class Feature(object):
 
         unfitted_factors: ndarray
             bin means in link space as returned by the method
-            :meth:`CyclicBoostingBase.calc_parameters`
+            :meth:`cyclic_boosting.base.CyclicBoostingBase.calc_parameters`
 
         unfitted_uncertainties: ndarray
             bin uncertainties in link space as returned by the method
-            :meth:`CyclicBoostingBase.calc_parameters`
+            :meth:`cyclic_boosting.base.CyclicBoostingBase.calc_parameters`
 
         neutral_factor_link: float
             neutral value in link space, currently always 0

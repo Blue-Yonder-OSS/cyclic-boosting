@@ -974,9 +974,9 @@ def gaussian_matching_by_quantiles(dist, link_func, perc1, perc2):
     dist: scipy.stats distribution object
         the assumed distribution in the original space, e.g. a
         ``scipy.stats.beta`` in the case of
-        :class:`~cyclic_boosting.CBCoreClassifier`; it is assumed that
-        this distribution has been initialized with vectorized
-        parameters with one value for each cyclic boosting bin
+        :class:`~cyclic_boosting.CBClassifier`; it is assumed that this
+        distribution has been initialized with vectorized parameters with one
+        value for each cyclic boosting bin
 
     link_func: callable
         the transformation function to link space, e.g. the method

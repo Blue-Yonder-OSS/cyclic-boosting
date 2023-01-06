@@ -39,9 +39,6 @@ class PredictingBinValueMixin(SetNBinsMixin):
     """
 
     def predict(self, X):
-        """Predictions of the estimator for test samples.
-        For the parameters, see :meth:`nbpy.estimator.Estimator.predict`.
-        """
         if not hasattr(self, "n_bins_"):
             raise ValueError(
                 'Please call the method "fit" before "predict" and '
@@ -182,10 +179,6 @@ class RegularizeToPriorExpectationSmoother(
         self.threshold = threshold
 
     def fit(self, X_for_smoother, y):
-        """Fit the transformer to training samples.
-
-        For the parameters, see :meth:`nbpy.estimator.Estimator.fit`.
-        """
         self.set_n_bins(X_for_smoother)
         self.smoothed_y_ = utils.regularize_to_prior_expectation(
             y, X_for_smoother[:, -1], self.prior_expectation, threshold=self.threshold

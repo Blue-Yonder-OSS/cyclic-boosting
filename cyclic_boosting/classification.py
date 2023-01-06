@@ -34,7 +34,7 @@ _logger = logging.getLogger(__name__)
 
 
 def boost_weights(y, prediction):
-    r"""Returns weights for bincount operations on the CBCoreClassifier.
+    r"""Returns weights for bincount operations on the CBClassifier.
 
     The weights are assigned so that they are suitable for boosting, i.e.
     weights for well-estimated samples are low, weights for bad estimations are
@@ -54,7 +54,7 @@ def boost_weights(y, prediction):
     return np.where(y, 1 - prediction, prediction)
 
 
-class CBCoreClassifier(
+class CBClassifier(
     sklearn.base.ClassifierMixin, CyclicBoostingBase, LogitLinkMixin
 ):
     """This regressor is the cyclic boosting core algorithm for classifications
@@ -132,16 +132,16 @@ class CBCoreClassifier(
         return factors_link, uncertainties_l
 
     def predict_proba(self, X, y=None, fit_mode=0):
-        probability_signal = super(CBCoreClassifier, self).predict(
+        probability_signal = super(CBClassifier, self).predict(
             X, y=y, fit_mode=fit_mode, actions=None
         )
         return np.c_[1 - probability_signal, probability_signal]
 
     def predict(self, X, y=None, fit_mode=0, actions=None):
-        probability_signal = super(CBCoreClassifier, self).predict(
+        probability_signal = super(CBClassifier, self).predict(
             X, y=y, fit_mode=fit_mode, actions=None
         )
         return np.asarray(probability_signal > 0.5, dtype=np.float64)
 
 
-__all__ = ["CBCoreClassifier", "boost_weights", "get_beta_priors"]
+__all__ = ["CBClassifier", "boost_weights", "get_beta_priors"]
