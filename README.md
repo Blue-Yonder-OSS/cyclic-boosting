@@ -11,4 +11,4 @@ The documentation of this package can be found [here](https://cyclic-boosting.re
 Usage
 -----
 
-It can be used in a [scikit-learn](https://scikit-learn.org/stable/)-like fashion. A usage example, including additional helper functionality, can be found [here](https://github.com/Blue-Yonder-OSS/cyclic-boosting-example).
+It can be used in a [scikit-learn](https://scikit-learn.org/stable/)-like fashion. You need to combine a binner (e.g., [BinNumberTransformer](https://github.com/Blue-Yonder-OSS/cyclic-boosting/blob/main/cyclic_boosting/binning/bin_number_transformer.py)) with an estimator (find all estimators in the [init](https://github.com/Blue-Yonder-OSS/cyclic-boosting/blob/main/cyclic_boosting/__init__.py)). A usage example can be found in the [integration tests](https://github.com/Blue-Yonder-OSS/cyclic-boosting/blob/main/tests/test_integration.py). A more detailed example, including additional helper functionality, can be found [here](https://github.com/Blue-Yonder-OSS/cyclic-boosting-example).
