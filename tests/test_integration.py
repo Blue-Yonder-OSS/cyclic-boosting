@@ -9,6 +9,7 @@ from cyclic_boosting import binning, flags, CBPoissonRegressor,\
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother,\
     IsotonicRegressor
 from cyclic_boosting.plots import plot_analysis
+from cyclic_boosting.estimator import CBPoissonRegressorEstimator
 
 
 def plot_CB(filename, plobs, binner):
@@ -75,7 +76,7 @@ def cb_model():
         observers.PlottingObserver(iteration=-1)
     ]
 
-    est=CBPoissonRegressor(
+    CB_est=CBPoissonRegressorEstimator(
         feature_properties=fp,
         feature_groups=features,
         observers=plobs,
@@ -86,9 +87,6 @@ def cb_model():
             explicit_smoothers=explicit_smoothers),
     )
 
-    binner = binning.BinNumberTransformer(n_bins=100, feature_properties=fp)
-
-    CB_est = Pipeline([("binning", binner), ("CB", est)])
     return CB_est
 
 
