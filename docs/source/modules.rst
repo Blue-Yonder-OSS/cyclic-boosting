@@ -1,5 +1,5 @@
-cyclic_boosting
-===============
+API
+===
 
 .. toctree::
    :maxdepth: 4
