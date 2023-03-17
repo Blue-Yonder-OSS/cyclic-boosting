@@ -216,9 +216,7 @@ def _nbpy_style():
     rcParams["xtick.labelsize"] = "small"
     rcParams["ytick.labelsize"] = "small"
 
-    # default interpolation of images, used in ``plt.imshow``
-    # if parameter ``interpolation`` is set to ``None``
-    rcParams["image.interpolation"] = None
+    rcParams["image.interpolation"] = 'antialiased'
 
     with mpl.rc_context(rcParams):
         yield
