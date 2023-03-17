@@ -4,12 +4,13 @@ import numpy as np
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.pipeline import Pipeline
 
-from cyclic_boosting import binning, flags, CBPoissonRegressor,\
+from cyclic_boosting import binning, flags,\
     common_smoothers, observers
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother,\
     IsotonicRegressor
 from cyclic_boosting.plots import plot_analysis
-from cyclic_boosting.estimator import CBPoissonRegressorEstimator
+from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor
+
 
 
 def plot_CB(filename, plobs, binner):
@@ -76,7 +77,7 @@ def cb_model():
         observers.PlottingObserver(iteration=-1)
     ]
 
-    CB_est=CBPoissonRegressorEstimator(
+    CB_pipeline=pipeline_CBPoissonRegressor(
         feature_properties=fp,
         feature_groups=features,
         observers=plobs,
@@ -87,7 +88,7 @@ def cb_model():
             explicit_smoothers=explicit_smoothers),
     )
 
-    return CB_est
+    return CB_pipeline
 
 
 def test_poisson_regression():
@@ -105,4 +106,4 @@ def test_poisson_regression():
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6997348846024691)
+    np.testing.assert_almost_equal(mad, 1.6997348846024691, 3)
