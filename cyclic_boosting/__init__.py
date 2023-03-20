@@ -40,6 +40,9 @@ from cyclic_boosting.location import CBLocationRegressor, CBLocPoissonRegressor
 from cyclic_boosting.nbinom import CBNBinomC
 from cyclic_boosting.classification import CBClassifier
 from cyclic_boosting.GBSregression import CBGBSRegressor
+from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor, pipeline_CBNBinomRegressor, \
+        pipeline_CBClassifier, pipeline_CBLocationRegressor, pipeline_CBExponential, \
+        pipeline_CBLocPoissonRegressor, pipeline_CBNBinomC, pipeline_CBGBSRegressor
 
 __all__ = [
     "CBPoissonRegressor",
@@ -50,6 +53,14 @@ __all__ = [
     "CBNBinomC",
     "CBClassifier",
     "CBGBSRegressor",
+    "pipeline_CBPoissonRegressor",
+    "pipeline_CBNBinomRegressor",
+    "pipeline_CBClassifier",
+    "pipeline_CBLocationRegressor",
+    "pipeline_CBExponential",
+    "pipeline_CBLocPoissonRegressor",
+    "pipeline_CBNBinomC",
+    "pipeline_CBGBSRegressor",
 ]
 
 __version__ = "1.0"
