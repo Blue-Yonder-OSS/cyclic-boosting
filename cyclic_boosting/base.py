@@ -93,7 +93,7 @@ class CyclicBoostingBase(
 
     feature_properties: :obj:`dict` of :obj:`int`
         Dictionary listing the names of all features for the training as keys
-        and their prep-rocessing flags as values. When using a numpy feature
+        and their pre-processing flags as values. When using a numpy feature
         matrix X with no column names the keys of the feature properties are
         the column indices.
 
@@ -139,7 +139,7 @@ class CyclicBoostingBase(
     learn_rate: Functor or None
         Functor that defines the learning rate of each cyclic boosting iteration.
         It has to satisfy the interface of of type :func:`learning_rate.constant_learn_rate_one`.
-        If None is specified, which is the default, the learning rate is allways 1.
+        If None is specified, which is the default, the learning rate is always 1.
 
     Notes
     -----
