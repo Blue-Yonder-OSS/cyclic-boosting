@@ -973,3 +973,10 @@ def linear_regression(x, y, w):
     alpha = (s_wxx * s_wy - s_wx * s_wxy) / det
     beta = (s_w * s_wxy - s_wx * s_wy) / det
     return alpha, beta
+
+
+def get_feature_column_names(X, exclude_columns=[]):
+    features = list(X.columns)
+    for col in exclude_columns:
+        if col in features: features.remove(col)
+    return features

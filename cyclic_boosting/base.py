@@ -287,7 +287,7 @@ class CyclicBoostingBase(
         if self.weight_column is not None:
             exclude_columns.append(self.weight_column)
 
-        self.feature_groups = utils.get_feature_column_names_or_indices(
+        self.feature_groups = utils.get_feature_column_names(
             X, exclude_columns=exclude_columns
         )
 

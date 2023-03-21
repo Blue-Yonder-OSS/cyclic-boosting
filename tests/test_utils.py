@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from cyclic_boosting import utils
 
@@ -27,3 +28,11 @@ def test_lin_reg_weighted_events():
     a, b = utils.linear_regression(x, y + err, w)
     assert abs(alpha - a) < 0.01
     assert abs(beta - b) < 0.01
+
+
+def test_get_feature_column_names():
+    X = pd.DataFrame({'a':[0, 1], 'b': [3, 6], 'c': [2,7]})
+    features = utils.get_feature_column_names(X)
+    np.testing.assert_equal(features, ['a', 'b', 'c'])
+    features = utils.get_feature_column_names(X, exclude_columns=['a'])
+    np.testing.assert_equal(features, ['b', 'c'])

@@ -2,15 +2,12 @@ import pandas as pd
 import numpy as np
 
 from sklearn.preprocessing import OrdinalEncoder
-from sklearn.pipeline import Pipeline
 
-from cyclic_boosting import binning, flags,\
-    common_smoothers, observers
+from cyclic_boosting import flags, common_smoothers, observers
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother,\
     IsotonicRegressor
 from cyclic_boosting.plots import plot_analysis
 from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor
-
 
 
 def plot_CB(filename, plobs, binner):
@@ -56,12 +53,7 @@ def feature_properties():
     return fp
 
 
-def cb_model():
-    fp = feature_properties()
-    explicit_smoothers = {('dayofyear',): SeasonalSmoother(order=3),
-                          ('price_ratio',): IsotonicRegressor(increasing=False),
-                         }
-
+def get_features():
     features = [
         'dayofweek',
         'L_ID',
@@ -72,12 +64,22 @@ def cb_model():
         'dayofyear',
         ('P_ID', 'L_ID'),
     ]
+    return features
+
+
+def cb_model():
+    features = get_features()
+
+    fp = feature_properties()
+    explicit_smoothers = {('dayofyear',): SeasonalSmoother(order=3),
+                          ('price_ratio',): IsotonicRegressor(increasing=False),
+                         }
 
     plobs = [
         observers.PlottingObserver(iteration=-1)
     ]
 
-    CB_pipeline=pipeline_CBPoissonRegressor(
+    CB_pipeline = pipeline_CBPoissonRegressor(
         feature_properties=fp,
         feature_groups=features,
         observers=plobs,
@@ -106,4 +108,32 @@ def test_poisson_regression():
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6997348846024691, 3)
+    np.testing.assert_almost_equal(mad, 1.6997, 3)
+
+
+def test_poisson_regression_default_features():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[[
+        'dayofweek',
+        'L_ID',
+        'PG_ID_3',
+        'P_ID',
+        'PROMOTION_TYPE',
+        'price_ratio',
+        'dayofyear'
+    ]]
+
+    fp = feature_properties()
+    CB_est = pipeline_CBPoissonRegressor(
+        feature_properties=fp
+    )
+    CB_est.fit(X.copy(), y)
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.7185, 3)
