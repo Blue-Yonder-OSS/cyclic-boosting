@@ -102,6 +102,14 @@ cyclic\_boosting.observers module
    :undoc-members:
    :show-inheritance:
 
+cyclic\_boosting.pipelines module
+---------------------------------
+
+.. automodule:: cyclic_boosting.pipelines
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 cyclic\_boosting.price module
 -----------------------------
 
