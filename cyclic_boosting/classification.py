@@ -96,7 +96,8 @@ class CBClassifier(
             lex_binnumbers, weights=weights * (1 - y), minlength=minlength
         )
 
-        weight_factor = np.where(wsum == 0, 1, wsum / w2sum)
+        weight_factor = np.ones_like(wsum)
+        np.true_divide(wsum, w2sum, out=weight_factor, where=wsum != 0)
         alpha *= weight_factor
         alpha = np.where(alpha < 0, 0, alpha)
         beta *= weight_factor
