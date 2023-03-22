@@ -266,7 +266,8 @@ def plot_factor_1d(
         ]
         if plot_yp:
             # do not unlink for nbinom width mode
-            if np.isin(y, [0, 1]).all():
+            if ((link_function.unlink_func(y) >= 0).all()) and \
+                    ((link_function.unlink_func(y) <= 1).all()):
                 y = link_function.unlink_func(y)
             p = link_function.unlink_func(p)
         plt.axhline(0.5, color="gray")

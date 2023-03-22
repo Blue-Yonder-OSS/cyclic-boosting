@@ -7,7 +7,8 @@ from cyclic_boosting import flags, common_smoothers, observers
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother,\
     IsotonicRegressor
 from cyclic_boosting.plots import plot_analysis
-from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor
+from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor, \
+    pipeline_CBClassifier
 
 
 def plot_CB(filename, plobs, binner):
@@ -67,7 +68,7 @@ def get_features():
     return features
 
 
-def cb_model():
+def cb_poisson_regressor_model():
     features = get_features()
 
     fp = feature_properties()
@@ -100,7 +101,7 @@ def test_poisson_regression():
 
     X, y = prepare_data(df)
 
-    CB_est = cb_model()
+    CB_est = cb_poisson_regressor_model()
     CB_est.fit(X.copy(), y)
     # plot_CB('analysis_CB_iterlast',
     #         [CB_est[-1].observers[-1]], CB_est[-2])
@@ -137,3 +138,48 @@ def test_poisson_regression_default_features():
 
     mad = np.nanmean(np.abs(y - yhat))
     np.testing.assert_almost_equal(mad, 1.7185, 3)
+
+
+def cb_classifier_model():
+    features = get_features()
+
+    fp = feature_properties()
+    explicit_smoothers = {('dayofyear',): SeasonalSmoother(order=3),
+                          ('price_ratio',): IsotonicRegressor(increasing=False),
+                         }
+
+    plobs = [
+        observers.PlottingObserver(iteration=-1)
+    ]
+
+    CB_pipeline = pipeline_CBClassifier(
+        feature_properties=fp,
+        feature_groups=features,
+        observers=plobs,
+        maximal_iterations=50,
+        smoother_choice=common_smoothers.SmootherChoiceGroupBy(
+            use_regression_type=True,
+            use_normalization=False,
+            explicit_smoothers=explicit_smoothers),
+    )
+
+    return CB_pipeline
+
+
+def test_classification():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    y = (y >= 3)
+
+    CB_est = cb_classifier_model()
+    CB_est.fit(X.copy(), y)
+    plot_CB('analysis_CB_iterlast',
+            [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 0.3075, 3)
