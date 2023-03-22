@@ -8,7 +8,7 @@ from cyclic_boosting.smoothing.onedim import SeasonalSmoother,\
     IsotonicRegressor
 from cyclic_boosting.plots import plot_analysis
 from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor, \
-    pipeline_CBClassifier
+    pipeline_CBClassifier, pipeline_CBLocationRegressor
 
 
 def plot_CB(filename, plobs, binner):
@@ -176,10 +176,44 @@ def test_classification():
 
     CB_est = cb_classifier_model()
     CB_est.fit(X.copy(), y)
-    plot_CB('analysis_CB_iterlast',
-            [CB_est[-1].observers[-1]], CB_est[-2])
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
 
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
     np.testing.assert_almost_equal(mad, 0.3075, 3)
+
+
+def test_location_regression_default_features():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[[
+        'dayofweek',
+        'L_ID',
+        'PG_ID_3',
+        'P_ID',
+        'PROMOTION_TYPE',
+        'price_ratio',
+        'dayofyear'
+    ]]
+
+    fp = feature_properties()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBLocationRegressor(
+        # observers=plobs,
+        feature_properties=fp
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.7511, 3)
