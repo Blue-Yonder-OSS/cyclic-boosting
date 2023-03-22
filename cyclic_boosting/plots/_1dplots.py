@@ -110,6 +110,7 @@ def _plot_smoothed_factors(factors, x_axis_range, is_continuous, uncertainties=N
     """
     if is_continuous:
         smoothed_style = dict(linestyle="-", linewidth=1.0, color="r")
+        x_axis_range = (x_axis_range + np.append(x_axis_range, x_axis_range[-1] + 1)[1:]) / 2
     else:
         smoothed_style = dict(
             marker="o",
