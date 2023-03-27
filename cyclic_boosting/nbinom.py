@@ -136,7 +136,7 @@ class CBNBinomC(CyclicBoostingBase, sklearn.base.RegressorMixin, LogitLinkMixin)
 
     def loss(self, c, y, weights):
         # TODO: use weights
-        return loss_nbinom_c(y, self.mu, c, self.gamma)
+        return loss_nbinom_c(y.astype(np.float64), self.mu, c, self.gamma)
 
     def fit(self, X, y=None, fit_mode=0):
         self.mu = X[self.mean_prediction_column].values
@@ -249,7 +249,8 @@ def compute_2d_loss(
 
     for i in nb.prange(n_new_c):
         loss[i] = binned_loss_nbinom_c(
-            y, mu, c_link, binnumbers, minlength, gamma, new_c_link[i]
+            y.astype(np.float64), mu, c_link, binnumbers, minlength, gamma,
+            new_c_link[i]
         )
 
     return loss

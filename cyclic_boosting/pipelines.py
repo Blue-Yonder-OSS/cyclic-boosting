@@ -1,11 +1,12 @@
-from cyclic_boosting import CBClassifier, CBLocationRegressor, \
-    CBExponential, CBNBinomRegressor, CBPoissonRegressor,  CBLocPoissonRegressor, CBNBinomC, CBClassifier, CBGBSRegressor, binning
+from cyclic_boosting import CBLocationRegressor, CBExponential, \
+    CBNBinomRegressor, CBPoissonRegressor,  CBLocPoissonRegressor, CBNBinomC, \
+    CBClassifier, CBGBSRegressor, binning
 
 from sklearn.pipeline import Pipeline
 
 
 def pipeline_CB(
-        regressor=None,
+        estimator=None,
         feature_groups=None,
         feature_properties=None,
         weight_column=None,
@@ -19,26 +20,109 @@ def pipeline_CB(
         learn_rate=None,
         number_of_bins=100,
         aggregate=True,
+        a=1.0,
+        c=0.0,
+        external_colname=None,
+        standard_feature_groups=None,
+        external_feature_groups=None,
+        var_prior_exponent=0.1,
+        prior_exponent_colname=None,
+        mean_prediction_column=None,
+        gamma=0.0,
+        bayes=False,
+        n_steps=15,
+        regalpha=0.0,
     ):
 
-    estimator=regressor(
-        feature_groups=feature_groups,
-        feature_properties=feature_properties,
-        weight_column=weight_column,
-        prior_prediction_column=prior_prediction_column,
-        minimal_loss_change=minimal_loss_change,
-        minimal_factor_change=minimal_factor_change,
-        maximal_iterations=maximal_iterations,
-        observers=observers,
-        smoother_choice=smoother_choice,
-        output_column=output_column,
-        learn_rate=learn_rate,
-        aggregate=aggregate,
-    )
-
+    if estimator in [CBPoissonRegressor, CBLocPoissonRegressor,
+                     CBLocationRegressor, CBClassifier]:
+        estimatorCB = estimator(
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+        )
+    elif estimator == CBNBinomRegressor:
+        estimatorCB = estimator(
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+            a=a,
+            c=c,
+        )
+    elif estimator == CBExponential:
+        estimatorCB = estimator(
+            external_colname=external_colname,
+            standard_feature_groups=standard_feature_groups,
+            external_feature_groups=external_feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            var_prior_exponent=var_prior_exponent,
+            prior_exponent_colname=prior_exponent_colname,
+        )
+    elif estimator == CBNBinomC:
+        estimatorCB = estimator(
+            mean_prediction_column=mean_prediction_column,
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            gamma=gamma,
+            bayes=bayes,
+            n_steps=n_steps,
+        )
+    elif estimator == CBGBSRegressor:
+        estimatorCB = estimator(
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+            regalpha=regalpha,
+        )
+    else:
+        raise Exception("No valid CB estimator.")
     binner = binning.BinNumberTransformer(n_bins=number_of_bins, feature_properties=feature_properties)
 
-    return Pipeline([("binning", binner), ("CB", estimator)])
+    return Pipeline([("binning", binner), ("CB", estimatorCB)])
 
 
 def pipeline_CBPoissonRegressor(**kwargs):

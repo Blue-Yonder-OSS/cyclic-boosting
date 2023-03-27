@@ -21,7 +21,7 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
     the regression of the outcome of a previous statistical subtraction of two
     classes of observations from each other (e.g. groups A and B: A - B).
 
-    For this, the target y has to be set to positve values for group A and
+    For this, the target y has to be set to positive values for group A and
     negative values for group B.
 
     Additional Parameter
