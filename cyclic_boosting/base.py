@@ -470,7 +470,7 @@ class CyclicBoostingBase(
 
     def visit_factors(self, feature, unfitted_factors, X, y, pred):
         clip = isinstance(self, LogLinkMixin)
-        if clip:
+        if clip and self.aggregate:
             # Maximal/Minimal updates
             feature.factors_link = np.clip(
                 feature.factors_link, np.log(0.5), np.log(2), out=feature.factors_link
