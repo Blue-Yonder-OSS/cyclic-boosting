@@ -324,6 +324,8 @@ def plot_factor_1d(
 
     if not plot_yp:
         label = "factors"
+        if is_continuous:
+            x_axis_range = (x_axis_range + np.append(x_axis_range, x_axis_range[-1] + 1)[1:]) / 2
         _plot_factors(
             factors, x_axis_range, label, uncertainties if with_errorbars else None
         )
