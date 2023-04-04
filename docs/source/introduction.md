@@ -3,25 +3,34 @@
 Cyclic Boosting is a simple yet powerful machine learning method for structured
 data. It is robust and fast, features individual explainability of predictions
 (in the style of Generalized Additive Models) and good predictability of rare
-observations, takes into account multiplicative effects in a natural way, and
-enables highly complex models by means of interaction terms.
+observations, takes into account multiplicative effects in a natural way,
+supports categorical features of high cardinality, and enables highly complex
+models by means of interaction terms.
 
-Also model building with Cyclic Boosting is very convenient:
+Furthermore, model building with Cyclic Boosting is very convenient:
 * few hyperparameters to be tuned
 * not much data pre-processing needed
 * easily configurable for different data types
 * supporting missing values in input data
 * assisting model development with individual analysis plots for features
 
+...
+[base module](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.base)
+
 Regression
 ----------
 
 ...
 
+[multiplicative regression mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.regression)
+
+[additive regression mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.location)
+
 Classification
 --------------
 
 ...
+[classification mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.classification)
 
 The Story behind Cyclic Boosting
 --------------------------------
@@ -35,14 +44,40 @@ interpretation of network outputs as a posteriori probabilities in
 classificiation tasks, the usage of Bayesian statistics for regularization, and
 taking into account a priori knowledge in the form of inclusive distributions.)
 
-... phit-t and Blue Yonder
+In a spin-off company called PhiI-T, which was later rebranded to Blue Yonder,
+NeuroBayes was then used for various business problems, one of which was demand
+forecasting for retailers. Although the NeuroBayes model was pretty successful
+for this use case, it exhibited several shortcomings like lack of individual
+explainability of predictions, difficulties to predict rare observations, or
+dedicated treatment of mulitplicative effects. Therefore, Cyclic Boosting (to
+be exact, its multiplicative regression mode) was developed as successor
+algorithm to overcome these issues. Although initially, Cyclic Boosting was
+developed specifically for retail demand forecasting, it is a general-purpose
+algorithm that can also be employed for many other use cases, including
+classification tasks.
 
-... retail demand forecasting
+Because demand forecasts are often used as input for order optimization
+(replenishment), the prediction of full probability distributions, rather than
+mere point estimates (typically the conditional mean for most machine learning
+methods), is desirable to properly minimize realistic cost functions. For that
+reason, a [width mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.nbinom)
+was added to Cyclic Boosting to estimate individual negative binomial
+distributions.
 
-... width mode for subsequent order optimization (replenishment)
+The price of products is one of the main influencing factors of demand, and
+estimating individual price-demand elasticities can improve demand models
+significantly. And the price-demand elasticities are also directly helpful for
+another important use case in retail, namely dynamic pricing. For these
+reasons, an [exponential elasticity mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.price)
+was added to Cyclic Boosting.
 
-... elasticity mode for dynamic pricing
+Later, yet another [background subtraction mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.GBSregression),
+was added for the use case of customer targeting, where a specific action like
+coupon sending only affects a small portion of customers and the bulk of
+unaffected customers needs to be statistically removed to identify causal
+effects.
 
-... background subtraction mode for customer targeting
-
-... contributors
+There is a bunch of people who contributed to the development of the Cyclic
+Boosting library over the years. Without guarantee of completeness, here is a
+list in alphabetic order: Bruno Daniel, Michael Feindt, Martin Hahn, Uwe Korn,
+Holger Peters, Thomas Pfaff, Jörg Rittinger, Daniel Stemmer, Felix Wick
