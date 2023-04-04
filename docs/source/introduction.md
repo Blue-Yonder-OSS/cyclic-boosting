@@ -14,23 +14,37 @@ Furthermore, model building with Cyclic Boosting is very convenient:
 * supporting missing values in input data
 * assisting model development with individual analysis plots for features
 
-...
-[base module](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.base)
+Instead of estimating parameters in the sense of coefficients in linear
+regression or weights in neural networks, Cyclic Boosting estimates factors (or
+summands in additive regression mode) for each bin of the different features.
+This allows a natural interpretation of each individual prediction in terms of
+the different feature values, i.e., individual explainability.
+
+The Cyclic Boosting [base algorithm](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.base)
+is quite generic and can be adapted for both regression (in several modes) and
+classification tasks.
 
 Regression
 ----------
 
-...
-
-[multiplicative regression mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.regression)
-
-[additive regression mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.location)
+The two main regression modes are [multiplicative regression](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.regression)
+and [additive regression mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.location).
+Topology-wise, the first resembles [Poisson regression](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.PoissonRegressor.html),
+i.e., a Generalized Linear model with a log link function, covering the target
+range $[0, \infty]$ and supporting multiplicative dependencies, while the
+latter is similar to linear regression, covering the target range
+$[-\infty, \infty]$ and supporting additive dependencies. It should be noted
+though that, in contrast to Generalized Linear Models, Cyclic Boosting in
+either mode enables highly non-linear models, similar to
+[Generalized Additive Models](https://en.wikipedia.org/wiki/Generalized_additive_model).
 
 Classification
 --------------
 
-...
-[classification mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.classification)
+The [classification mode](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.classification)
+resembles logistic regression (Generalized Linear Model with logit link) and
+predicts probabilities, i.e., covering the target range $[0, 1]$. It supports
+multiplicative dependencies between features and target odds.
 
 The Story behind Cyclic Boosting
 --------------------------------
