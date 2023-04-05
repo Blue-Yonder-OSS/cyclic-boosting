@@ -94,4 +94,5 @@ effects.
 There is a bunch of people who contributed to the development of the Cyclic
 Boosting library over the years. Without guarantee of completeness, here is a
 list in alphabetic order: Bruno Daniel, Michael Feindt, Martin Hahn, Uwe Korn,
-Holger Peters, Thomas Pfaff, Jörg Rittinger, Daniel Stemmer, Felix Wick
+Holger Peters, Thomas Pfaff, Jörg Rittinger, Daniel Stemmer, Felix Wick, Moritz
+Wolf
