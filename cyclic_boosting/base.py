@@ -14,6 +14,7 @@ from sklearn import base as sklearnb
 from cyclic_boosting import common_smoothers, learning_rate, link, utils
 from cyclic_boosting.features import create_features, FeatureTypes
 from cyclic_boosting.link import IdentityLinkMixin, LogLinkMixin
+from cyclic_boosting import flags
 
 _logger = logging.getLogger(__name__)
 
@@ -222,7 +223,7 @@ class CyclicBoostingBase(
             self.learn_rate = learning_rate.half_linear_learn_rate
         else:
             self.learn_rate = learn_rate
-        self._init_features()
+        self._init_features_no_flags_set()
 
     def loss(self, prediction, y, weights):
         if not len(y) > 0:
@@ -338,7 +339,27 @@ class CyclicBoostingBase(
         if self.weights is None:
             raise RuntimeError("The weights have to be initialized.")
 
-    def _init_features(self):
+    def _init_features(self, X):
+        """
+        Initializes the ``features`` and binds the data belonging to a feature
+        to it. Some feature flags are set acc. to data types. 
+        """
+        X_dtypes = X.dtypes.to_dict()
+        for key in X_dtypes:
+            if np.issubdtype(X_dtypes[key], np.integer):
+                if key in self.feature_properties:
+                    if self.feature_properties[key] == flags.HAS_MISSING:
+                        self.feature_properties[key] = flags.read_feature_property(self.feature_properties, self.feature_properties[key], flags.IS_UNORDERED)
+            if np.issubdtype(X_dtypes[key], np.float):
+                if key in self.feature_properties:
+                    if self.feature_properties[key] == flags.HAS_MISSING:
+                        self.feature_properties[key] = flags.read_feature_property(self.feature_properties, self.feature_properties[key], flags.IS_CONTINUOUS)
+
+        self.features = create_features(
+            self.feature_groups, self.feature_properties, self.smoother_choice
+        )
+
+    def _init_features_no_flags_set(self):
         """
         Initializes the ``features`` and binds the data belonging to a feature
         to it.
@@ -599,7 +620,7 @@ class CyclicBoostingBase(
         if self.feature_groups is None:
             self._init_default_feature_groups(X)
         self._check_weights()
-        self._init_features()
+        self._init_features(X)
         self._init_global_scale(X, y)
 
     def _fit_main(self, X, y, pred):

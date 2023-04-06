@@ -430,3 +430,52 @@ def test_GBS_regression_default_features():
 
     mad = np.nanmean(np.abs(y - yhat))
     np.testing.assert_almost_equal(mad, 2.5755, 3)
+
+
+def feature_properties_none_flags():
+    fp = {}
+    fp['P_ID'] = flags.HAS_MISSING
+    fp['PG_ID_3'] = flags.HAS_MISSING
+    fp['L_ID'] = flags.HAS_MISSING
+    fp['dayofweek'] = flags.HAS_MISSING
+    fp['dayofyear'] = flags.IS_CONTINUOUS | flags.IS_LINEAR
+    fp['price_ratio'] = \
+        flags.IS_CONTINUOUS | flags.HAS_MISSING | flags.MISSING_NOT_LEARNED
+    fp['PROMOTION_TYPE'] = flags.IS_ORDERED
+    return fp
+
+
+def test_GBS_regression_default_features_flags_setting():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[[
+        'dayofweek',
+        'L_ID',
+        'PG_ID_3',
+        'P_ID',
+        'PROMOTION_TYPE',
+        'price_ratio',
+        'dayofyear'
+    ]]
+
+    y[1000:10000] = -y[1000:10000]
+
+    fp = feature_properties_none_flags()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBGBSRegressor(
+        # observers=plobs,
+        feature_properties=fp
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 2.5755, 3)
