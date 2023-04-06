@@ -3,7 +3,6 @@ name = "cyclic-boosting"
 version = "0.1.0"
 description = "Implementation of Cyclic Boosting machine learning algorithms"
 authors = ["Blue Yonder GmbH"]
-readme = "README.md"
 packages = [{include = "cyclic_boosting"}]
 readme = "README.md"
 classifiers = [
