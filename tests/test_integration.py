@@ -144,6 +144,41 @@ def test_poisson_regression_default_features():
     np.testing.assert_almost_equal(mad, 1.7185, 3)
 
 
+def test_poisson_regression_default_features_and_properties():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[[
+        'dayofweek',
+        'L_ID',
+        'PG_ID_3',
+        'P_ID',
+        'PROMOTION_TYPE',
+        'price_ratio',
+        'dayofyear'
+    ]]
+
+    plobs = [
+        observers.PlottingObserver(iteration=1),
+        observers.PlottingObserver(iteration=-1),
+    ]
+    CB_est = pipeline_CBPoissonRegressor(
+        observers=plobs,
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterfirst',
+    #         [CB_est[-1].observers[0]], CB_est[-2])
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.6982, 3)
+
+
 def test_poisson_regression_default_features_notaggregated():
     np.random.seed(42)
 
