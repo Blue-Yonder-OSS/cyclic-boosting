@@ -8,6 +8,20 @@ Documentation
 
 The documentation can be found [here](https://cyclic-boosting.readthedocs.io/en/latest/).
 
+Quickstart
+----------
+
+```
+pip install cyclic-boosting
+```
+
+```python
+from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor
+CB_est = pipeline_CBPoissonRegressor()
+CB_est.fit(X_train, y)
+yhat = CB_est.predict(X_test)
+```
+
 Usage
 -----
 
