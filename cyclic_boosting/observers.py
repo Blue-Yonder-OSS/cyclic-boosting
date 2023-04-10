@@ -44,9 +44,7 @@ class BaseObserver(object):
 
         """
 
-    def observe_feature_iterations(
-        self, iteration, feature_i, X, y, prediction, weights, estimator_state
-    ):
+    def observe_feature_iterations(self, iteration, feature_i, X, y, prediction, weights, estimator_state):
         """
         Called after each feature has been processed as part of a full
         iteration of the algorithm.
@@ -104,9 +102,7 @@ class PlottingObserver(BaseObserver):
 
     def __init__(self, iteration=-1):
         if iteration == 0:
-            raise ValueError(
-                "This plotting observer only makes sense with iterations >= 1."
-            )
+            raise ValueError("This plotting observer only makes sense with iterations >= 1.")
         self.iteration = iteration
 
         self.features = None
@@ -118,9 +114,7 @@ class PlottingObserver(BaseObserver):
 
         self._fitted = False
 
-    def observe_iterations(
-        self, iteration, X, y, prediction, weights, estimator_state, delta=None
-    ):
+    def observe_iterations(self, iteration, X, y, prediction, weights, estimator_state, delta=None):
         """Observe iterations in cyclic_boosting estimator to collect information for
         necessary for plots. This function is called in each major loop and once in the
         end.
@@ -157,16 +151,11 @@ class PlottingObserver(BaseObserver):
         if iteration == self.iteration:
             self._fitted = True
             self.features = copy.deepcopy(features)
-            self.n_feature_bins = {
-                feature.feature_group: feature.n_multi_bins_finite
-                for feature in self.features
-            }
+            self.n_feature_bins = {feature.feature_group: feature.n_multi_bins_finite for feature in self.features}
             self.link_function = estimator_state["link_function"]
             self.histograms = calc_in_sample_histograms(y, prediction, weights)
 
-    def observe_feature_iterations(
-        self, iteration, feature_i, X, y, prediction, weights, estimator_state
-    ):
+    def observe_feature_iterations(self, iteration, feature_i, X, y, prediction, weights, estimator_state):
         """Observe iterations in cyclic_boosting estimator to collect information for
         necessary for plots. This function is called in each feature/minor loop.
 
@@ -230,9 +219,7 @@ def calc_in_sample_histograms(y, pred, weights):
     bin_boundaries, bin_centers = utils.calc_linear_bins(pred, nbins)
     bin_numbers = utils.digitize(pred, bin_boundaries)
     means, _, counts, errors = utils.calc_means_medians(bin_numbers, y, weights)
-    bin_centers = bin_centers[
-        np.where(~np.isnan(means.reindex(np.arange(1, nbins + 1))))
-    ]
+    bin_centers = bin_centers[np.where(~np.isnan(means.reindex(np.arange(1, nbins + 1))))]
     # quantiles do not work for classification mode
     if np.isin(y, [0, 1]).all():
         return means, bin_centers, None, counts

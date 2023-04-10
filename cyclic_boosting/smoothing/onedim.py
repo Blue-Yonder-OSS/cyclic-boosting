@@ -41,16 +41,10 @@ class PredictingBinValueMixin(object):
 
     def predict(self, X):
         if not hasattr(self, "smoothed_y_"):
-            raise ValueError(
-                "The {} has not been fitted!".format(self.__class__.__name__)
-            )
+            raise ValueError("The {} has not been fitted!".format(self.__class__.__name__))
         binnos = X[:, 0]
         binnos_round = np.asarray(np.rint(binnos), dtype=np.int64)
-        is_valid = (
-            np.isfinite(binnos)
-            & (binnos >= 0)
-            & (binnos_round < (len(self.smoothed_y_)))
-        )
+        is_valid = np.isfinite(binnos) & (binnos >= 0) & (binnos_round < (len(self.smoothed_y_)))
 
         pred = utils.nans(len(binnos))
         pred[is_valid] = self.smoothed_y_[binnos_round[is_valid]]
@@ -108,9 +102,7 @@ class BinValuesSmoother(AbstractBinSmoother, PredictingBinValueMixin):
         self.__dict__.update(state)
 
 
-class RegularizeToPriorExpectationSmoother(
-    AbstractBinSmoother, PredictingBinValueMixin
-):
+class RegularizeToPriorExpectationSmoother(AbstractBinSmoother, PredictingBinValueMixin):
     r"""Smoother of one-dimensional bins regularizing values with uncertainties
     to a prior expectation.
 
@@ -178,9 +170,7 @@ class RegularizeToOneSmoother(RegularizeToPriorExpectationSmoother):
     """
 
     def __init__(self, threshold=2.5):
-        RegularizeToPriorExpectationSmoother.__init__(
-            self, prior_expectation=1, threshold=threshold
-        )
+        RegularizeToPriorExpectationSmoother.__init__(self, prior_expectation=1, threshold=threshold)
 
 
 class WeightedMeanSmoother(AbstractBinSmoother, PredictingBinValueMixin):
@@ -227,9 +217,7 @@ class WeightedMeanSmoother(AbstractBinSmoother, PredictingBinValueMixin):
         self.prior_prediction = prior_prediction
 
     def fit(self, X_for_smoother, y):
-        self.smoothed_y_ = utils.regularize_to_error_weighted_mean(
-            y, X_for_smoother[:, 2], self.prior_prediction
-        )
+        self.smoothed_y_ = utils.regularize_to_error_weighted_mean(y, X_for_smoother[:, 2], self.prior_prediction)
 
 
 class OrthogonalPolynomialSmoother(AbstractBinSmoother):
@@ -254,9 +242,7 @@ class OrthogonalPolynomialSmoother(AbstractBinSmoother):
     def predict(self, X):
         assert X.ndim == 2
         if not hasattr(self, "pp_"):
-            raise ValueError(
-                "The {} has not been fitted!".format(self.__class__.__name__)
-            )
+            raise ValueError("The {} has not been fitted!".format(self.__class__.__name__))
         x = np.ascontiguousarray(X[:, 0], dtype=np.float64)
         x[x < self.minimal_x] = self.minimal_x
         x[x > self.maximal_x] = self.maximal_x
@@ -284,18 +270,10 @@ def _seasonality_first_order(x, c_const, c_sin, c_cos):
 
 
 def _seasonality_second_order(x, c_const, c_sin_1x, c_cos_1x, c_sin_2x, c_cos_2x):
-    return (
-        c_const
-        + c_sin_1x * np.sin(x)
-        + c_cos_1x * np.cos(x)
-        + c_sin_2x * np.sin(2 * x)
-        + c_cos_2x * np.cos(2 * x)
-    )
+    return c_const + c_sin_1x * np.sin(x) + c_cos_1x * np.cos(x) + c_sin_2x * np.sin(2 * x) + c_cos_2x * np.cos(2 * x)
 
 
-def _seasonality_third_order(
-    x, c_const, c_sin_1x, c_cos_1x, c_sin_2x, c_cos_2x, c_sin_3x, c_cos_3x
-):
+def _seasonality_third_order(x, c_const, c_sin_1x, c_cos_1x, c_sin_2x, c_cos_2x, c_sin_3x, c_cos_3x):
     return (
         c_const
         + c_sin_1x * np.sin(x)
@@ -364,9 +342,7 @@ class SeasonalSmoother(AbstractBinSmoother):
         Parameters from the fit.
     """
 
-    def __init__(
-        self, offset_tozero=True, order=1, custom_fit_function=None, fallback_value=0.0
-    ):
+    def __init__(self, offset_tozero=True, order=1, custom_fit_function=None, fallback_value=0.0):
         self.offset_tozero = offset_tozero
         self.order = order
         self.custom_fit_function = custom_fit_function
@@ -375,10 +351,7 @@ class SeasonalSmoother(AbstractBinSmoother):
         else:
             self.fit_function = custom_fit_function
             if order != 1:
-                warnings.warn(
-                    "You specified a `custom_fit_function` thus "
-                    "the `order` parameter will be ignored!"
-                )
+                warnings.warn("You specified a `custom_fit_function` thus " "the `order` parameter will be ignored!")
         self.converged = None
         self.fallback_value = fallback_value
 
@@ -389,9 +362,7 @@ class SeasonalSmoother(AbstractBinSmoother):
         self.frequency_ = 1.0 / len(X_for_smoother)
         xdata = self.transform_X(X_for_smoother)
         try:
-            self.par_, _ = scipy.optimize.curve_fit(
-                self.fit_function, xdata=xdata, ydata=y, sigma=X_for_smoother[:, 2]
-            )
+            self.par_, _ = scipy.optimize.curve_fit(self.fit_function, xdata=xdata, ydata=y, sigma=X_for_smoother[:, 2])
             if self.offset_tozero:
                 self.par_[0] = 0.0
         except TypeError:
@@ -405,9 +376,7 @@ class SeasonalSmoother(AbstractBinSmoother):
     def predict(self, X):
         if self.converged or self.converged is None:
             if not hasattr(self, "par_"):
-                raise ValueError(
-                    "The {} has not been fitted!".format(self.__class__.__name__)
-                )
+                raise ValueError("The {} has not been fitted!".format(self.__class__.__name__))
             return self.fit_function(self.transform_X(X), *self.par_)
         else:
             return np.ones(len(X), dtype=np.float64) * self.fallback_value
@@ -468,9 +437,7 @@ class SeasonalLassoSmoother(AbstractBinSmoother):
     def predict(self, X):
         if not self.fallback_mode:
             if not self.est:
-                raise ValueError(
-                    "The {} has not been fitted!".format(self.__class__.__name__)
-                )
+                raise ValueError("The {} has not been fitted!".format(self.__class__.__name__))
             Xt = self.prepare_X(X[:, 0])
             return self.est.predict(Xt)
         else:
@@ -588,9 +555,7 @@ class UnivariateSplineSmoother(AbstractBinSmoother):
 
     def predict(self, X):
         if not hasattr(self, "spline_"):
-            raise ValueError(
-                "The {} has not been fitted!".format(self.__class__.__name__)
-            )
+            raise ValueError("The {} has not been fitted!".format(self.__class__.__name__))
         return self.spline_(np.asarray(X[:, 0], dtype=np.float64))
 
 
@@ -639,9 +604,7 @@ class PolynomialSmoother(AbstractBinSmoother):
 
     def predict(self, X):
         if not hasattr(self, "coefficients_"):
-            raise ValueError(
-                "The {} has not been fitted!".format(self.__class__.__name__)
-            )
+            raise ValueError("The {} has not been fitted!".format(self.__class__.__name__))
         x = np.asarray(X[:, 0], dtype=np.float64)
         return np.polyval(self.coefficients_, x)
 
@@ -727,8 +690,7 @@ class LSQUnivariateSpline(AbstractBinSmoother):
             self.fitted_spline = scipy.interpolate.LSQUnivariateSpline(x, y, t, w, k=k)
         else:
             raise ValueError(
-                "Spline degree equals {}. Must be <= 5 and less"
-                " than the available data points".format(self.degree)
+                "Spline degree equals {}. Must be <= 5 and less" " than the available data points".format(self.degree)
             )
         return self
 
@@ -776,9 +738,7 @@ class IsotonicRegressor(AbstractBinSmoother):
         sigma = X[:, 2]
         sigma = np.where(sigma > 0, sigma, 1e12)
         w = 1.0 / (sigma * sigma)
-        self.est_ = sklearn.isotonic.IsotonicRegression(
-            increasing=self.increasing, out_of_bounds="clip"
-        )
+        self.est_ = sklearn.isotonic.IsotonicRegression(increasing=self.increasing, out_of_bounds="clip")
         self.est_.fit(X[:, 0], y.astype(np.float64), sample_weight=w)
         return self
 

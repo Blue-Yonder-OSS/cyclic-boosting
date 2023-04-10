@@ -192,9 +192,7 @@ class BinNumberTransformer(ECdfTransformer):
             if feature_prop is None:
                 pass
             else:
-                xt = self._transform_one_feature(
-                    X, feature_prop, col, epsilon, bins_and_cdfs
-                )
+                xt = self._transform_one_feature(X, feature_prop, col, epsilon, bins_and_cdfs)
                 column_setter(X, col, xt)
 
         if not isinstance(X, pd.DataFrame) and n_transformed_features == X.shape[1]:

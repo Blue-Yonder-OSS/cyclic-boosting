@@ -38,9 +38,7 @@ def _read_feature_property(col, feature_properties=None):
             fprop = feature_properties[col]
             flags.check_flags_consistency(fprop)
         except KeyError:
-            _logger.warning(
-                "Column '%s' not found in " "feature_properties dict." % col
-            )
+            _logger.warning("Column '%s' not found in " "feature_properties dict." % col)
             fprop = None
         return fprop
 

@@ -65,6 +65,5 @@ html_theme_options = {
             # The type of image to be used (see below for details)
             "type": "fontawesome",
         }
-   ]
+    ]
 }
-

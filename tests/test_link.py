@@ -8,8 +8,8 @@ def test_loglink_simple():
     x = np.linspace(1, 100)
     np.testing.assert_allclose(loglink.unlink_func(loglink.link_func(x)), x)
 
-    assert loglink.link_func(np.e ** 10) == 10.0
-    assert loglink.is_in_range(np.e ** 10)
+    assert loglink.link_func(np.e**10) == 10.0
+    assert loglink.is_in_range(np.e**10)
     assert loglink.is_in_range(np.asarray(np.linspace(0.5, 10)))
     assert not loglink.is_in_range(np.asarray(np.linspace(0.0, 10)))
     assert not loglink.is_in_range(np.asarray(np.linspace(-10.0, 10)))

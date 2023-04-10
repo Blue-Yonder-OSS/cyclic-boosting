@@ -54,18 +54,14 @@ def _simplify_flags(feature_property, feature_group=None):
             features = "for feature {}".format(feature_group)
         _logger.warning(
             "Feature property {0} is not known {1}."
-            " Thus it is converted to IS_UNORDERED!".format(
-                flags.flags_to_string(feature_property), features
-            )
+            " Thus it is converted to IS_UNORDERED!".format(flags.flags_to_string(feature_property), features)
         )
         return flags.IS_UNORDERED
 
 
 def _choice_fct_svd(feature_group, feature_prop, feature_type=None):
     if isinstance(feature_prop, tuple):
-        feature_prop = tuple(
-            [_simplify_flags(fp, feature_group) for fp in feature_prop]
-        )
+        feature_prop = tuple([_simplify_flags(fp, feature_group) for fp in feature_prop])
         return feature_prop
     else:
         return (_simplify_flags(feature_prop),)
@@ -73,12 +69,8 @@ def _choice_fct_svd(feature_group, feature_prop, feature_type=None):
 
 def _default_smoother_types(neutral_factor_link=0, use_normalization=True):
     smoother_types = {
-        flags.IS_UNORDERED: smoothing.onedim.WeightedMeanSmoother(
-            prior_prediction=neutral_factor_link
-        ),
-        flags.IS_ORDERED: smoothing.onedim.WeightedMeanSmoother(
-            prior_prediction=neutral_factor_link
-        ),
+        flags.IS_UNORDERED: smoothing.onedim.WeightedMeanSmoother(prior_prediction=neutral_factor_link),
+        flags.IS_ORDERED: smoothing.onedim.WeightedMeanSmoother(prior_prediction=neutral_factor_link),
         flags.IS_CONTINUOUS: smoothing.onedim.OrthogonalPolynomialSmoother(),
         flags.IS_LINEAR: smoothing.extrapolate.LinearExtrapolator(),
         flags.IS_SEASONAL:
@@ -86,10 +78,8 @@ def _default_smoother_types(neutral_factor_link=0, use_normalization=True):
         # when the normalization is done within the smoother
         smoothing.onedim.SeasonalSmoother(offset_tozero=not use_normalization),
         flags.IS_MONOTONIC: smoothing.onedim.IsotonicRegressor(increasing="auto"),
-        flags.IS_MONOTONIC
-        | flags.INCREASING: smoothing.onedim.IsotonicRegressor(increasing=True),
-        flags.IS_MONOTONIC
-        | flags.DECREASING: smoothing.onedim.IsotonicRegressor(increasing=False),
+        flags.IS_MONOTONIC | flags.INCREASING: smoothing.onedim.IsotonicRegressor(increasing=True),
+        flags.IS_MONOTONIC | flags.DECREASING: smoothing.onedim.IsotonicRegressor(increasing=False),
     }
     return smoother_types
 
@@ -112,17 +102,12 @@ def determine_reg_type(feature_group, feature_property, feature_type):
     if not isinstance(feature_property, tuple):
         if flags.is_linear_set(feature_property):
             return RegressionType.extrapolating
-        elif flags.is_seasonal_set(feature_property) or flags.is_continuous_set(
-            feature_property
-        ):
+        elif flags.is_seasonal_set(feature_property) or flags.is_continuous_set(feature_property):
             return RegressionType.interpolating
         else:
             return RegressionType.discontinuous
     else:
-        reg_types = [
-            determine_reg_type(fg, fp, feature_type)
-            for fg, fp in zip(feature_group, feature_property)
-        ]
+        reg_types = [determine_reg_type(fg, fp, feature_type) for fg, fp in zip(feature_group, feature_property)]
         if RegressionType.discontinuous in reg_types:
             return RegressionType.discontinuous
         elif RegressionType.interpolating in reg_types:
@@ -186,42 +171,29 @@ class SmootherChoice(object):
     """
     neutral_factor_link = 0
 
-    def __init__(
-        self, use_regression_type=True, use_normalization=True, explicit_smoothers=None
-    ):
+    def __init__(self, use_regression_type=True, use_normalization=True, explicit_smoothers=None):
         self.use_regression_type = use_regression_type
         self.use_normalization = use_normalization
         self.explicit_smoothers = self._validate_explicit_smoothers(explicit_smoothers)
-        self.onedim_smoothers = _default_smoother_types(
-            self.neutral_factor_link, use_normalization
-        )
+        self.onedim_smoothers = _default_smoother_types(self.neutral_factor_link, use_normalization)
 
     @staticmethod
     def _validate_explicit_smoothers(explicit_smoothers):
-
         if explicit_smoothers is None:
             return {}
 
         def is_tuple_of_strings(x):
-            return isinstance(x, tuple) and all(
-                isinstance(s, six.string_types) for s in x
-            )
+            return isinstance(x, tuple) and all(isinstance(s, six.string_types) for s in x)
 
-        if not all(
-            is_tuple_of_strings(feature_group)
-            for feature_group in explicit_smoothers.keys()
-        ):
+        if not all(is_tuple_of_strings(feature_group) for feature_group in explicit_smoothers.keys()):
             raise ValueError(
                 "All explicit smoothers passed to the SmootherChoice"
                 " need to have a tuple of strings as a feature group key."
             )
 
-        if not all(
-            isinstance(sm, AbstractBinSmoother) for sm in explicit_smoothers.values()
-        ):
+        if not all(isinstance(sm, AbstractBinSmoother) for sm in explicit_smoothers.values()):
             raise ValueError(
-                "All explicit smoothers passed to the SmootherChoice"
-                " need to be instances of AbstractBinSmoother."
+                "All explicit smoothers passed to the SmootherChoice" " need to be instances of AbstractBinSmoother."
             )
 
         return explicit_smoothers
@@ -252,13 +224,9 @@ class SmootherChoice(object):
         if explicit_smoother is not None:
             smoother = explicit_smoother
         else:
-            smoother = self.get_raw_smoother(
-                feature_group, feature_property, feature_type
-            )
+            smoother = self.get_raw_smoother(feature_group, feature_property, feature_type)
 
-        return self.wrap_smoother(
-            smoother, feature_group, feature_property, feature_type
-        )
+        return self.wrap_smoother(smoother, feature_group, feature_property, feature_type)
 
     def get_onedim_smoother(self, feature_property, feature_name=None):
         """
@@ -339,11 +307,8 @@ class SmootherChoiceWeightedMean(SmootherChoice):
     """
 
     def get_raw_smoother(self, feature_group, feature_prop, feature_type=None):
-
         if len(feature_group) > 1:
-            smoother = smoothing.multidim.WeightedMeanSmoother(
-                prior_prediction=self.neutral_factor_link
-            )
+            smoother = smoothing.multidim.WeightedMeanSmoother(prior_prediction=self.neutral_factor_link)
         else:
             smoother = self.get_onedim_smoother(feature_prop[0], feature_group[0])
         return smoother
@@ -354,10 +319,7 @@ class SmootherChoiceGroupBy(SmootherChoice):
     Groupby smoothing for multi-dimensional feature groups.
     """
 
-    def wrap_smoother(
-        self, smoother, feature_group, feature_property, feature_type=None
-    ):
-
+    def wrap_smoother(self, smoother, feature_group, feature_property, feature_type=None):
         # only the properties of the innermost feature should
         # determine the regression type of the groupby smoother:
         if not isinstance(smoother, smoothing.multidim.GroupBySmootherCB):
@@ -368,9 +330,7 @@ class SmootherChoiceGroupBy(SmootherChoice):
             return smoother
 
     def get_raw_smoother(self, feature_group, feature_prop, feature_type=None):
-        innermost_smoother = self.get_onedim_smoother(
-            feature_prop[-1], feature_group[-1]
-        )
+        innermost_smoother = self.get_onedim_smoother(feature_prop[-1], feature_group[-1])
         if len(feature_group) > 1:
             return smoothing.multidim.GroupBySmootherCB(
                 self.wrap_smoother(innermost_smoother, feature_group, feature_prop),

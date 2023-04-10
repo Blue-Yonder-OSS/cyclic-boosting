@@ -33,33 +33,26 @@ def check_sklearn_style_cloning(est):
             no_deepcopy = set()
 
         for key in object_params:
-            assert hasattr(
-                cloned_est, key
-            ), "Attribute '{}' missing in cloned estimator of class '{}'.".format(
+            assert hasattr(cloned_est, key), "Attribute '{}' missing in cloned estimator of class '{}'.".format(
                 key, class_name
             )
 
-        assert sorted(object_params.keys()) == sorted(new_object_params.keys()), (
-            "Estimator of class '{}' was incorrectly cloned. Some attributes "
-            "are missing.".format(class_name)
-        )
+        assert sorted(object_params.keys()) == sorted(
+            new_object_params.keys()
+        ), "Estimator of class '{}' was incorrectly cloned. Some attributes " "are missing.".format(class_name)
 
         for name, param in six.iteritems(object_params):
             new_param = new_object_params[name]
             if name in no_deepcopy:
                 assert param is new_param, (
                     "Attribute '{}' of estimator of class '{}' was cloned in "
-                    "contradiction to the specification of 'no_deepcopy'.".format(
-                        name, class_name
-                    )
+                    "contradiction to the specification of 'no_deepcopy'.".format(name, class_name)
                 )
             else:
                 clone_of_param = utils.clone(param, safe=False)
                 assert (param is new_param) == (
-                        param is clone_of_param
-                ), "Attribute '{}' of estimator of class '{}' was not cloned.".format(
-                    name, class_name
-                )
+                    param is clone_of_param
+                ), "Attribute '{}' of estimator of class '{}' was not cloned.".format(name, class_name)
 
     def check_subestimators(est, cloned_est):
         """Check subestimators.
@@ -130,9 +123,7 @@ def get_data(onedim=True):
     if onedim:
         y = np.array([0.91, 0.92, 0.93, 0.94, 1.75, 1.80, 0.40, 0.92])
         n = len(y)
-        X = np.c_[
-            np.arange(n), np.ones(n), [0.05, 0.05, 0.05, 0.05, 0.05, 0.15, 0.15, 0.05]
-        ]
+        X = np.c_[np.arange(n), np.ones(n), [0.05, 0.05, 0.05, 0.05, 0.05, 0.15, 0.15, 0.05]]
     else:
         X = np.c_[
             np.repeat(np.arange(5), 5) * 1.0,
@@ -153,6 +144,7 @@ def test_meta_smoother_zero_threshold_onedim_weighted_mean_smoother():
     pred1, pred2 = compare_smoother(est1, est2, X, y)
     np.testing.assert_allclose(pred1, pred2)
 
+
 def test_meta_smoother_zero_threshold_onedim_orthogonal_smoother():
     est1 = smoothing.onedim.OrthogonalPolynomialSmoother()
     est2 = smoothing.onedim.PriorExpectationMetaSmoother(
@@ -163,6 +155,7 @@ def test_meta_smoother_zero_threshold_onedim_orthogonal_smoother():
     X, y = get_data()
     pred1, pred2 = compare_smoother(est1, est2, X, y)
     np.testing.assert_allclose(pred1, pred2)
+
 
 def test_meta_smoother_zero_threshold_multdim_weighted_mean_smoother():
     X, y = get_data(onedim=False)

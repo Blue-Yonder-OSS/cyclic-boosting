@@ -1,11 +1,9 @@
-
 import matplotlib.pyplot as plt
 import numpy as np
 from six.moves import map
 
 from cyclic_boosting import flags
-from cyclic_boosting.link import IdentityLinkMixin, LogitLinkMixin,\
-    LogLinkMixin
+from cyclic_boosting.link import IdentityLinkMixin, LogitLinkMixin, LogLinkMixin
 
 
 def _format_tick(tick, precision=1e-2):
@@ -93,9 +91,7 @@ def _plot_factors(factors, x_axis_range, label, uncertainties=None):
     Plot unsmoothed factors in given range with errobars if uncertainties are provided
     """
     if uncertainties is not None:
-        unsmoothed_style = dict(
-            capsize=2.5, markersize=2, fmt="o", color="k", alpha=0.6
-        )
+        unsmoothed_style = dict(capsize=2.5, markersize=2, fmt="o", color="k", alpha=0.6)
         unsmoothed_style["label"] = label
         plt.errorbar(x_axis_range, factors, yerr=uncertainties, **unsmoothed_style)
     else:
@@ -122,12 +118,7 @@ def _plot_smoothed_factors(factors, x_axis_range, is_continuous, uncertainties=N
         )
     smoothed_style["label"] = "smoothed factors"
     if uncertainties is not None:
-        plt.errorbar(
-            x_axis_range,
-            factors,
-            yerr=[uncertainties[0], uncertainties[1]],
-            **smoothed_style
-        )
+        plt.errorbar(x_axis_range, factors, yerr=[uncertainties[0], uncertainties[1]], **smoothed_style)
     else:
         plt.plot(x_axis_range, factors, **smoothed_style)
 
@@ -227,13 +218,7 @@ def plot_factor_1d(
             feature.unfitted_uncertainties_link,
         ]
 
-    assert (
-        len(factors)
-        == len(smoothed_factors)
-        == len(uncertainties[0])
-        == len(uncertainties[1])
-        > 0
-    )
+    assert len(factors) == len(smoothed_factors) == len(uncertainties[0]) == len(uncertainties[1]) > 0
     number_of_factors = len(factors)
 
     if isinstance(link_function, IdentityLinkMixin):
@@ -250,14 +235,8 @@ def plot_factor_1d(
         plt.ylabel("Factor")
 
     elif isinstance(link_function, LogitLinkMixin):
-        lower = np.abs(
-            link_function.unlink_func(factors - uncertainties[0])
-            - link_function.unlink_func(factors)
-        )
-        upper = np.abs(
-            link_function.unlink_func(factors + uncertainties[1])
-            - link_function.unlink_func(factors)
-        )
+        lower = np.abs(link_function.unlink_func(factors - uncertainties[0]) - link_function.unlink_func(factors))
+        upper = np.abs(link_function.unlink_func(factors + uncertainties[1]) - link_function.unlink_func(factors))
         factors = link_function.unlink_func(factors)
         smoothed_factors = link_function.unlink_func(smoothed_factors)
         uncertainties = [
@@ -266,8 +245,7 @@ def plot_factor_1d(
         ]
         if plot_yp:
             # do not unlink for nbinom width mode
-            if ((link_function.unlink_func(y) >= 0).all()) and \
-                    ((link_function.unlink_func(y) <= 1).all()):
+            if ((link_function.unlink_func(y) >= 0).all()) and ((link_function.unlink_func(y) <= 1).all()):
                 y = link_function.unlink_func(y)
             p = link_function.unlink_func(p)
         plt.axhline(0.5, color="gray")
@@ -285,9 +263,7 @@ def plot_factor_1d(
         return
 
     feature_property = _ensure_tuple(feature.feature_property)
-    is_continuous = flags.is_continuous_set(feature_property[0]) | flags.is_linear_set(
-        feature_property[0]
-    )
+    is_continuous = flags.is_continuous_set(feature_property[0]) | flags.is_linear_set(feature_property[0])
     if plot_yp:
         minmax = np.r_[
             np.min(np.r_[factors, smoothed_factors, y, p]),
@@ -306,9 +282,7 @@ def plot_factor_1d(
         f = minmax
         u = np.c_[uncertainties, uncertainties]
 
-    y_axis_range, y_axis_labels = _get_y_axis(
-        f, u if ylimits_include_errors else None
-    )
+    y_axis_range, y_axis_labels = _get_y_axis(f, u if ylimits_include_errors else None)
     x_axis_range, x_axis_labels = _get_x_axis(factors, bin_bounds, is_continuous)
 
     if "MISSING" in flags._convert_flags_to_string(feature.feature_property[0]):
@@ -326,9 +300,7 @@ def plot_factor_1d(
         label = "factors"
         if is_continuous:
             x_axis_range = (x_axis_range + np.append(x_axis_range, x_axis_range[-1] + 1)[1:]) / 2
-        _plot_factors(
-            factors, x_axis_range, label, uncertainties if with_errorbars else None
-        )
+        _plot_factors(factors, x_axis_range, label, uncertainties if with_errorbars else None)
 
     try:
         if len(factors) > 1:
@@ -342,9 +314,7 @@ def plot_factor_1d(
 
     from cyclic_boosting.plots import _format_groupname_with_type
 
-    feature_group = _format_groupname_with_type(
-        feature.feature_group, feature.feature_type
-    )
+    feature_group = _format_groupname_with_type(feature.feature_group, feature.feature_type)
     plt.xlabel(feature_group)
     plt.legend()
 

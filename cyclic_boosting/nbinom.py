@@ -26,16 +26,12 @@ def _try_compile_parallel_func(**targetoptions):
     """
 
     def wrapper(f):
-
         try:
             wrapper = nb.jit(**targetoptions, parallel=True)
             func = wrapper(f)
 
         except:  # noqa
-            _logger.warning(
-                f"Could not compile function {f} in parallel mode, falling back to"
-                f"non-parallel mode."
-            )
+            _logger.warning(f"Could not compile function {f} in parallel mode, falling back to" f"non-parallel mode.")
             wrapper = nb.jit(**targetoptions, parallel=False)
             func = wrapper(f)
 
@@ -106,8 +102,7 @@ class CBNBinomC(CyclicBoostingBase, sklearn.base.RegressorMixin, LogitLinkMixin)
         """Check that y has no negative values."""
         if not (y >= 0.0).all():
             raise ValueError(
-                "The target y must be positive semi-definite "
-                "and not NAN. y[~(y>=0)] = {0}".format(y[~(y >= 0)])
+                "The target y must be positive semi-definite " "and not NAN. y[~(y>=0)] = {0}".format(y[~(y >= 0)])
             )
 
     def precalc_parameters(self, feature, y, pred):
@@ -185,9 +180,7 @@ def nbinom_log_pmf(x: nb.float64, n: nb.float64, p: nb.float64) -> nb.float64:
     nogil=True,
     nopython=True,
 )
-def loss_nbinom_c(
-    y: nb.float64[:], mu: nb.float64[:], c: nb.float64[:], gamma: nb.float64
-) -> nb.float64:
+def loss_nbinom_c(y: nb.float64[:], mu: nb.float64[:], c: nb.float64[:], gamma: nb.float64) -> nb.float64:
     n_samples = len(y)
 
     p = np.minimum(1.0 / (1 + c * mu), 1.0 - 1e-8)
@@ -248,18 +241,13 @@ def compute_2d_loss(
     loss = np.empty((n_new_c, minlength), dtype=np.float64)
 
     for i in nb.prange(n_new_c):
-        loss[i] = binned_loss_nbinom_c(
-            y.astype(np.float64), mu, c_link, binnumbers, minlength, gamma,
-            new_c_link[i]
-        )
+        loss[i] = binned_loss_nbinom_c(y.astype(np.float64), mu, c_link, binnumbers, minlength, gamma, new_c_link[i])
 
     return loss
 
 
 @nb.njit(nogil=True)
-def bayes_result(
-    loss: nb.float64[:, :], minlength: nb.int64, new_c_link: nb.float64[:]
-) -> nb.float64[:]:
+def bayes_result(loss: nb.float64[:, :], minlength: nb.int64, new_c_link: nb.float64[:]) -> nb.float64[:]:
     result = np.zeros(minlength)
 
     for j in range(minlength):
@@ -273,9 +261,7 @@ def bayes_result(
     return result
 
 
-def calc_parameters_nbinom_c(
-    y, mu, c_link, binnumbers, minlength, gamma, bayes, new_c_link
-):
+def calc_parameters_nbinom_c(y, mu, c_link, binnumbers, minlength, gamma, bayes, new_c_link):
     loss = compute_2d_loss(y, mu, c_link, binnumbers, minlength, gamma, new_c_link)
 
     if bayes:

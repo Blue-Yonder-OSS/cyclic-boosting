@@ -46,9 +46,7 @@ class Feature(object):
     The suffix ``_link`` in attributes refers to values valid in link space.
     """
 
-    def __init__(
-        self, feature_id, feature_property, smoother, minimal_factor_change=1e-4
-    ):
+    def __init__(self, feature_id, feature_property, smoother, minimal_factor_change=1e-4):
         self.feature_id = feature_id
         self.feature_group = feature_id.feature_group
         if len(self.feature_group) < 2:
@@ -93,10 +91,7 @@ class Feature(object):
         """
         True if ``flags.MISSING_NOT_LEARNED`` can be found in feature property.
         """
-        return any(
-            flags.missing_not_learned_set(feature_prop)
-            for feature_prop in self.feature_property
-        )
+        return any(flags.missing_not_learned_set(feature_prop) for feature_prop in self.feature_property)
 
     @property
     def n_bins(self):
@@ -146,12 +141,8 @@ class Feature(object):
         (
             self.lex_binned_data,
             self.n_multi_bins_finite,
-        ) = multidim_binnos_to_lexicographic_binnos(
-            binnumbers, self.n_multi_bins_finite
-        )
-        self.bin_weightsums = np.bincount(
-            self.lex_binned_data, weights=weights, minlength=self.n_bins
-        )
+        ) = multidim_binnos_to_lexicographic_binnos(binnumbers, self.n_multi_bins_finite)
+        self.bin_weightsums = np.bincount(self.lex_binned_data, weights=weights, minlength=self.n_bins)
 
     @property
     def unfitted_factor_link_nan_bin(self):
@@ -189,9 +180,7 @@ class Feature(object):
         X_for_smoother[:, -1] = uncertainties_link
         return X_for_smoother
 
-    def update_factors(
-        self, unfitted_factors, unfitted_uncertainties, neutral_factor_link, learn_rate
-    ):
+    def update_factors(self, unfitted_factors, unfitted_uncertainties, neutral_factor_link, learn_rate):
         """Call the smoother on the bin results if necessary.
 
         Parameters
@@ -242,9 +231,7 @@ def create_feature_id(feature_group_or_id, default_type=None):
     elif isinstance(feature_group_or_id, tuple):
         return FeatureID(feature_group=feature_group_or_id, feature_type=default_type)
     else:
-        return FeatureID(
-            feature_group=(feature_group_or_id,), feature_type=default_type
-        )
+        return FeatureID(feature_group=(feature_group_or_id,), feature_type=default_type)
 
 
 def create_features(feature_groups_or_ids, feature_properties, smoother_choice):
@@ -270,15 +257,10 @@ def create_features(feature_groups_or_ids, feature_properties, smoother_choice):
         feature_property = flags.read_feature_property(
             feature_properties, feature_id.feature_group, default=flags.HAS_MISSING
         )
-        smoother = smoother_choice.choice_fct(
-            feature_id.feature_group, feature_property, feature_id.feature_type
-        )
+        smoother = smoother_choice.choice_fct(feature_id.feature_group, feature_property, feature_id.feature_type)
         return Feature(feature_id, feature_property, clone(smoother))
 
-    features = [
-        make_feature_for_group_or_id(feature_group_or_id)
-        for feature_group_or_id in feature_groups_or_ids
-    ]
+    features = [make_feature_for_group_or_id(feature_group_or_id) for feature_group_or_id in feature_groups_or_ids]
 
     return FeatureList(features)
 
@@ -347,9 +329,7 @@ class FeatureList(object):
         for feature in self.features:
             if feature.feature_id == feature_id:
                 return feature
-        raise KeyError(
-            "Feature {0} is not known in {1}".format(feature_id, self.feature_ids)
-        )
+        raise KeyError("Feature {0} is not known in {1}".format(feature_id, self.feature_ids))
 
     def get_feature(self, feature_group, feature_type=None):
         """Selects feature specified by ``feature_group`` and ``feature_type``

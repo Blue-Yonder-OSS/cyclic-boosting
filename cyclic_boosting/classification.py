@@ -54,22 +54,19 @@ def boost_weights(y, prediction):
     return np.where(y, 1 - prediction, prediction)
 
 
-class CBClassifier(
-    sklearn.base.ClassifierMixin, CyclicBoostingBase, LogitLinkMixin
-):
+class CBClassifier(sklearn.base.ClassifierMixin, CyclicBoostingBase, LogitLinkMixin):
     """This regressor is the cyclic boosting core algorithm for classifications
 
     Its interface, methods and arguments are described in
     :class:`~CyclicBoostingBase`.
     """
+
     def _check_y(self, y):
         """Check that y has only values 0 or 1"""
         if not ((y == 0.0) | (y == 1.0)).all():
             raise ValueError(
                 "The target y must be either 0 or 1 "
-                "and not NAN. y[(y != 0) & (y != 1)] = {0}".format(
-                    y[(y != 0) & (y != 1)]
-                )
+                "and not NAN. y[(y != 0) & (y != 1)] = {0}".format(y[(y != 0) & (y != 1)])
             )
 
     def precalc_parameters(self, feature, y, pred):
@@ -86,15 +83,11 @@ class CBClassifier(
 
         wsum = np.bincount(lex_binnumbers, weights=weights, minlength=minlength)
 
-        w2sum = np.bincount(
-            lex_binnumbers, weights=weights * boosting_weights, minlength=minlength
-        )
+        w2sum = np.bincount(lex_binnumbers, weights=weights * boosting_weights, minlength=minlength)
 
         alpha = np.bincount(lex_binnumbers, weights=weights * y, minlength=minlength)
 
-        beta = np.bincount(
-            lex_binnumbers, weights=weights * (1 - y), minlength=minlength
-        )
+        beta = np.bincount(lex_binnumbers, weights=weights * (1 - y), minlength=minlength)
 
         weight_factor = np.ones_like(wsum)
         np.true_divide(wsum, w2sum, out=weight_factor, where=wsum != 0)
@@ -126,22 +119,16 @@ class CBClassifier(
         (
             factors_link,
             uncertainties_l,
-        ) = cyclic_boosting_base.gaussian_matching_by_quantiles(
-            posterior, self.link_func, perc1, perc2
-        )
+        ) = cyclic_boosting_base.gaussian_matching_by_quantiles(posterior, self.link_func, perc1, perc2)
 
         return factors_link, uncertainties_l
 
     def predict_proba(self, X, y=None, fit_mode=0):
-        probability_signal = super(CBClassifier, self).predict(
-            X, y=y, fit_mode=fit_mode, actions=None
-        )
+        probability_signal = super(CBClassifier, self).predict(X, y=y, fit_mode=fit_mode, actions=None)
         return np.c_[1 - probability_signal, probability_signal]
 
     def predict(self, X, y=None, fit_mode=0, actions=None):
-        probability_signal = super(CBClassifier, self).predict(
-            X, y=y, fit_mode=fit_mode, actions=None
-        )
+        probability_signal = super(CBClassifier, self).predict(X, y=y, fit_mode=fit_mode, actions=None)
         return np.asarray(probability_signal > 0.5, dtype=np.float64)
 
 

@@ -1,41 +1,47 @@
-from cyclic_boosting import CBLocationRegressor, CBExponential, \
-    CBNBinomRegressor, CBPoissonRegressor,  CBLocPoissonRegressor, CBNBinomC, \
-    CBClassifier, CBGBSRegressor, binning
+from cyclic_boosting import (
+    CBLocationRegressor,
+    CBExponential,
+    CBNBinomRegressor,
+    CBPoissonRegressor,
+    CBLocPoissonRegressor,
+    CBNBinomC,
+    CBClassifier,
+    CBGBSRegressor,
+    binning,
+)
 
 from sklearn.pipeline import Pipeline
 
 
 def pipeline_CB(
-        estimator=None,
-        feature_groups=None,
-        feature_properties=None,
-        weight_column=None,
-        prior_prediction_column=None,
-        minimal_loss_change=1e-3,
-        minimal_factor_change=1e-3,
-        maximal_iterations=10,
-        observers=None,
-        smoother_choice=None,
-        output_column=None,
-        learn_rate=None,
-        number_of_bins=100,
-        aggregate=True,
-        a=1.0,
-        c=0.0,
-        external_colname=None,
-        standard_feature_groups=None,
-        external_feature_groups=None,
-        var_prior_exponent=0.1,
-        prior_exponent_colname=None,
-        mean_prediction_column=None,
-        gamma=0.0,
-        bayes=False,
-        n_steps=15,
-        regalpha=0.0,
-    ):
-
-    if estimator in [CBPoissonRegressor, CBLocPoissonRegressor,
-                     CBLocationRegressor, CBClassifier]:
+    estimator=None,
+    feature_groups=None,
+    feature_properties=None,
+    weight_column=None,
+    prior_prediction_column=None,
+    minimal_loss_change=1e-3,
+    minimal_factor_change=1e-3,
+    maximal_iterations=10,
+    observers=None,
+    smoother_choice=None,
+    output_column=None,
+    learn_rate=None,
+    number_of_bins=100,
+    aggregate=True,
+    a=1.0,
+    c=0.0,
+    external_colname=None,
+    standard_feature_groups=None,
+    external_feature_groups=None,
+    var_prior_exponent=0.1,
+    prior_exponent_colname=None,
+    mean_prediction_column=None,
+    gamma=0.0,
+    bayes=False,
+    n_steps=15,
+    regalpha=0.0,
+):
+    if estimator in [CBPoissonRegressor, CBLocPoissonRegressor, CBLocationRegressor, CBClassifier]:
         estimatorCB = estimator(
             feature_groups=feature_groups,
             feature_properties=feature_properties,
@@ -131,11 +137,13 @@ def pipeline_CBPoissonRegressor(**kwargs):
     """
     return pipeline_CB(CBPoissonRegressor, **kwargs)
 
+
 def pipeline_CBNBinomRegressor(**kwargs):
     """
     Convenience function containing CBNBinomRegressor (estimator) + binning.
     """
     return pipeline_CB(CBNBinomRegressor, **kwargs)
+
 
 def pipeline_CBClassifier(**kwargs):
     """
@@ -143,32 +151,37 @@ def pipeline_CBClassifier(**kwargs):
     """
     return pipeline_CB(CBClassifier, **kwargs)
 
+
 def pipeline_CBLocationRegressor(**kwargs):
     """
     Convenience function containing CBLocationRegressor (estimator) + binning.
     """
     return pipeline_CB(CBLocationRegressor, **kwargs)
 
+
 def pipeline_CBExponential(**kwargs):
     """
     Convenience function containing CBExponential (estimator) + binning.
     """
-    return pipeline_CB(CBExponential,**kwargs)
+    return pipeline_CB(CBExponential, **kwargs)
+
 
 def pipeline_CBLocPoissonRegressor(**kwargs):
     """
     Convenience function containing CBLocPoissonRegressor (estimator) + binning.
     """
-    return pipeline_CB(CBLocPoissonRegressor,**kwargs)
+    return pipeline_CB(CBLocPoissonRegressor, **kwargs)
+
 
 def pipeline_CBNBinomC(**kwargs):
     """
     Convenience function containing CBNBinomC (estimator) + binning.
     """
-    return pipeline_CB(CBNBinomC,**kwargs)
+    return pipeline_CB(CBNBinomC, **kwargs)
+
 
 def pipeline_CBGBSRegressor(**kwargs):
     """
     Convenience function containing CBGBSRegressor (estimator) + binning.
     """
-    return pipeline_CB(CBGBSRegressor,**kwargs)
+    return pipeline_CB(CBGBSRegressor, **kwargs)
