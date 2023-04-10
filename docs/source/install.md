@@ -40,3 +40,26 @@ poetry run pytest tests
 poetry shell
 pytest tests
 ```
+
+## Linting and Formatting
+
+We use [`black`](https://github.com/psf/black) for file formatting and
+[`ruff`](https://github.com/charliermarsh/ruff) for linting. Both tools execute
+really fast. Every time a commit is pushed to the repository, all files are
+checked with these tools. It is therefore recommend that you check all files
+beforehand. A configuration for [`pre-commit`](https://pre-commit.com/) is
+included in this repository. To activate automatic checking each time you
+commit, please add a commit hook to your local git repository:
+
+```sh
+poetry run pre-commit install
+```
+
+You cannot commit then if not all files comply (but you can circumvent
+this limitation by using the `--no-verify` or `-n` switch when committing).
+
+Alternatively, you can run the following each time before pushing:
+
+```sh
+poetry run pre-commit run --all-files 
+```
