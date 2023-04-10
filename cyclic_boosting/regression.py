@@ -140,12 +140,12 @@ class CBNBinomRegressor(CBBaseRegressor):
 
     def calc_parameters(self, feature, y, pred, prefit_data):
         prediction_link = pred.predict_link()
-        weights = self.weights
+        weights = self.weights  # noqa: F841
         lex_binnumbers = feature.lex_binned_data
         minlength = feature.n_bins
-        prediction = self.unlink_func(prediction_link)
-        a = self.a
-        c = self.c
+        prediction = self.unlink_func(prediction_link)  # noqa: F841
+        a = self.a  # noqa: F841
+        c = self.c  # noqa: F841
 
         w = numexpr.evaluate("weights * y / (a + c * prediction)")
         alpha = np.bincount(lex_binnumbers, weights=w, minlength=minlength)
