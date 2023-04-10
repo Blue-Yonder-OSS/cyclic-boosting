@@ -25,13 +25,23 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v3
       with:
-        python-version: '3.x'
+        python-version: '3.11'
+    - name: Setup poetry
+        uses: @v2.3.0
+        with:
+          poetry-version: 1.4.2
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build
+        poetry install --with docs
+    - name: Build and publish docs
+      run: |
+        cd docs
+        poetry run sphinx-build -b html . build
+      # Upload docs in build to RTD
     - name: Build package
-      run: python -m build
+      run: poetry build
+      # TODO heck whether the pypi action expects the artifacts in a different place
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
       with:
