@@ -9,7 +9,7 @@ repos:
       language: system
     - id: system
       name: ruff
-      entry: poetry run ruff check cyclic_boosting
+      entry: poetry run ruff check cyclic_boosting --fix
       pass_filenames: false
       language: system
   # when adding pre-commit-hooks to the dev dependencies,

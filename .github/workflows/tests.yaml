@@ -35,4 +35,4 @@ jobs:
           poetry run pre-commit run --all-files
       - name: Test with pytest
         run: |
-          pytest tests --cov
+          poetry run pytest tests --cov
