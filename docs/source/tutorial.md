@@ -90,13 +90,23 @@ Behind the scenes, Cyclic Boosting works by combining a binning method (e.g.,
 with a Cyclic Boosting estimator (find all estimators
 [here](https://github.com/Blue-Yonder-OSS/cyclic-boosting/blob/main/cyclic_boosting/__init__.py)).
 
-If you want to use a different binning, e.g., a different number of bins
-(default is 100), you can combine binners and estimators manually:
+If you want to use a different number of bins (default is 100):
+```python
+from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor
+
+CB_est = pipeline_CBPoissonRegressor(number_of_bins=50)
+CB_est.fit(X_train, y)
+
+yhat = CB_est.predict(X_test)
+```
+
+If you want to use a different kind of binning (below is default), you can
+combine binners and estimators manually:
 ```python
 from sklearn.pipeline import Pipeline
 from cyclic_boosting import binning, CBPoissonRegressor
 
-binner = binning.BinNumberTransformer(n_bins=50)
+binner = binning.BinNumberTransformer()
 est = CBPoissonRegressor()
 CB_est = Pipeline([("binning", binner), ("CB", est)])
 
