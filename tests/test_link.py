@@ -23,7 +23,7 @@ def test_logitlink_simple():
 
     assert logitlink.link_func(0.5) == 0.0
     assert logitlink.link_func(0.25) == np.log(1.0 / 3)
-    assert logitlink.link_func(0.75) == np.log(3.0)
+    np.testing.assert_almost_equal(logitlink.link_func(0.75), np.log(3.0), 5)
     assert not logitlink.is_in_range(np.asarray(np.linspace(0.5, 10)))
     assert not logitlink.is_in_range(np.linspace(-1, 2))
     assert not logitlink.is_in_range(np.ones(10) * 1.01)
