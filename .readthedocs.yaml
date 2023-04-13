@@ -21,7 +21,7 @@ build:
       - asdf global poetry latest
       - poetry config virtualenvs.create false
     post_install:
-      - poetry install
+      - poetry install --with-doc
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
@@ -30,10 +30,3 @@ sphinx:
 # If using Sphinx, optionally build your docs in additional formats such as PDF
 formats:
    - pdf
-
-# Optionally declare the Python requirements required to build your docs
-python:
-   install:
-   - requirements: requirements.txt
-   - requirements: requirements-dev.txt
-   - requirements: docs/requirements.txt
