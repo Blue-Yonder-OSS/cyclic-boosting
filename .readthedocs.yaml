@@ -21,7 +21,7 @@ build:
       - asdf global poetry latest
       - poetry config virtualenvs.create false
     post_install:
-      - poetry install --with-doc
+      - poetry install
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
