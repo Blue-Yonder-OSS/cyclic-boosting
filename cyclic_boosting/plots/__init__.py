@@ -27,9 +27,7 @@ def _guess_suitable_number_of_histogram_bins(n):
     return np.clip(sturges, 5, 30)
 
 
-def _factor_plots_y_limits(
-    factor_arr, uncert_arr=None, percentage=0.05, ymin_for_zero=1e-3
-):
+def _factor_plots_y_limits(factor_arr, uncert_arr=None, percentage=0.05, ymin_for_zero=1e-3):
     """
     >>> y = np.array([0, 1e-5, 0.1, 0.5, 1, 2, 10, 100, 1e5])
     >>> np.allclose(_factor_plots_y_limits(y), (-1e-3, 1e5 * 1.05))
@@ -188,7 +186,6 @@ def plot_analysis(
     filepath_or_object = append_extension(file_obj, ".pdf")
     dpi = 200
     with contextlib.closing(PdfPages(filepath_or_object)) as pdf_pages:
-
         plot_observer.check_fitted()
         means, bin_centers, errors, _ = plot_observer.histograms
 
@@ -265,19 +262,14 @@ def plot_factors(
     if feature_groups_or_ids is None:
         features = plot_observer.features
     else:
-        feature_ids = [
-            create_feature_id(feature_group_or_id)
-            for feature_group_or_id in feature_groups_or_ids
-        ]
+        feature_ids = [create_feature_id(feature_group_or_id) for feature_group_or_id in feature_groups_or_ids]
         features = [plot_observer.features[feature_id] for feature_id in feature_ids]
 
     n_plots = len(features)
     grid = gridspec.GridSpec(int(np.ceil(n_plots / features_per_row)), features_per_row)
 
     for i, feature in enumerate(features):
-        _plot_one_feature_group(
-            plot_observer, grid[i], feature, binners, use_tightlayout, plot_yp=plot_yp
-        )
+        _plot_one_feature_group(plot_observer, grid[i], feature, binners, use_tightlayout, plot_yp=plot_yp)
 
 
 def _format_groupname_with_type(feature_group, feature_type):
@@ -288,9 +280,7 @@ def _format_groupname_with_type(feature_group, feature_type):
         return "{0} ({1})".format(name, feature_type)
 
 
-def _plot_one_feature_group(
-    plot_observer, grid_item, feature, binners=None, use_tightlayout=True, plot_yp=True
-):
+def _plot_one_feature_group(plot_observer, grid_item, feature, binners=None, use_tightlayout=True, plot_yp=True):
     if len(feature.feature_group) == 1:
         # treatment of one-dimensional features
         plt.subplot(grid_item)

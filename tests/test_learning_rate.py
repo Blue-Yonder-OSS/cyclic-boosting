@@ -4,21 +4,14 @@ from cyclic_boosting import learning_rate
 
 
 def test_constant_learn_rate_one():
-    assert (
-        learning_rate.constant_learn_rate_one(
-            np.random.randint(100), np.random.randint(100), None
-        )
-        == 1.0
-    )
+    assert learning_rate.constant_learn_rate_one(np.random.randint(100), np.random.randint(100), None) == 1.0
 
 
 def test_linear_learn_rate():
     iterations = np.arange(1, 11)
     max_iter = np.max(iterations)
     expected = np.linspace(1 / max_iter, 1, len(iterations))
-    np.testing.assert_allclose(
-        expected, learning_rate.linear_learn_rate(iterations, max_iter)
-    )
+    np.testing.assert_allclose(expected, learning_rate.linear_learn_rate(iterations, max_iter))
 
 
 def test_logistic_learn_rate():

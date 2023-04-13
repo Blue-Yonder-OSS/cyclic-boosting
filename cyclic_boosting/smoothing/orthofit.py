@@ -8,9 +8,7 @@ N_PARAMETERS = 21
 
 
 @nb.njit()
-def cy_orthogonal_poly_fit_equidistant(
-    binnos: nb.float64[:], y_values: nb.float64[:], y_errors: nb.float64[:]
-):
+def cy_orthogonal_poly_fit_equidistant(binnos: nb.float64[:], y_values: nb.float64[:], y_errors: nb.float64[:]):
     weights = np.empty(y_errors.shape[0])
     parameters = np.empty((N_PARAMETERS, N_COEFFICIENTS))
 
@@ -19,12 +17,8 @@ def cy_orthogonal_poly_fit_equidistant(
 
     n_degrees = fit_orthogonal_poly_(binnos, y_values, weights, parameters)
 
-    n_significant_parameters = significant_parameters_(
-        parameters, n_degrees, len(y_values)
-    )
-    n_degrees = reduce_to_signifcant_parameters(
-        n_significant_parameters, parameters, n_degrees, len(y_values)
-    )
+    n_significant_parameters = significant_parameters_(parameters, n_degrees, len(y_values))
+    n_degrees = reduce_to_signifcant_parameters(n_significant_parameters, parameters, n_degrees, len(y_values))
     return parameters, n_degrees
 
 
@@ -35,7 +29,6 @@ def fit_orthogonal_poly_(
     weights: nb.float64[:],
     parameters: nb.float64[:],
 ) -> nb.float64:
-
     n_supporting_points = x.shape[0]
     alpha = 0.0
     beta = 0.0
@@ -80,9 +73,7 @@ def fit_orthogonal_poly_(
 
         gamma = 0.0
         for j in range(0, n_supporting_points):
-            scratch[ii - 1, j] = (x[j] - alpha) * scratch[
-                3 - ii - 1, j
-            ] - beta * scratch[ii - 1, j]
+            scratch[ii - 1, j] = (x[j] - alpha) * scratch[3 - ii - 1, j] - beta * scratch[ii - 1, j]
             gamma += weights[j] * scratch[ii - 1, j] * scratch[ii - 1, j]
 
         if gamma != 0.0:
@@ -139,10 +130,7 @@ def custom_clip(value, lower, upper):
 
 
 @nb.njit()
-def reduce_to_signifcant_parameters(
-    n_signi_par, parameters, n_degrees, n_supporting_points
-):
-
+def reduce_to_signifcant_parameters(n_signi_par, parameters, n_degrees, n_supporting_points):
     n_degrees = min(n_degrees, n_signi_par)
     if n_degrees == n_supporting_points:
         if n_supporting_points > 2:
@@ -173,8 +161,7 @@ def cy_apply_orthogonal_poly_fit_equidistant(binnos, parameters, n_degrees):
         for k in range(1, n_degrees):
             j = 3 - j
             values[j - 1] = (
-                (binnos[i] - parameters[k, 0]) * values[2 - j]
-                - parameters[k, 1] * values[j - 1]
+                (binnos[i] - parameters[k, 0]) * values[2 - j] - parameters[k, 1] * values[j - 1]
             ) * parameters[k, 2]
             y_estimate += parameters[k, 3] * values[j - 1]
         result[i] = y_estimate

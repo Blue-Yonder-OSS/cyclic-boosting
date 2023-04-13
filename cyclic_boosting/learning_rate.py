@@ -82,6 +82,4 @@ def half_linear_learn_rate(iteration, maximal_iteration, feature=None):
     feature: :class:`cyclic_boosting.base.Feature`
         Feature
     """
-    return np.minimum(
-        linear_learn_rate(iteration, maximal_iteration * 0.5, feature), 1.0
-    )
+    return np.minimum(linear_learn_rate(iteration, maximal_iteration * 0.5, feature), 1.0)

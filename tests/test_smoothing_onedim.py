@@ -9,7 +9,7 @@ from cyclic_boosting import smoothing
 
 def regularize1d(factors_dim, errors_dim):
     v = factors_dim
-    varv = errors_dim ** 2.0
+    varv = errors_dim**2.0
     wv = 1.0 / varv
     #  regularize each component towards inclusive mean
     #  (include inclusive distribution as a prior measurement)
@@ -53,6 +53,7 @@ def _create_seasonal_test_data(
 
 
 # SeasonalSmoother
+
 
 def test_mc_first_order():
     X, y, ytruth = _create_seasonal_test_data()
@@ -110,21 +111,11 @@ def test_warning_custom_function_and_order():
 
 def test_custom_choice_function():
     def cust_func(x, a, b, c, d, e):
-        return (
-            a
-            + b * np.sin(x)
-            + c * np.cos(x)
-            + d * np.sin(4 * x)
-            + e * np.cos(4 * x)
-        )
+        return a + b * np.sin(x) + c * np.cos(x) + d * np.sin(4 * x) + e * np.cos(4 * x)
 
-    X, y, ytruth = _create_seasonal_test_data(
-        c_const=1.0, c_sin_1x=1.0, c_cos_1x=0.0, c_sin_4x=0.2, c_cos_4x=-0.1
-    )
+    X, y, ytruth = _create_seasonal_test_data(c_const=1.0, c_sin_1x=1.0, c_cos_1x=0.0, c_sin_4x=0.2, c_cos_4x=-0.1)
 
-    smoother = smoothing.onedim.SeasonalSmoother(
-        offset_tozero=False, custom_fit_function=cust_func
-    )
+    smoother = smoothing.onedim.SeasonalSmoother(offset_tozero=False, custom_fit_function=cust_func)
     smoother.fit(X.copy(), y)
     ypred = smoother.predict(X)
     assert np.mean(np.abs(ypred - y)) < 0.1
@@ -142,6 +133,7 @@ def test_small_sample_size():
 
 
 # SeasonalLassoSmoother
+
 
 def test_fit_predict():
     X, y, ytruth = _create_seasonal_test_data(n=365)
@@ -187,18 +179,12 @@ def check_orthogonal_poly_close(feature_values, y_truth):
     np.testing.assert_allclose(smooth.predict(X), y_truth, atol=0.025)
 
 
-@pytest.mark.parametrize(
-    "feature_values", [np.arange(200), np.arange(0.8, 200), np.arange(0.2, 200)]
-)
+@pytest.mark.parametrize("feature_values", [np.arange(200), np.arange(0.8, 200), np.arange(0.2, 200)])
 def test_orthogonal_polynomial_smoother_smooths_sine_curve(feature_values):
-    check_orthogonal_poly_close(
-        feature_values, np.sin(2 * np.pi * feature_values / len(feature_values))
-    )
+    check_orthogonal_poly_close(feature_values, np.sin(2 * np.pi * feature_values / len(feature_values)))
 
 
-@pytest.mark.parametrize(
-    "feature_values", [np.arange(200), np.arange(0.8, 200), np.arange(0.2, 200)]
-)
+@pytest.mark.parametrize("feature_values", [np.arange(200), np.arange(0.8, 200), np.arange(0.2, 200)])
 def test_orthogonal_poly_close_simple_multiple_of_feature_values(feature_values):
     check_orthogonal_poly_close(feature_values, 100 * feature_values)
 
@@ -215,19 +201,14 @@ def generate_data_from_sinus(n_bins, n_modes):
     np.random.seed(0)
     x = np.random.randn(10000)
     fractional = x / (x.max() - x.min())
-    y = (
-        np.sin(fractional * 2 * np.pi * n_modes)
-        + 3 * np.random.randn(len(x)) * fractional
-    )
+    y = np.sin(fractional * 2 * np.pi * n_modes) + 3 * np.random.randn(len(x)) * fractional
     df = pd.DataFrame({"x": x, "y": y})
     df["bins"] = pd.qcut(x, n_bins).codes
 
     groups = df.groupby("bins")["y"].agg(["mean", "std"])
     groups["x"] = groups.index
 
-    X_for_smoother = np.c_[
-        groups["x"].values, np.zeros_like(groups["x"].values), groups["std"].values
-    ]
+    X_for_smoother = np.c_[groups["x"].values, np.zeros_like(groups["x"].values), groups["std"].values]
     y_grouped = groups["mean"].values
     return X_for_smoother, y_grouped
 
@@ -238,9 +219,7 @@ def test_orthogonal_polynomial_smoother(n_bins, n_modes):
     X_for_smoother, y_grouped = generate_data_from_sinus(n_bins, n_modes)
     x = X_for_smoother[:, 0]
 
-    est1 = smoothing.onedim.OrthogonalPolynomialSmoother().fit(
-        X_for_smoother, y_grouped
-    )
+    est1 = smoothing.onedim.OrthogonalPolynomialSmoother().fit(X_for_smoother, y_grouped)
     est1.predict(np.c_[x])
 
 
@@ -249,7 +228,7 @@ def test_polynomial_smoother():
     n = 1000
     x = np.linspace(-5, 5, n)
     coeffs = np.array([2, 15, 3])
-    y = coeffs[2] + coeffs[1] * x + coeffs[0] * x ** 2
+    y = coeffs[2] + coeffs[1] * x + coeffs[0] * x**2
     truth = y.copy()
     y += np.random.standard_normal(size=len(y)) / 10.0
     X = np.c_[x, np.ones(n), np.ones(n)]
@@ -282,9 +261,7 @@ def test_linear_smoother_fit():
 def test_crosstest_weighted_mean_smoother():
     y_for_reg = np.array([0.91, 0.92, 0.93, 0.94, 1.75, 1.80, 0.40, 0.92])
     n = len(y_for_reg)
-    X_for_reg = np.c_[
-        np.arange(n), np.ones(n), [0.05, 0.05, 0.05, 0.05, 0.05, 0.15, 0.15, 0.05]
-    ]
+    X_for_reg = np.c_[np.arange(n), np.ones(n), [0.05, 0.05, 0.05, 0.05, 0.05, 0.15, 0.15, 0.05]]
     smoother = smoothing.onedim.WeightedMeanSmoother()
     smoother.fit(X_for_reg, y_for_reg)
     erg = smoother.smoothed_y_
@@ -319,9 +296,7 @@ def test_lsq_univariate_spline_raise_not_fitted_exception():
     X_dummy = np.c_[np.arange(n), np.ones(n), np.zeros(n)]
     degree = 3
     smoother = smoothing.onedim.LSQUnivariateSpline([-1, 0, 1], degree=degree)
-    with np.testing.assert_raises_regex(
-        ValueError, "LSQUnivariateSpline has not been fitted!"
-    ):
+    with np.testing.assert_raises_regex(ValueError, "LSQUnivariateSpline has not been fitted!"):
         smoother.predict(X_dummy)
 
 
@@ -364,9 +339,7 @@ def test_isotonic_regressor_raise_not_fitted_exception():
     n = 10
     X_dummy = np.c_[np.arange(n), np.ones(n), np.zeros(n)]
     smoother = smoothing.onedim.IsotonicRegressor()
-    with np.testing.assert_raises_regex(
-        ValueError, "IsotonicRegressor has not been fitted!"
-    ):
+    with np.testing.assert_raises_regex(ValueError, "IsotonicRegressor has not been fitted!"):
         smoother.predict(X_dummy)
 
 

@@ -33,6 +33,7 @@ Background Subtraction
 
 from __future__ import division, print_function
 
+
 from cyclic_boosting.base import CyclicBoostingBase
 from cyclic_boosting.regression import CBNBinomRegressor, CBPoissonRegressor
 from cyclic_boosting.price import CBExponential
@@ -40,11 +41,19 @@ from cyclic_boosting.location import CBLocationRegressor, CBLocPoissonRegressor
 from cyclic_boosting.nbinom import CBNBinomC
 from cyclic_boosting.classification import CBClassifier
 from cyclic_boosting.GBSregression import CBGBSRegressor
-from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor, pipeline_CBNBinomRegressor, \
-        pipeline_CBClassifier, pipeline_CBLocationRegressor, pipeline_CBExponential, \
-        pipeline_CBLocPoissonRegressor, pipeline_CBNBinomC, pipeline_CBGBSRegressor
+from cyclic_boosting.pipelines import (
+    pipeline_CBPoissonRegressor,
+    pipeline_CBNBinomRegressor,
+    pipeline_CBClassifier,
+    pipeline_CBLocationRegressor,
+    pipeline_CBExponential,
+    pipeline_CBLocPoissonRegressor,
+    pipeline_CBNBinomC,
+    pipeline_CBGBSRegressor,
+)
 
 __all__ = [
+    "CyclicBoostingBase",
     "CBPoissonRegressor",
     "CBNBinomRegressor",
     "CBExponential",

@@ -8,10 +8,7 @@ def test_le():
     n = len(z)
 
     np.testing.assert_equal(
-        [
-            binary_search.le(z, z_searched, 0)
-            for z_searched in [-1, 100, 11, 26, 2, 3, 10, 20, 25]
-        ],
+        [binary_search.le(z, z_searched, 0) for z_searched in [-1, 100, 11, 26, 2, 3, 10, 20, 25]],
         [-1, n - 1, 1, 3, -1, 0, 1, 2, 3],
     )
 
@@ -30,10 +27,7 @@ def test_le_interp():
     outl, _ = -1, 100
 
     np.testing.assert_equal(
-        [
-            binary_search.le_interp(z, z_searched, u, outl, 0)
-            for z_searched in [10, 15, 18, 0, 3, 30, 25, 20]
-        ],
+        [binary_search.le_interp(z, z_searched, u, outl, 0) for z_searched in [10, 15, 18, 0, 3, 30, 25, 20]],
         [12, 12.5, 12 + 8 / 10, outl, 10, 50, 50, 13],
     )
 

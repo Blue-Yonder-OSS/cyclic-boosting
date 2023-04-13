@@ -216,7 +216,7 @@ def _nbpy_style():
     rcParams["xtick.labelsize"] = "small"
     rcParams["ytick.labelsize"] = "small"
 
-    rcParams["image.interpolation"] = 'antialiased'
+    rcParams["image.interpolation"] = "antialiased"
 
     with mpl.rc_context(rcParams):
         yield

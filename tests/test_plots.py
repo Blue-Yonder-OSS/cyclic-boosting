@@ -7,13 +7,28 @@ import numpy as np
 import pandas as pd
 from six.moves import range
 
-from cyclic_boosting import CBClassifier, CBLocationRegressor, \
-    CBExponential, CBNBinomRegressor, CBPoissonRegressor, flags, \
-    observers, plots
+from cyclic_boosting import (
+    CBClassifier,
+    CBLocationRegressor,
+    CBExponential,
+    CBNBinomRegressor,
+    CBPoissonRegressor,
+    flags,
+    observers,
+    plots,
+)
 from cyclic_boosting.plots import _guess_suitable_number_of_histogram_bins
-from cyclic_boosting.plots._1dplots import _ensure_tuple,_format_tick, \
-    _get_optimal_number_of_ticks, _get_x_axis, _get_y_axis, _plot_axes, \
-    _plot_factors, _plot_missing_factor, _plot_smoothed_factors
+from cyclic_boosting.plots._1dplots import (
+    _ensure_tuple,
+    _format_tick,
+    _get_optimal_number_of_ticks,
+    _get_x_axis,
+    _get_y_axis,
+    _plot_axes,
+    _plot_factors,
+    _plot_missing_factor,
+    _plot_smoothed_factors,
+)
 
 
 @contextlib.contextmanager
@@ -279,23 +294,17 @@ def test_get_x_axis():
     bin_bounds = np.array([0.0, 1.0, 2.0, 3.0, 4.0])
 
     # no bounds
-    x_axis_range, x_labels = _get_x_axis(
-        factors, bin_bounds=None, is_continuous=True
-    )
+    x_axis_range, x_labels = _get_x_axis(factors, bin_bounds=None, is_continuous=True)
     assert np.allclose(x_axis_range, np.array([0.0, 1.0, 2.0, 3.0]))
     assert x_labels is None
 
     # continuous
-    x_axis_range, x_labels = _get_x_axis(
-        factors, bin_bounds, is_continuous=True
-    )
+    x_axis_range, x_labels = _get_x_axis(factors, bin_bounds, is_continuous=True)
     assert np.allclose(x_axis_range, np.array([0.0, 1.0, 2.0, 3.0]))
     assert np.allclose(x_labels, np.array([0.5, 1.5, 2.5, 3.5]))
 
     # not continoush
-    x_axis_range, x_labels = _get_x_axis(
-        factors, bin_bounds, is_continuous=False
-    )
+    x_axis_range, x_labels = _get_x_axis(factors, bin_bounds, is_continuous=False)
     assert np.allclose(x_axis_range, np.array([0.0, 1.0, 2.0, 3.0]))
     assert np.allclose(x_labels, np.array([1.0, 2.0, 3.0, 4.0]))
 
@@ -307,12 +316,54 @@ def test_get_y_axis():
         np.array([0.4, 0.4, 2.0, 1.0]),
     ]
     expected_y_axis_range = np.array(
-        [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0.0,
-         0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        [
+            -1.0,
+            -0.9,
+            -0.8,
+            -0.7,
+            -0.6,
+            -0.5,
+            -0.4,
+            -0.3,
+            -0.2,
+            -0.1,
+            0.0,
+            0.1,
+            0.2,
+            0.3,
+            0.4,
+            0.5,
+            0.6,
+            0.7,
+            0.8,
+            0.9,
+            1.0,
+        ]
     )
     expected_y_axis_range_with_uncertainty = np.array(
-        [-3.0, -2.75, -2.5, -2.25, -2.0, -1.75, -1.5, -1.25, -1.0, -0.75, -0.5, -0.25, 0.0,
-         0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0,]
+        [
+            -3.0,
+            -2.75,
+            -2.5,
+            -2.25,
+            -2.0,
+            -1.75,
+            -1.5,
+            -1.25,
+            -1.0,
+            -0.75,
+            -0.5,
+            -0.25,
+            0.0,
+            0.25,
+            0.5,
+            0.75,
+            1.0,
+            1.25,
+            1.5,
+            1.75,
+            2.0,
+        ]
     )
 
     y_axis_range, y_labels = _get_y_axis(factors)
@@ -320,9 +371,7 @@ def test_get_y_axis():
     assert y_labels[0] == "-1"
     assert y_labels[-1] == "1"
 
-    y_axis_range, y_labels = _get_y_axis(
-        factors, uncertainties
-    )
+    y_axis_range, y_labels = _get_y_axis(factors, uncertainties)
     assert np.allclose(y_axis_range, expected_y_axis_range_with_uncertainty)
     assert y_labels[0] == "-3"
     assert y_labels[-1] == "2"
@@ -354,13 +403,9 @@ def test_plot_factors_with_uncertainties():
 
 def test_plot_smoothed_factors():
     # continuous
-    _plot_smoothed_factors(
-        np.array([0.3, 0.4, 0.1]), np.array([1.0, 2.0, 3.0]), True
-    )
+    _plot_smoothed_factors(np.array([0.3, 0.4, 0.1]), np.array([1.0, 2.0, 3.0]), True)
     # discrete
-    _plot_smoothed_factors(
-        np.array([0.3, 0.4, 0.1]), np.array([1.0, 2.0, 3.0]), False
-    )
+    _plot_smoothed_factors(np.array([0.3, 0.4, 0.1]), np.array([1.0, 2.0, 3.0]), False)
 
 
 def test_plot_missing_factor():
@@ -384,9 +429,7 @@ def test_plot_axes():
 
 def test_plotting_does_not_crash_when_only_nan_feature_is_used(tmpdir):
     with tmpdir.as_cwd():
-        X = pd.DataFrame(
-            {"feature": [0, 1, 2, 3, 4] * 20, "non-feature": np.nan * np.ones(100)}
-        )
+        X = pd.DataFrame({"feature": [0, 1, 2, 3, 4] * 20, "non-feature": np.nan * np.ones(100)})
         y = np.array([2, 3, 3, 1, 7] * 20, dtype=np.float64)
 
         feature_properties = {

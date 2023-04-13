@@ -47,7 +47,6 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
         regalpha=0.0,
         aggregate=True,
     ):
-
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
@@ -84,12 +83,10 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
         sum_d2 = np.bincount(lex_binnumbers, weights=d * d, minlength=minlength)
 
         sum_d += 1
-        sum_d2 += 1 ** 2
+        sum_d2 += 1**2
 
         summand = sum_n / sum_d
-        variance_summand = (
-            sum_d ** 2 * sum_n2 - 2.0 * sum_n * sum_d * sum_nd + sum_n ** 2 * sum_d2
-        ) / sum_d ** 4
+        variance_summand = (sum_d**2 * sum_n2 - 2.0 * sum_n * sum_d * sum_nd + sum_n**2 * sum_d2) / sum_d**4
 
         return summand, np.sqrt(variance_summand)
 

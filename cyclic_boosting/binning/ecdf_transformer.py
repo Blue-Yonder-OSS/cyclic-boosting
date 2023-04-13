@@ -210,9 +210,7 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
         if check_frame_empty(X):
             raise ValueError("Your input matrix for the binning is empty.")
 
-        feature_columns = get_feature_column_names_or_indices(
-            X, exclude_columns=[self.weight_column]
-        )
+        feature_columns = get_feature_column_names_or_indices(X, exclude_columns=[self.weight_column])
         weights = get_weight_column(X, self.weight_column)
 
         for col in feature_columns:
@@ -224,17 +222,13 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
             if feature_prop is None:
                 continue
 
-            bins_x, cdf_x, _wsum, _n_nan = calculate_cdf_from_weighted_data(
-                x_col.astype(float), weights
-            )
+            bins_x, cdf_x, _wsum, _n_nan = calculate_cdf_from_weighted_data(x_col.astype(float), weights)
 
             if len(bins_x) == 0 or len(cdf_x) == 0:
                 self.bins_and_cdfs_.append((col, self.epsilon, None))
                 continue
 
-            if flags.is_ordered_set(feature_prop) or flags.is_unordered_set(
-                feature_prop
-            ):
+            if flags.is_ordered_set(feature_prop) or flags.is_unordered_set(feature_prop):
                 bin_boundaries = np.r_[bins_x[0], bins_x]
                 cdf = np.r_[0.0, cdf_x]
             else:
@@ -260,9 +254,7 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
         if self.bins_and_cdfs_ is None:
             raise RuntimeError("Fit was not called before.")
 
-        columns = get_feature_column_names_or_indices(
-            X, exclude_columns=[self.weight_column]
-        )
+        columns = get_feature_column_names_or_indices(X, exclude_columns=[self.weight_column])
         if self.feature_properties is not None:
             columns = [col for col in columns if col in self.feature_properties]
         n_cols = len(columns)
@@ -399,18 +391,12 @@ def get_weight_column(X, weight_column=None):
             try:
                 return np.asarray(X[weight_column])
             except:
-                raise ValueError(
-                    "Weight column {} not found in X.".format(str(weight_column))
-                )
+                raise ValueError("Weight column {} not found in X.".format(str(weight_column)))
         else:
             try:
                 return X[:, weight_column]
             except:
-                raise ValueError(
-                    "Index {} defining weight column not found in X.".format(
-                        str(weight_column)
-                    )
-                )
+                raise ValueError("Index {} defining weight column not found in X.".format(str(weight_column)))
     else:
         return np.ones(X.shape[0], dtype=np.float64)
 
@@ -571,9 +557,7 @@ def calculate_cdf_from_weighted_data(z, w):
     wsum = np.nansum(w[~np.isnan(z)])
 
     # Accumulate the weights for the unique values.
-    uniques = (
-        pd.DataFrame({"z": z, "w": w}).groupby(["z"]).agg({"w": "sum"}).reset_index()
-    )
+    uniques = pd.DataFrame({"z": z, "w": w}).groupby(["z"]).agg({"w": "sum"}).reset_index()
     uniques = uniques.loc[uniques["w"] != 0]
 
     cdf = np.nancumsum(uniques["w"]) / wsum

@@ -27,9 +27,7 @@ def _no_finite_samples(ax):
     )
 
 
-def _imshow_factors_2d(
-    ax, factors, nan_factor, nan_uncertainty, title, clim, feature, nan_count
-):
+def _imshow_factors_2d(ax, factors, nan_factor, nan_uncertainty, title, clim, feature, nan_count):
     """Factor plots for unsmoothed and smoothed 2d factors.
     Parameters
     ----------
@@ -79,16 +77,12 @@ def bin_boundaries_for_factor_histograms(n_factors, extremal_absolute_factor):
 
 def _plot_factors_histogram(ax, factors, extremal_absolute_factor):
     plt.sca(ax)
-    bin_boundaries = bin_boundaries_for_factor_histograms(
-        len(factors), extremal_absolute_factor
-    )
-    freq, bin_borders = colorful_histogram(
-        ax, factors, bin_boundaries=bin_boundaries, cmap=blue_cyan_green_cmap()
-    )
+    bin_boundaries = bin_boundaries_for_factor_histograms(len(factors), extremal_absolute_factor)
+    freq, bin_borders = colorful_histogram(ax, factors, bin_boundaries=bin_boundaries, cmap=blue_cyan_green_cmap())
     ax.set_title("histogram of smoothed factors")
     plt.xlabel("Factor")
     ticks = 0.5 * bin_borders[1:] + 0.5 * bin_borders[:-1]
-    plt.xticks(ticks, ["{:.1f}".format(x) for x in 2 ** ticks])
+    plt.xticks(ticks, ["{:.1f}".format(x) for x in 2**ticks])
 
 
 def plot_factor_2d(n_bins_finite, feature, grid_item=None):
@@ -210,15 +204,9 @@ def plot_factor_2d(n_bins_finite, feature, grid_item=None):
         else:
             all_arrays = np.r_[marginal_smoothed, marginal_dev, smoothed2d.flatten()]
         minmax = np.r_[np.min(all_arrays), np.max(all_arrays)]
-        y_axis_range, y_axis_labels = _get_y_axis(
-            np.r_[minmax, marginal_smoothed]
-        )
+        y_axis_range, y_axis_labels = _get_y_axis(np.r_[minmax, marginal_smoothed])
         plt.yticks(y_axis_range, y_axis_labels)
-        plt.title(
-            "Marginal Distribution: {}".format(
-                feature.feature_group[0 if axis == 1 else 1]
-            )
-        )
+        plt.title("Marginal Distribution: {}".format(feature.feature_group[0 if axis == 1 else 1]))
         plt.legend()
 
     plt.sca(plt.subplot(gs[0, 1]))

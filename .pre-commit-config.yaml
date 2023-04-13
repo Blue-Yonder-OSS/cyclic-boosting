@@ -1,0 +1,16 @@
+
+repos:
+-   repo: local
+    hooks:
+    - id: system
+      name: black
+      entry: poetry run black .
+      pass_filenames: false
+      language: system
+    - id: system
+      name: ruff
+      entry: poetry run ruff check cyclic_boosting --fix
+      pass_filenames: false
+      language: system
+  # when adding pre-commit-hooks to the dev dependencies,
+  # we can run the "standard tests" locally.

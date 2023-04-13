@@ -27,8 +27,7 @@ def _calc_factors_from_posterior(alpha_posterior, beta_posterior):
     noncritical_posterior = (alpha_posterior <= 1e12) & (beta_posterior <= 1e12)
     # Median of the gamma distribution
     posterior_gamma = (
-        scipy.special.gammaincinv(alpha_posterior[noncritical_posterior], 0.5)
-        / beta_posterior[noncritical_posterior]
+        scipy.special.gammaincinv(alpha_posterior[noncritical_posterior], 0.5) / beta_posterior[noncritical_posterior]
     )
 
     factors = alpha_posterior / beta_posterior
@@ -68,8 +67,7 @@ class CBBaseRegressor(CyclicBoostingBase, sklearn.base.RegressorMixin, LogLinkMi
         """Check that y has no negative values."""
         if not (y >= 0.0).all():
             raise ValueError(
-                "The target y must be positive semi-definite "
-                "and not NAN. y[~(y>=0)] = {0}".format(y[~(y >= 0)])
+                "The target y must be positive semi-definite " "and not NAN. y[~(y>=0)] = {0}".format(y[~(y >= 0)])
             )
 
     @abc.abstractmethod
@@ -119,7 +117,6 @@ class CBNBinomRegressor(CBBaseRegressor):
         c=0.0,
         aggregate=True,
     ):
-
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
@@ -143,12 +140,12 @@ class CBNBinomRegressor(CBBaseRegressor):
 
     def calc_parameters(self, feature, y, pred, prefit_data):
         prediction_link = pred.predict_link()
-        weights = self.weights
+        weights = self.weights  # noqa: F841
         lex_binnumbers = feature.lex_binned_data
         minlength = feature.n_bins
-        prediction = self.unlink_func(prediction_link)
-        a = self.a
-        c = self.c
+        prediction = self.unlink_func(prediction_link)  # noqa: F841
+        a = self.a  # noqa: F841
+        c = self.c  # noqa: F841
 
         w = numexpr.evaluate("weights * y / (a + c * prediction)")
         alpha = np.bincount(lex_binnumbers, weights=w, minlength=minlength)
@@ -169,9 +166,7 @@ class CBPoissonRegressor(CBBaseRegressor):
     """
 
     def precalc_parameters(self, feature, y, pred):
-        return np.bincount(
-            feature.lex_binned_data, weights=y * self.weights, minlength=feature.n_bins
-        )
+        return np.bincount(feature.lex_binned_data, weights=y * self.weights, minlength=feature.n_bins)
 
     def calc_parameters(self, feature, y, pred, prefit_data):
         prediction = self.unlink_func(pred.predict_link())
@@ -182,9 +177,7 @@ class CBPoissonRegressor(CBBaseRegressor):
             minlength=feature.n_bins,
         )
 
-        return _calc_factors_and_uncertainties(
-            alpha=prefit_data, beta=prediction_sum_of_bins, link_func=self.link_func
-        )
+        return _calc_factors_and_uncertainties(alpha=prefit_data, beta=prediction_sum_of_bins, link_func=self.link_func)
 
 
 __all__ = ["get_gamma_priors", "CBPoissonRegressor", "CBNBinomRegressor"]

@@ -15,8 +15,7 @@ import six
 
 @six.add_metaclass(abc.ABCMeta)
 class LinkFunction(object):
-    r"""Abstract base class for link function computations.
-    """
+    r"""Abstract base class for link function computations."""
 
     @abc.abstractmethod
     def is_in_range(self, values):

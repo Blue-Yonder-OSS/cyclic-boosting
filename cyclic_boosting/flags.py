@@ -288,12 +288,7 @@ def check_flags_consistency(flags_value):
     Traceback (most recent call last):
     ValueError: One feature can either be ...
     """
-    if (
-        int(is_continuous_set(flags_value))
-        + int(is_ordered_set(flags_value))
-        + int(is_unordered_set(flags_value))
-        != 1
-    ):
+    if int(is_continuous_set(flags_value)) + int(is_ordered_set(flags_value)) + int(is_unordered_set(flags_value)) != 1:
         raise ValueError(
             "Exactly one of IS_CONTINUOUS, IS_ORDERED, "
             "IS_UNORDERED must be set in a "
@@ -356,9 +351,7 @@ def flags_to_string(flags_value):
         return _convert_flags_to_string(flags_value)
 
 
-def _convert_flags_to_string(
-    flags_value, alternative_flag_list=None, alternative_flags=None
-):
+def _convert_flags_to_string(flags_value, alternative_flag_list=None, alternative_flags=None):
     """
     This function converts the numeric flags to the corresponding strings
     that are defined in the flag list.
@@ -420,10 +413,7 @@ def read_feature_property(feature_properties, feature_group, default):
     'HAS_MISSING'
     """
     if isinstance(feature_group, tuple):
-        return tuple(
-            read_feature_property(feature_properties, col, default=default)
-            for col in feature_group
-        )
+        return tuple(read_feature_property(feature_properties, col, default=default) for col in feature_group)
     else:
         feature_prop = None
         if feature_properties is not None:

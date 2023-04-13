@@ -7,14 +7,14 @@ from cyclic_boosting.smoothing import RegressionType
 
 # Neutralize2DMetaSmoother
 
+
 def test_minimum_number_of_columns():
     y = np.array([0.91, 0.92, 0.93, 0.94])
     X = np.c_[np.arange(4), np.ones(4), [0.05, 0.05, 0.15, 0.15]]
-    est = smoothing.multidim.Neutralize2DMetaSmoother(
-        smoothing.multidim.WeightedMeanSmoother()
-    )
+    est = smoothing.multidim.Neutralize2DMetaSmoother(smoothing.multidim.WeightedMeanSmoother())
     with np.testing.assert_raises(ValueError):
         est.fit(X, y)
+
 
 def test_no_effect_on_neutralized_values():
     X = np.c_[
@@ -23,9 +23,7 @@ def test_no_effect_on_neutralized_values():
         np.ones(16),
         np.ones(16),
     ]
-    y = np.array([-1, 1, -1, 1, 1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1]).astype(
-        float
-    )
+    y = np.array([-1, 1, -1, 1, 1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1]).astype(float)
     est = smoothing.multidim.WeightedMeanSmoother()
     est2 = smoothing.multidim.Neutralize2DMetaSmoother(utils.clone(est))
 
@@ -44,9 +42,7 @@ def test_same_result_as_with_neutralized_values():
         np.ones(16),
         np.ones(16),
     ]
-    y_neutralized = np.array(
-        [-1, 1, -1, 1, 1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1]
-    ).astype(float)
+    y_neutralized = np.array([-1, 1, -1, 1, 1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, -1]).astype(float)
     est = smoothing.multidim.WeightedMeanSmoother()
 
     est.fit(X.copy(), y_neutralized.copy())
@@ -61,6 +57,7 @@ def test_same_result_as_with_neutralized_values():
 
 # WeightedMeanSmoother
 
+
 def test_weighted_mean_multidim():
     X = np.c_[
         np.repeat(np.arange(4), 4) * 1.0,
@@ -74,9 +71,7 @@ def test_weighted_mean_multidim():
     est.fit(X, y)
     pred = est.predict(X[:, :2])
 
-    est = smoothing.meta_smoother.NormalizationSmoother(
-        smoothing.multidim.WeightedMeanSmoother()
-    )
+    est = smoothing.meta_smoother.NormalizationSmoother(smoothing.multidim.WeightedMeanSmoother())
     est.fit(X, y)
     pred2 = est.predict(X[:, :2])
     assert est.norm_ == np.mean(y)
@@ -102,6 +97,7 @@ def test_weighted_mean_apply_cut():
 
 
 # GroupBySmoother
+
 
 def test_gb_onedim():
     X = np.c_[
@@ -161,9 +157,7 @@ def test_gb_other_keys_in_fit_than_predict():
 
     y = np.array([1, 2, 3, 5, 7, 9, 11, 12])
     n_dim = 2
-    est = smoothing.multidim.GroupBySmootherCB(
-        smoothing.onedim.WeightedMeanSmoother(), n_dim
-    )
+    est = smoothing.multidim.GroupBySmootherCB(smoothing.onedim.WeightedMeanSmoother(), n_dim)
     est.fit(X, y)
 
     Xt = np.c_[[3, 3, 0, 0, 1, 1, 4, 4], [0, 1, 0, 1, 0, 1, 0, 1]]
@@ -181,9 +175,7 @@ def test_groupby_smoother_cb_weights():
 
     y = np.array([1, 2, 3, 5])
     n_dim = 3
-    est = smoothing.multidim.GroupBySmootherCB(
-        smoothing.onedim.WeightedMeanSmoother(), n_dim
-    )
+    est = smoothing.multidim.GroupBySmootherCB(smoothing.onedim.WeightedMeanSmoother(), n_dim)
     est.fit(X, y)
     p = est.predict(X)
     assert np.all(np.isnan(p[:2]))
@@ -197,9 +189,7 @@ def test_groupby_smoother_cb_weights_all_zero():
 
     y = np.array([1, 2, 3, 5])
     n_dim = 2
-    est = smoothing.multidim.GroupBySmootherCB(
-        smoothing.onedim.WeightedMeanSmoother(), n_dim
-    )
+    est = smoothing.multidim.GroupBySmootherCB(smoothing.onedim.WeightedMeanSmoother(), n_dim)
     est.fit(X, y)
     p = est.predict(X)
     assert np.all(np.isnan(p))

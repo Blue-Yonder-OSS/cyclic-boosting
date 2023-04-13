@@ -236,9 +236,7 @@ def multidim_binnos_to_lexicographic_binnos(binnos, n_bins=None, binsteps=None):
         binsteps = bin_steps(n_bins)
 
     is_valid = np.isfinite(binnos).all(axis=1)
-    is_valid[is_valid] &= (
-        (binnos[is_valid] >= 0) & (binnos[is_valid] < n_bins[None, :])
-    ).all(axis=1)
+    is_valid[is_valid] &= ((binnos[is_valid] >= 0) & (binnos[is_valid] < n_bins[None, :])).all(axis=1)
 
     if not np.any(is_valid):
         result = np.repeat(0, len(binnos))
@@ -251,9 +249,7 @@ def multidim_binnos_to_lexicographic_binnos(binnos, n_bins=None, binsteps=None):
         _logger.warning(
             "Enumerating multidimensional bins: A multidimensional feature of "
             "shape {n_bins} requires {total_bins} unique bins in total. "
-            "Please consider whether this is what you want.".format(
-                n_bins=n_bins, total_bins=n_bins.prod()
-            )
+            "Please consider whether this is what you want.".format(n_bins=n_bins, total_bins=n_bins.prod())
         )
     result = result.astype(np.int64)
     return result, n_bins
@@ -688,8 +684,7 @@ def clone(estimator, safe=True):
             raise TypeError(
                 "Cannot clone object '%s' (type %s): "
                 "it does not seem to be a scikit-learn estimator as "
-                "it does not implement a 'get_params' methods."
-                % (repr(estimator), type(estimator))
+                "it does not implement a 'get_params' methods." % (repr(estimator), type(estimator))
             )
     klass = estimator.__class__
     new_object_params = estimator.get_params(deep=False)
@@ -708,9 +703,7 @@ def clone(estimator, safe=True):
     return new_object
 
 
-def regularize_to_prior_expectation(
-    values, uncertainties, prior_expectation, threshold=2.5
-):
+def regularize_to_prior_expectation(values, uncertainties, prior_expectation, threshold=2.5):
     r"""Regularize values with uncertainties to a prior expectation.
 
     :param values: measured values
@@ -754,7 +747,7 @@ def regularize_to_prior_expectation(
     significance = (values - prior_expectation) / uncertainties
     return prior_expectation + uncertainties * np.where(
         np.abs(significance) > threshold,
-        np.sign(significance) * np.sqrt(significance ** 2.0 - threshold ** 2.0),
+        np.sign(significance) * np.sqrt(significance**2.0 - threshold**2.0),
         0,
     )
 
@@ -978,5 +971,6 @@ def linear_regression(x, y, w):
 def get_feature_column_names(X, exclude_columns=[]):
     features = list(X.columns)
     for col in exclude_columns:
-        if col in features: features.remove(col)
+        if col in features:
+            features.remove(col)
     return features
