@@ -53,9 +53,7 @@ def _simplify_flags(feature_property, feature_group=None):
         if feature_group is not None:
             features = "for feature {}".format(feature_group)
         if flags.has_missing_set(feature_property):
-            _logger.info(
-                "No feature property set. Thus it is set to default IS_UNORDERED!"
-            )
+            _logger.info("No feature property set. Thus it is set to default IS_UNORDERED!")
         else:
             _logger.warning(
                 "Feature property {0} is not known {1}."
