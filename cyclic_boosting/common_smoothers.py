@@ -52,10 +52,16 @@ def _simplify_flags(feature_property, feature_group=None):
         features = ""
         if feature_group is not None:
             features = "for feature {}".format(feature_group)
-        _logger.warning(
-            "Feature property {0} is not known {1}."
-            " Thus it is converted to IS_UNORDERED!".format(flags.flags_to_string(feature_property), features)
-        )
+        if flags.has_missing_set(feature_property):
+            _logger.info(
+                "No feature property set."
+                " Thus it is set to default IS_UNORDERED!".format(flags.flags_to_string(feature_property), features)
+            )
+        else:
+            _logger.warning(
+                "Feature property {0} is not known {1}."
+                " Thus it is converted to IS_UNORDERED!".format(flags.flags_to_string(feature_property), features)
+            )
         return flags.IS_UNORDERED
 
 
