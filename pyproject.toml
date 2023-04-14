@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cyclic-boosting"
-version = "0.1.0"
+version = "1.0.0"
 description = "Implementation of Cyclic Boosting machine learning algorithms"
 authors = ["Blue Yonder GmbH"]
 packages = [{include = "cyclic_boosting"}]
