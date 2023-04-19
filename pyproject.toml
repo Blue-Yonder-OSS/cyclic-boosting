@@ -24,7 +24,7 @@ scikit-learn = ">=0.18.2"
 pandas = ">=0.20.3"
 matplotlib = ">=1.5.1"
 hypothesis = "^6.70.0"
-scipy = { version = "1.7.2", python = "<3.10" }
+scipy = { version = "1.7.3", python = "<3.10" }
 
 
 [tool.poetry.group.dev.dependencies]
