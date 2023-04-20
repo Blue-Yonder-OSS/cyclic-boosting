@@ -65,6 +65,21 @@ CB_est.fit(X_train, y)
 yhat = CB_est.predict(X_test)
 ```
 
+Quick overview of the basic flags:
+- **IS_CONTINUOUS**: can be used to do a binning (by default equi-statistics)
+of a continuous feature and smooth the factors estimated for each bin by an
+orthogonal polynomial. 
+- **IS_LINEAR**: works similar to **IS_CONTINUOUS**, but uses a linear function
+for smoothing.
+- **IS_UNORDERED**: can be used for categorical features.
+- **IS_ORDERED**: in principle, should smooth categorical features by weighing
+neighboring bins higher, but currently just points to **IS_UNORDERED**.
+- **HAS_MISSING**: learns an additional, separate category for missing values
+(all nan values of a feature).
+- **MISSING_NOT_LEARNED**: puts all missing values (all nan values of a
+feature) to an additional, separate category, which is set to the neutral
+factor (e.g., 1 for multiplicative or 0 for additive regression mode).
+
 ## Set Features
 You can also specify which columns to use as features, including interaction
 terms (default is all available columns as individual features only):
