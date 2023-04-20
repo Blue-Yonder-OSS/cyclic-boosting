@@ -2,3 +2,7 @@ pydata-sphinx-theme
 myst-parser
 Sphinx
 numexpr
+pandas
+scipy
+scikit-learn
+matplotlib
