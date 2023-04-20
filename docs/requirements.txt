@@ -6,3 +6,6 @@ pandas
 scipy
 scikit-learn
 matplotlib
+decorator
+numba
+numba-scipy
