@@ -1,3 +1,4 @@
 pydata-sphinx-theme
 myst-parser
 Sphinx
+numexpr
