@@ -164,6 +164,7 @@ def get_new_c_link_for_iteration(iteration, n_steps):
     ]
     return np.ascontiguousarray(new_c_link)
 
+
 @nb.njit()
 def gammaln(x: nb.float64):
     x -= 1.0
@@ -172,6 +173,7 @@ def gammaln(x: nb.float64):
         result *= x
         x -= 1.0
     return np.log(result)
+
 
 @nb.njit()
 def nbinom_log_pmf(x: nb.float64, n: nb.float64, p: nb.float64) -> nb.float64:
