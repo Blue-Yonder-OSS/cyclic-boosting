@@ -6,9 +6,7 @@ from __future__ import absolute_import, division, print_function
 import logging
 
 import numba as nb
-import numba_scipy.special  # noqa
 import numpy as np
-import scipy.special as sc
 import sklearn.base
 
 from cyclic_boosting.base import CyclicBoostingBase
@@ -166,13 +164,21 @@ def get_new_c_link_for_iteration(iteration, n_steps):
     ]
     return np.ascontiguousarray(new_c_link)
 
+@nb.njit()
+def gammaln(x: nb.float64):
+    x -= 1.0
+    result = 1.0
+    while x > 1e-6:
+        result *= x
+        x -= 1.0
+    return np.log(result)
 
 @nb.njit()
 def nbinom_log_pmf(x: nb.float64, n: nb.float64, p: nb.float64) -> nb.float64:
     """
     Negative binomial log PMF.
     """
-    coeff = sc.gammaln(n + x) - sc.gammaln(x + 1) - sc.gammaln(n)
+    coeff = gammaln(n + x) - gammaln(x + 1) - gammaln(n)
     return coeff + n * np.log(p) + x * np.log(1 - p)
 
 
