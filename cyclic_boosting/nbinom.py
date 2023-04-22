@@ -167,11 +167,11 @@ def get_new_c_link_for_iteration(iteration, n_steps):
 
 @nb.njit()
 def gammaln(x: nb.float64):
-    x -= 1.0
+    """Logarithm of the Gamma function for positive integer values (as float64)."""
     result = 1.0
-    while x > 1e-6:
-        result *= x
+    while x - 2.0 > 1e-6:
         x -= 1.0
+        result *= x
     return np.log(result)
 
 
