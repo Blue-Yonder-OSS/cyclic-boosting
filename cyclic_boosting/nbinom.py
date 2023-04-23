@@ -16,6 +16,14 @@ from cyclic_boosting.utils import get_X_column
 
 _logger = logging.getLogger(__name__)
 
+#: Number of iterations to compute gammaln for values < 2.0
+GAMMALN_N_ITERATIONS = 30
+
+#: Constant that determins the precision of gammaln for values < 2.0.
+#: The higher this value, the better the precision but the slower
+#: the convergence (higher number of iterations)
+GAMMALN_CONSTANT = 12
+
 
 def _try_compile_parallel_func(**targetoptions):
     """
@@ -166,13 +174,51 @@ def get_new_c_link_for_iteration(iteration, n_steps):
 
 
 @nb.njit()
-def gammaln(x: nb.float64):
-    """Logarithm of the Gamma function for positive integer values (as float64)."""
-    result = 1.0
-    while x - 2.0 > 1e-6:
-        x -= 1.0
-        result *= x
-    return np.log(result)
+def gammaln(z: nb.float64):
+    r"""Logarithm of the Gamma function for positive float values.
+    
+    Custom implementation to avoid binding to :func:`scipy.special.gammaln`
+    when using Numba Jit. Fairly simple approach that combines Sterlin's
+    approximation for larger values, 
+    
+    .. math:: 
+    
+       \Gamma(z) \sim \sqrt{2\pi}z^{z-1/2}e^{-z}\quad\hbox{as }z\to
+       \infty\hbox{ in } \left|\arg(z)\right|<\pi.
+
+    and `integration by parts <https://en.wikipedia.org/wiki/Integration_by_parts>`_ 
+
+    .. math::
+
+        \begin{aligned}
+        \Gamma(z) &= \int_0^x e^{-t} t^z \, \frac{dt}{t} + 
+        \int_x^\infty e^{-t} t^z\, \frac{dt}{t} \\
+        &= x^z e^{-x} \sum_{n=0}^\infty \frac{x^n}{z(z+1) \cdots (z+n)} + 
+        \int_x^\infty e^{-t} t^z \, \frac{dt}{t}.
+        \end{aligned}
+    
+    for the remainder 
+    (from `wikipedia (Apr.'23) <https://en.wikipedia.org/wiki/Gamma_function#Approximations>`_),
+    where :math:`x` equals :obj:`GAMMALN_CONSTANT`, and the sum is truncated after 
+    :obj:`GAMMALN_N_ITERATIONS` summands (assuming convergence of the sum). The error is
+    below $(x+1)e^{-x}$ and the default values have been experimentally determined
+    to be as fast as the original :func:`scipy.special.gammaln` while keeping the error below
+    :math:`1\cdot10^{-5}` (see the tests for testing convergence). 
+    """
+
+    if z > 2.0: # Sterling approximation
+        # Has error
+        f = np.log(np.sqrt(2 * np.pi))
+        return f + np.log(z) * (z - 0.5) - z
+    else: # Integration by parts
+        x = GAMMALN_CONSTANT
+        result = 0.0
+        for n in range(GAMMALN_N_ITERATIONS):
+            denominator = 1.0
+            for i in range(n + 1):
+                denominator *= z + i
+            result += x**n / denominator
+        return np.log(x**z * np.exp(-x) * result)
 
 
 @nb.njit()
