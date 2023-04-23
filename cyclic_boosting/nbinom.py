@@ -21,8 +21,9 @@ GAMMALN_N_ITERATIONS = 30
 
 #: Constant that determins the precision of gammaln for values < 2.0.
 #: The higher this value, the better the precision but the slower
-#: the convergence (higher number of iterations)
-GAMMALN_CONSTANT = 12
+#: the convergence (higher number of iterations). 
+#: Warning: needs to be a float constant!
+GAMMALN_CONSTANT = 12.0
 
 
 def _try_compile_parallel_func(**targetoptions):
