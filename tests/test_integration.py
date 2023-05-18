@@ -151,6 +151,34 @@ def test_poisson_regression_ndarray(feature_groups, expected):
     np.testing.assert_almost_equal(mad, expected, 3)
 
 
+@pytest.mark.parametrize("regressor", ["BinomRegressor", "PoissonRegressor"])
+def test_regression_ndarray_w_feature_properties(regressor):
+    np.random.seed(42)
+
+    df = pd.read_csv("integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]].to_numpy()
+
+    fp = {
+        0: flags.IS_UNORDERED,
+        2: flags.IS_UNORDERED,
+        3: flags.IS_ORDERED,
+        5: flags.IS_CONTINUOUS | flags.HAS_MISSING | flags.MISSING_NOT_LEARNED,
+        6: flags.IS_ORDERED,
+    }
+
+    if regressor == "BinomRegressor":
+        CB_est = pipeline_CBNBinomRegressor(feature_properties=fp)
+    else:
+        CB_est = pipeline_CBPoissonRegressor(feature_properties=fp)
+
+    CB_est.fit(X.copy(), y)
+    yhat = CB_est.predict(X.copy())
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.695, 3)
+
+
 def test_poisson_regression_default_features_and_properties():
     np.random.seed(42)
 
