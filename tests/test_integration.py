@@ -97,7 +97,7 @@ def cb_poisson_regressor_model():
 def test_poisson_regression():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
 
@@ -117,7 +117,7 @@ def test_poisson_regression():
 def test_poisson_regression_default_features():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
@@ -136,7 +136,7 @@ def test_poisson_regression_default_features():
 def test_poisson_regression_ndarray(feature_groups, expected):
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]].to_numpy()
@@ -155,7 +155,7 @@ def test_poisson_regression_ndarray(feature_groups, expected):
 def test_regression_ndarray_w_feature_properties(regressor):
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]].to_numpy()
@@ -182,7 +182,7 @@ def test_regression_ndarray_w_feature_properties(regressor):
 def test_poisson_regression_default_features_and_properties():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
@@ -209,7 +209,7 @@ def test_poisson_regression_default_features_and_properties():
 def test_poisson_regression_default_features_notaggregated():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
@@ -227,7 +227,7 @@ def test_poisson_regression_default_features_notaggregated():
 def test_nbinom_regression_default_features():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
@@ -250,7 +250,7 @@ def test_nbinom_regression_default_features():
 def test_nbinom_regression_ndarray(feature_groups, expected):
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]].to_numpy()
@@ -309,7 +309,7 @@ def cb_exponential_regressor_model():
 def test_exponential_regression():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X.loc[df["price_ratio"] == np.nan, "price_ratio"] = 1.0
@@ -354,7 +354,7 @@ def cb_classifier_model():
 def test_classification():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     y = y >= 3
@@ -373,7 +373,7 @@ def test_classification():
 def test_location_regression_default_features():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
@@ -421,7 +421,7 @@ def cb_width_model():
 def test_width_regression_default_features():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
@@ -441,7 +441,7 @@ def test_width_regression_default_features():
 def test_GBS_regression_default_features():
     np.random.seed(42)
 
-    df = pd.read_csv("integration_test_data.csv")
+    df = pd.read_csv("./tests/integration_test_data.csv")
 
     X, y = prepare_data(df)
     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
