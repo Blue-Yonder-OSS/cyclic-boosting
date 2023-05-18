@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 from collections import defaultdict
+from typing import Union, Optional, List
 
 import numpy as np
 import pandas as pd
@@ -309,7 +310,9 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
             return Xt
 
 
-def get_feature_column_names_or_indices(X, exclude_columns=None):
+def get_feature_column_names_or_indices(
+    X: Union[pd.DataFrame, np.ndarray], exclude_columns: Optional[Union[List[str], List[int]]] = None
+) -> Union[List[str], List[int]]:
     """
     Extract the column names from `X`. If `X` is a numpy matrix
     each column is labeled with an integer starting from zero.
@@ -345,8 +348,11 @@ def get_feature_column_names_or_indices(X, exclude_columns=None):
     """
     if isinstance(X, pd.DataFrame):
         columns = list(X.columns)
-    else:
+    elif isinstance(X, np.ndarray):
+        assert X.ndim == 2, "X must be a 2D matrix"
         columns = list(range(0, X.shape[1]))
+    else:
+        raise ValueError("X must be a pandas.DataFrame or a numpy.ndarray")
 
     if exclude_columns is not None:
         exclude_columns = set(exclude_columns)

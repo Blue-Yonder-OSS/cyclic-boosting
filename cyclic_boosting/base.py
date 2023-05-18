@@ -12,6 +12,7 @@ import six
 from sklearn import base as sklearnb
 
 from cyclic_boosting import common_smoothers, learning_rate, link, utils
+from cyclic_boosting.binning import get_feature_column_names_or_indices
 from cyclic_boosting.features import create_features, FeatureTypes
 from cyclic_boosting.link import IdentityLinkMixin, LogLinkMixin
 
@@ -280,7 +281,7 @@ class CyclicBoostingBase(
         if self.weight_column is not None:
             exclude_columns.append(self.weight_column)
 
-        self.feature_groups = utils.get_feature_column_names(X, exclude_columns=exclude_columns)
+        self.feature_groups = get_feature_column_names_or_indices(X, exclude_columns=exclude_columns)
 
     def _init_global_scale(self, X, y):
         """
