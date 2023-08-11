@@ -7,6 +7,7 @@ import numba as nb
 import numpy as np
 import pandas as pd
 import six
+import bisect
 
 _logger = logging.getLogger(__name__)
 
@@ -974,3 +975,29 @@ def get_feature_column_names(X, exclude_columns=[]):
         if col in features:
             features.remove(col)
     return features
+
+
+def continuous_quantile_from_discrete(y, quantile):
+    """
+    Calculates a continous approximation of a given quantile from an array of potentially discrete values.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        variable with potentially discrete values
+    quantile : float
+        desired quantile
+
+    Returns
+    -------
+    float
+        calcualted quantile value
+    """
+    sorted_y = np.sort(y)
+    quantile_index = int(quantile * (len(y) - 1))
+    quantile_y = sorted_y[quantile_index]
+    index_low = bisect.bisect_left(sorted_y, quantile_y)
+    index_high = bisect.bisect_right(sorted_y, quantile_y)
+    if index_high > index_low:
+        quantile_y += (quantile_index - index_low) / (index_high - index_low)
+    return quantile_y

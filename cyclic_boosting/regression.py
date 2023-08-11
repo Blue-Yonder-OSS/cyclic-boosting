@@ -8,9 +8,11 @@ import numpy as np
 import six
 import sklearn.base
 import scipy.special
+from scipy.optimize import minimize
 
 from cyclic_boosting.base import CyclicBoostingBase
 from cyclic_boosting.link import LogLinkMixin
+from cyclic_boosting.utils import continuous_quantile_from_discrete
 
 _logger = logging.getLogger(__name__)
 
@@ -180,4 +182,88 @@ class CBPoissonRegressor(CBBaseRegressor):
         return _calc_factors_and_uncertainties(alpha=prefit_data, beta=prediction_sum_of_bins, link_func=self.link_func)
 
 
-__all__ = ["get_gamma_priors", "CBPoissonRegressor", "CBNBinomRegressor"]
+class CBQuantileRegressor(CBBaseRegressor):
+    def __init__(
+        self,
+        feature_groups=None,
+        feature_properties=None,
+        weight_column=None,
+        prior_prediction_column=None,
+        minimal_loss_change=1e-10,
+        minimal_factor_change=1e-10,
+        maximal_iterations=10,
+        observers=None,
+        smoother_choice=None,
+        output_column=None,
+        learn_rate=None,
+        quantile=0.5,
+        aggregate=True,
+    ):
+        CyclicBoostingBase.__init__(
+            self,
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+        )
+
+        self.quantile = quantile
+
+    def precalc_parameters(self, feature, y, pred):
+        pass
+
+    def loss(self, prediction, y, weights):
+        if not len(y) > 0:
+            raise ValueError("Loss cannot be computed on empty data")
+        else:
+            return np.nanmean(
+                (y < prediction) * (1 - self.quantile) * (prediction - y)
+                + (y >= prediction) * self.quantile * (y - prediction)
+            )
+
+    def _init_global_scale(self, X, y):
+        self.global_scale_link_ = self.link_func(continuous_quantile_from_discrete(y, 0.9))
+
+    def quantile_loss(self, params, yhat_others, y):
+        return np.nanmean(
+            (y < (params[0] * yhat_others)) * (1 - self.quantile) * (params[0] * yhat_others - y)
+            + (y >= (params[0] * yhat_others)) * self.quantile * (y - params[0] * yhat_others)
+        )
+
+    def optimization(self, y, yhat_others):
+        res = minimize(self.quantile_loss, 1, args=(yhat_others, y))
+        return res.x, np.sqrt(np.log(1 + 2 + np.sum(y)) - np.log(2 + np.sum(y)))
+
+    def calc_parameters(self, feature, y, pred, prefit_data):
+        sorting = feature.lex_binned_data.argsort()
+        sorted_bins = feature.lex_binned_data[sorting]
+        splits_indices = np.unique(sorted_bins, return_index=True)[1][1:]
+
+        y_pred = np.hstack((y[..., np.newaxis], self.unlink_func(pred.predict_link())[..., np.newaxis]))
+        y_pred_bins = np.split(y_pred[sorting], splits_indices)
+
+        n_bins = len(y_pred_bins)
+        factors = np.zeros(n_bins)
+        uncertainties = np.zeros(n_bins)
+
+        for bin in range(n_bins):
+            factors[bin], uncertainties[bin] = self.optimization(y_pred_bins[bin][:, 0], y_pred_bins[bin][:, 1])
+
+        if n_bins + 1 == feature.n_bins:
+            factors = np.append(factors, 1)
+            uncertainties = np.append(uncertainties, 0)
+
+        epsilon = 1e-5
+        factors = np.where(factors < epsilon, epsilon, factors)
+        return np.log(factors), uncertainties
+
+
+__all__ = ["get_gamma_priors", "CBPoissonRegressor", "CBNBinomRegressor", "CBQuantileRegressor"]
