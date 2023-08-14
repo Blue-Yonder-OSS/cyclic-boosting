@@ -36,3 +36,14 @@ def test_get_feature_column_names():
     np.testing.assert_equal(features, ["a", "b", "c"])
     features = utils.get_feature_column_names(X, exclude_columns=["a"])
     np.testing.assert_equal(features, ["b", "c"])
+
+
+def test_continuous_quantile_from_discrete():
+    y = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    quantile_value = utils.continuous_quantile_from_discrete(y, 0.8)
+    assert quantile_value == 8.0
+    quantile_value = utils.continuous_quantile_from_discrete(y, 0.35)
+    assert quantile_value == 3.0
+    y = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] * 2)
+    quantile_value = utils.continuous_quantile_from_discrete(y, 0.35)
+    assert quantile_value == 3.5

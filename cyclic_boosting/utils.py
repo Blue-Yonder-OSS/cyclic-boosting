@@ -984,7 +984,7 @@ def continuous_quantile_from_discrete(y, quantile):
     Parameters
     ----------
     y : np.ndarray
-        variable with potentially discrete values
+        containing data with `float` type (potentially discrete)
     quantile : float
         desired quantile
 

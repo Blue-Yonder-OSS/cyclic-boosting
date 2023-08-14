@@ -15,7 +15,7 @@ from cyclic_boosting.pipelines import (
     pipeline_CBNBinomRegressor,
     pipeline_CBNBinomC,
     pipeline_CBGBSRegressor,
-    pipeline_CBQuantileRegressor,
+    pipeline_CBMultiplicativeQuantileRegressor,
 )
 
 
@@ -472,7 +472,7 @@ def evaluate_quantile(y, yhat):
     return quantile_acc
 
 
-def cb_quantile_regressor_model(quantile):
+def cb_multiplicative_quantile_regressor_model(quantile):
     features = get_features()
 
     fp = feature_properties()
@@ -486,7 +486,7 @@ def cb_quantile_regressor_model(quantile):
         observers.PlottingObserver(iteration=-1),
     ]
 
-    CB_pipeline = pipeline_CBQuantileRegressor(
+    CB_pipeline = pipeline_CBMultiplicativeQuantileRegressor(
         quantile=quantile,
         feature_properties=fp,
         feature_groups=features,
@@ -500,7 +500,7 @@ def cb_quantile_regressor_model(quantile):
     return CB_pipeline
 
 
-def test_quantile_regression_median():
+def test_multiplicative_quantile_regression_median():
     np.random.seed(42)
 
     df = pd.read_csv("./tests/integration_test_data.csv")
@@ -508,7 +508,7 @@ def test_quantile_regression_median():
     X, y = prepare_data(df)
 
     quantile = 0.5
-    CB_est = cb_quantile_regressor_model(quantile)
+    CB_est = cb_multiplicative_quantile_regressor_model(quantile)
     CB_est.fit(X.copy(), y)
     # plot_CB('analysis_CB_iterfirst',
     #         [CB_est[-1].observers[0]], CB_est[-2])
@@ -524,7 +524,7 @@ def test_quantile_regression_median():
     np.testing.assert_almost_equal(mad, 1.6559, 3)
 
 
-def test_quantile_regression_90():
+def test_multiplicative_quantile_regression_90():
     np.random.seed(42)
 
     df = pd.read_csv("./tests/integration_test_data.csv")
@@ -532,7 +532,7 @@ def test_quantile_regression_90():
     X, y = prepare_data(df)
 
     quantile = 0.9
-    CB_est = cb_quantile_regressor_model(quantile)
+    CB_est = cb_multiplicative_quantile_regressor_model(quantile)
     CB_est.fit(X.copy(), y)
     # plot_CB('analysis_CB_iterfirst',
     #         [CB_est[-1].observers[0]], CB_est[-2])

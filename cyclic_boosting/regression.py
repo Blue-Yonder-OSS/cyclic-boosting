@@ -183,7 +183,26 @@ class CBPoissonRegressor(CBBaseRegressor):
         return _calc_factors_and_uncertainties(alpha=prefit_data, beta=prediction_sum_of_bins, link_func=self.link_func)
 
 
-class CBQuantileRegressor(CBBaseRegressor):
+class CBMultiplicativeQuantileRegressor(CBBaseRegressor):
+    """
+    Cyclic Boosting multiplicative quantile-regression mode. While its general
+    structure allows arbitrary/empirical target ranges/distributions, the
+    multiplicative model of this mode requires non-negative target values.
+
+    A quantile loss, according to the desired quantile to be predicted, is
+    minimized in each bin of each feature. While binning, feature cycles,
+    smoothing, and iterations work in the same way as usual in Cyclic Boosting,
+    the minimization itself is performed via ``scipy.optimize.minimize``
+    (instead of an analytical solution like, e.g., in ``CBPoissonRegressor``,
+    ``CBNBinomRegressor``, or ``CBLocationRegressor``).
+
+    Parameters
+    ----------
+    quantile : float
+        quantile to be estimated
+    See :class:`cyclic_boosting.base` for all other parameters.
+    """
+
     def __init__(
         self,
         feature_groups=None,
@@ -222,6 +241,25 @@ class CBQuantileRegressor(CBBaseRegressor):
         pass
 
     def loss(self, prediction, y, weights):
+        """
+        Calculation of the in-sample quantile loss, or to be exact costs,
+        (potentially including sample weights) after full feature cycles, i.e.,
+        iterations, to be used as stopping criteria.
+
+        Parameters
+        ----------
+        prediction : np.ndarray
+            (in-sample) predictions for desired quantile, containing data with `float` type
+        y : np.ndarray
+            target variable, containing data with `float` type (potentially discrete)
+        weights : np.ndarray
+            optional (otherwise set to 1) sample weights, containing data with `float` type
+
+        Returns
+        -------
+        float
+            calcualted quantile costs
+        """
         if not len(y) > 0:
             raise ValueError("Loss cannot be computed on empty data")
         else:
@@ -235,6 +273,17 @@ class CBQuantileRegressor(CBBaseRegressor):
             return sum_weighted_error / np.nansum(weights)
 
     def _init_global_scale(self, X, y):
+        """
+        Calculation of the global scale for quantile regression, corresponding
+        to the (continuous approximation of the) respective quantile of the
+        target values used in the training.
+
+        The exact value of the global scale is not critical for the model
+        accuracy (as the model has enough parameters to compensate), but a
+        value not representating a good overall average leads to factors with
+        averages unequal to 1 for each feature (making interpretation more
+        difficult).
+        """
         if self.weights is None:
             raise RuntimeError("The weights have to be initialized.")
 
@@ -264,21 +313,92 @@ class CBQuantileRegressor(CBBaseRegressor):
                 )
                 self.prior_pred_link_offset_ = float(self.global_scale_link_)
 
-    def quantile_loss(self, params, yhat_others, y, weights):
-        sum_weighted_error = np.nansum(
-            (
-                (y < (params[0] * yhat_others)) * (1 - self.quantile) * (params[0] * yhat_others - y)
-                + (y >= (params[0] * yhat_others)) * self.quantile * (y - params[0] * yhat_others)
-            )
-            * weights
-        )
+    def quantile_costs(self, param, yhat_others, y, weights):
+        """
+        Calculation of the in-sample quantile costs (potentially including
+        sample weights) for individual feature bins according to a quantile
+        loss function, to be minimized subsequently.
+
+        Parameters
+        ----------
+        param : float
+            Factor to be estimated for the feature bin at hand.
+        yhat_others : np.ndarray
+            (in-sample) predictions of all other features (excluding the one at
+            hand) for the bin at hand, containing data with `float` type
+        y : np.ndarray
+            target variable, containing data with `float` type (potentially discrete)
+        weights : np.ndarray
+            optional (otherwise set to 1) sample weights, containing data with `float` type
+
+        Returns
+        -------
+        float
+            calcualted quantile costs
+        """
+        quantile_loss = (y < (param * yhat_others)) * (1 - self.quantile) * (param * yhat_others - y) + (
+            y >= (param * yhat_others)
+        ) * self.quantile * (y - param * yhat_others)
+        sum_weighted_error = np.nansum(quantile_loss * weights)
         return sum_weighted_error / np.nansum(weights)
 
     def optimization(self, y, yhat_others, weights):
-        res = minimize(self.quantile_loss, 1, args=(yhat_others, y, weights))
-        return res.x, np.sqrt(np.log(1 + 2 + np.sum(y)) - np.log(2 + np.sum(y)))
+        """
+        Minimization of the quantile costs (potentially including sample
+        weights) for individual feature bins. The initial value for the factors
+        is set to 1 (neutral value for multiplicative model).
+
+        Parameters
+        ----------
+        param : float
+            Factor to be estimated for the feature bin at hand.
+        yhat_others : np.ndarray
+            (in-sample) predictions from all other features (excluding the one
+            at hand) for the bin at hand, containing data with `float` type
+        y : np.ndarray
+            target variable, containing data with `float` type (potentially discrete).
+        weights : np.ndarray
+            optional (otherwise set to 1) sample weights, containing data with `float` type
+
+        Returns
+        -------
+        float, float
+            estimated parameter (factor) and its uncertainty
+        """
+        res = minimize(self.quantile_costs, 1, args=(yhat_others, y, weights))
+        # use moment-matching of a Gamma posterior with a log-normal
+        # distribution as approximation
+        uncertainty = np.sqrt(np.log(1 + 2 + np.sum(y)) - np.log(2 + np.sum(y)))
+        return res.x, uncertainty
 
     def calc_parameters(self, feature, y, pred, prefit_data):
+        """
+        Calling of the optimization (quantile loss minimization) for the
+        different bins of the feature at hand. In contrast to the analytical
+        solution in most other Cyclic Boosting modes (e.g.,
+        ``CBPoissonRegressor``), working simply via bin statistics
+        (`bincount`), the optimization here requires a dedicated loss funtion
+        to be called for each observation.
+
+        Parameters
+        ----------
+        feature : :class:`Feature`
+            feature for which the parameters of each bin are estimated
+        y : np.ndarray
+            target variable, containing data with `float` type (potentially
+            discrete)
+        pred : np.ndarray
+            (in-sample) predictions from all other features (excluding the one
+            at hand), containing data with `float` type
+        prefit_data
+            data returned by :meth:`~.precalc_parameters` during fit, not used
+            here
+
+        Returns
+        -------
+        float, float
+            estimated parameter (factor) and its uncertainty
+        """
         sorting = feature.lex_binned_data.argsort()
         sorted_bins = feature.lex_binned_data[sorting]
         splits_indices = np.unique(sorted_bins, return_index=True)[1][1:]
@@ -305,4 +425,4 @@ class CBQuantileRegressor(CBBaseRegressor):
         return np.log(factors), uncertainties
 
 
-__all__ = ["get_gamma_priors", "CBPoissonRegressor", "CBNBinomRegressor", "CBQuantileRegressor"]
+__all__ = ["get_gamma_priors", "CBPoissonRegressor", "CBNBinomRegressor", "CBMultiplicativeQuantileRegressor"]
