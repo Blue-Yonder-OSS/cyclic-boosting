@@ -12,7 +12,7 @@ Multiplicative Regression
 - :class:`~.CBPoissonRegressor`
 - :class:`~.CBNBinomRegressor`
 - :class:`~.CBExponential`
-- :class:`~.CBQuantileRegressor`
+- :class:`~.CBMultiplicativeQuantileRegressor`
 
 Additive Regression
 
@@ -64,7 +64,7 @@ __all__ = [
     "CBNBinomC",
     "CBClassifier",
     "CBGBSRegressor",
-    "CBQuantileRegressor",
+    "CBMultiplicativeQuantileRegressor",
     "pipeline_CBPoissonRegressor",
     "pipeline_CBNBinomRegressor",
     "pipeline_CBClassifier",
