@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import abc
 import logging
+import warnings
 
 import numexpr
 import numpy as np
@@ -12,7 +13,7 @@ from scipy.optimize import minimize
 
 from cyclic_boosting.base import CyclicBoostingBase
 from cyclic_boosting.link import LogLinkMixin
-from cyclic_boosting.utils import continuous_quantile_from_discrete
+from cyclic_boosting.utils import continuous_quantile_from_discrete, get_X_column
 
 _logger = logging.getLogger(__name__)
 
@@ -224,22 +225,57 @@ class CBQuantileRegressor(CBBaseRegressor):
         if not len(y) > 0:
             raise ValueError("Loss cannot be computed on empty data")
         else:
-            return np.nanmean(
-                (y < prediction) * (1 - self.quantile) * (prediction - y)
-                + (y >= prediction) * self.quantile * (y - prediction)
+            sum_weighted_error = np.nansum(
+                (
+                    (y < prediction) * (1 - self.quantile) * (prediction - y)
+                    + (y >= prediction) * self.quantile * (y - prediction)
+                )
+                * weights
             )
+            return sum_weighted_error / np.nansum(weights)
 
     def _init_global_scale(self, X, y):
-        self.global_scale_link_ = self.link_func(continuous_quantile_from_discrete(y, 0.9))
+        if self.weights is None:
+            raise RuntimeError("The weights have to be initialized.")
 
-    def quantile_loss(self, params, yhat_others, y):
-        return np.nanmean(
-            (y < (params[0] * yhat_others)) * (1 - self.quantile) * (params[0] * yhat_others - y)
-            + (y >= (params[0] * yhat_others)) * self.quantile * (y - params[0] * yhat_others)
+        self.global_scale_link_ = self.link_func(continuous_quantile_from_discrete(y, self.quantile))
+
+        if self.prior_prediction_column is not None:
+            prior_pred = get_X_column(X, self.prior_prediction_column)
+            finite = np.isfinite(prior_pred)
+            if not np.all(finite):
+                _logger.warning(
+                    "Found a total number of {} non-finite values in the prior prediction column".format(
+                        np.sum(~finite)
+                    )
+                )
+
+            prior_pred_mean = np.sum(prior_pred[finite] * self.weights[finite]) / np.sum(self.weights[finite])
+
+            prior_pred_link_mean = self.link_func(prior_pred_mean)
+
+            if np.isfinite(prior_pred_link_mean):
+                self.prior_pred_link_offset_ = self.global_scale_link_ - prior_pred_link_mean
+            else:
+                warnings.warn(
+                    "The mean prior prediction in link-space is not finite. "
+                    "Therefore no indiviualization is done "
+                    "and no prior mean substraction is necessary."
+                )
+                self.prior_pred_link_offset_ = float(self.global_scale_link_)
+
+    def quantile_loss(self, params, yhat_others, y, weights):
+        sum_weighted_error = np.nansum(
+            (
+                (y < (params[0] * yhat_others)) * (1 - self.quantile) * (params[0] * yhat_others - y)
+                + (y >= (params[0] * yhat_others)) * self.quantile * (y - params[0] * yhat_others)
+            )
+            * weights
         )
+        return sum_weighted_error / np.nansum(weights)
 
-    def optimization(self, y, yhat_others):
-        res = minimize(self.quantile_loss, 1, args=(yhat_others, y))
+    def optimization(self, y, yhat_others, weights):
+        res = minimize(self.quantile_loss, 1, args=(yhat_others, y, weights))
         return res.x, np.sqrt(np.log(1 + 2 + np.sum(y)) - np.log(2 + np.sum(y)))
 
     def calc_parameters(self, feature, y, pred, prefit_data):
@@ -248,6 +284,7 @@ class CBQuantileRegressor(CBBaseRegressor):
         splits_indices = np.unique(sorted_bins, return_index=True)[1][1:]
 
         y_pred = np.hstack((y[..., np.newaxis], self.unlink_func(pred.predict_link())[..., np.newaxis]))
+        y_pred = np.hstack((y_pred, self.weights[..., np.newaxis]))
         y_pred_bins = np.split(y_pred[sorting], splits_indices)
 
         n_bins = len(y_pred_bins)
@@ -255,7 +292,9 @@ class CBQuantileRegressor(CBBaseRegressor):
         uncertainties = np.zeros(n_bins)
 
         for bin in range(n_bins):
-            factors[bin], uncertainties[bin] = self.optimization(y_pred_bins[bin][:, 0], y_pred_bins[bin][:, 1])
+            factors[bin], uncertainties[bin] = self.optimization(
+                y_pred_bins[bin][:, 0], y_pred_bins[bin][:, 1], y_pred_bins[bin][:, 2]
+            )
 
         if n_bins + 1 == feature.n_bins:
             factors = np.append(factors, 1)
