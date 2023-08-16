@@ -12,6 +12,7 @@ Multiplicative Regression
 - :class:`~.CBPoissonRegressor`
 - :class:`~.CBNBinomRegressor`
 - :class:`~.CBExponential`
+- :class:`~.CBMultiplicativeQuantileRegressor`
 
 Additive Regression
 
@@ -35,7 +36,7 @@ from __future__ import division, print_function
 
 
 from cyclic_boosting.base import CyclicBoostingBase
-from cyclic_boosting.regression import CBNBinomRegressor, CBPoissonRegressor
+from cyclic_boosting.regression import CBNBinomRegressor, CBPoissonRegressor, CBMultiplicativeQuantileRegressor
 from cyclic_boosting.price import CBExponential
 from cyclic_boosting.location import CBLocationRegressor, CBLocPoissonRegressor
 from cyclic_boosting.nbinom import CBNBinomC
@@ -50,6 +51,7 @@ from cyclic_boosting.pipelines import (
     pipeline_CBLocPoissonRegressor,
     pipeline_CBNBinomC,
     pipeline_CBGBSRegressor,
+    pipeline_CBMultiplicativeQuantileRegressor,
 )
 
 __all__ = [
@@ -62,6 +64,7 @@ __all__ = [
     "CBNBinomC",
     "CBClassifier",
     "CBGBSRegressor",
+    "CBMultiplicativeQuantileRegressor",
     "pipeline_CBPoissonRegressor",
     "pipeline_CBNBinomRegressor",
     "pipeline_CBClassifier",
@@ -70,6 +73,7 @@ __all__ = [
     "pipeline_CBLocPoissonRegressor",
     "pipeline_CBNBinomC",
     "pipeline_CBGBSRegressor",
+    "pipeline_CBMultiplicativeQuantileRegressor",
 ]
 
 __version__ = "1.0"
