@@ -18,17 +18,17 @@ class LinkFunction(object):
     r"""Abstract base class for link function computations."""
 
     @abc.abstractmethod
-    def is_in_range(self, values):
-        "Check if values can be transformed by the link function."
+    def is_in_range(self, values: np.ndarray):
+        """Check if values can be transformed by the link function."""
         pass
 
     @abc.abstractmethod
-    def link_func(self, m):
+    def link_func(self, m: np.ndarray):
         """Transform values in m to link space"""
         pass
 
     @abc.abstractmethod
-    def unlink_func(self, l):
+    def unlink_func(self, l: np.ndarray):
         """Inverse of :meth:`~link_func`"""
         pass
 
@@ -39,7 +39,7 @@ class LogLinkMixin(LinkFunction):
 
     Supported values are in the range :math:`x > 0`"""
 
-    def unlink_func(self, l):
+    def unlink_func(self, l: np.ndarray) -> np.ndarray:
         r"""Calculates the inverse of the link function
 
         .. math::
@@ -48,10 +48,10 @@ class LogLinkMixin(LinkFunction):
         """
         return numexpr.evaluate("exp(l)")
 
-    def is_in_range(self, m):
+    def is_in_range(self, m: np.ndarray) -> bool:
         return np.all(m > 0.0)
 
-    def link_func(self, m):
+    def link_func(self, m: np.ndarray) -> np.ndarray:
         r"""Calculates the log-link
 
         .. math::
@@ -67,10 +67,10 @@ class LogitLinkMixin(LinkFunction):
     Supported values are in the range :math:`0 \leq x \leq 1`
     """
 
-    def is_in_range(self, p):
+    def is_in_range(self, p: np.ndarray) -> bool:
         return np.all(numexpr.evaluate("(p >= 0.0) & (p <= 1.0)"))
 
-    def link_func(self, p):
+    def link_func(self, p: np.ndarray) -> np.ndarray:
         r"""Calculates the logit-link
 
         .. math::
@@ -79,7 +79,7 @@ class LogitLinkMixin(LinkFunction):
         """
         return numexpr.evaluate("log(p / (1. - p))")
 
-    def unlink_func(self, l):
+    def unlink_func(self, l: np.ndarray) -> np.ndarray:
         r"""Inverse of logit-link
 
         .. math::
@@ -92,14 +92,14 @@ class LogitLinkMixin(LinkFunction):
 class IdentityLinkMixin(LinkFunction):
     """Identity link"""
 
-    def is_in_range(self, m):
+    def is_in_range(self, m: np.ndarray):
         return True
 
-    def link_func(self, m):
+    def link_func(self, m: np.ndarray):
         r"""Returns a copy of the input"""
         return m.copy()
 
-    def unlink_func(self, l):
+    def unlink_func(self, l: np.ndarray):
         r"""Returns a copy of the input"""
         return l.copy()
 

@@ -10,12 +10,14 @@ import sklearn.base
 import scipy.special
 
 from cyclic_boosting.base import CyclicBoostingBase
+from cyclic_boosting.features import Feature
 from cyclic_boosting.link import LogLinkMixin
+from typing import Tuple
 
 _logger = logging.getLogger(__name__)
 
 
-def _calc_factors_from_posterior(alpha_posterior, beta_posterior):
+def _calc_factors_from_posterior(alpha_posterior: np.ndarray, beta_posterior: np.ndarray) -> np.ndarray:
     # The posterior distribution of f_j (factor in bin j)
     # follows a Gamma distribution. We want to use the median as estimate
     # because it is more stable against the log transformation. But calculating
@@ -35,7 +37,7 @@ def _calc_factors_from_posterior(alpha_posterior, beta_posterior):
     return np.log(factors)
 
 
-def _calc_factors_and_uncertainties(alpha, beta, link_func):
+def _calc_factors_and_uncertainties(alpha: np.ndarray, beta: np.ndarray, link_func: np.ndarray) -> Tuple[np.ndarray]:
     alpha_prior, beta_prior = get_gamma_priors()
     alpha_posterior = alpha + alpha_prior
     beta_posterior = beta + beta_prior
@@ -49,8 +51,8 @@ def _calc_factors_and_uncertainties(alpha, beta, link_func):
     return factors, uncertainties
 
 
-def get_gamma_priors():
-    "prior values for Gamma distribution with median 1"
+def get_gamma_priors() -> Tuple[int, float]:
+    """prior values for Gamma distribution with median 1"""
     alpha_prior = 2
     beta_prior = 1.67834
     return alpha_prior, beta_prior
@@ -63,7 +65,7 @@ class CBBaseRegressor(CyclicBoostingBase, sklearn.base.RegressorMixin, LogLinkMi
     for regression problems with a target range of: :math:`0 \leq y < \infty`.
     """
 
-    def _check_y(self, y):
+    def _check_y(self, y: np.ndarray) -> None:
         """Check that y has no negative values."""
         if not (y >= 0.0).all():
             raise ValueError(
@@ -71,11 +73,11 @@ class CBBaseRegressor(CyclicBoostingBase, sklearn.base.RegressorMixin, LogLinkMi
             )
 
     @abc.abstractmethod
-    def calc_parameters(self, feature, y, pred, prefit_data):
+    def calc_parameters(self, feature: Feature, y: np.ndarray, pred, prefit_data):
         raise NotImplementedError("implement in subclass")
 
     @abc.abstractmethod
-    def precalc_parameters(self, feature, y, pred):
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred) -> None:
         return None
 
 
@@ -135,10 +137,10 @@ class CBNBinomRegressor(CBBaseRegressor):
         self.a = a
         self.c = c
 
-    def precalc_parameters(self, feature, y, pred):
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred):
         pass
 
-    def calc_parameters(self, feature, y, pred, prefit_data):
+    def calc_parameters(self, feature: Feature, y: np.ndarray, pred, prefit_data) -> Tuple[np.ndarray]:
         prediction_link = pred.predict_link()
         weights = self.weights  # noqa: F841
         lex_binnumbers = feature.lex_binned_data
@@ -152,8 +154,9 @@ class CBNBinomRegressor(CBBaseRegressor):
 
         w = numexpr.evaluate("weights * prediction / (a + c * prediction)")
         beta = np.bincount(lex_binnumbers, weights=w, minlength=minlength)
+        link_func = self.link_func
 
-        return _calc_factors_and_uncertainties(alpha, beta, self.link_func)
+        return _calc_factors_and_uncertainties(alpha, beta, link_func)
 
 
 class CBPoissonRegressor(CBBaseRegressor):
@@ -165,10 +168,10 @@ class CBPoissonRegressor(CBBaseRegressor):
     Poisson-distributed target values.
     """
 
-    def precalc_parameters(self, feature, y, pred):
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred):
         return np.bincount(feature.lex_binned_data, weights=y * self.weights, minlength=feature.n_bins)
 
-    def calc_parameters(self, feature, y, pred, prefit_data):
+    def calc_parameters(self, feature: Feature, y: np.ndarray, pred, prefit_data):
         prediction = self.unlink_func(pred.predict_link())
 
         prediction_sum_of_bins = np.bincount(
