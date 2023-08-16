@@ -8,6 +8,7 @@ from cyclic_boosting import (
     CBClassifier,
     CBGBSRegressor,
     CBMultiplicativeQuantileRegressor,
+    CBAdditiveQuantileRegressor,
     binning,
 )
 
@@ -126,7 +127,7 @@ def pipeline_CB(
             aggregate=aggregate,
             regalpha=regalpha,
         )
-    elif estimator == CBMultiplicativeQuantileRegressor:
+    elif estimator in [CBMultiplicativeQuantileRegressor, CBAdditiveQuantileRegressor]:
         estimatorCB = estimator(
             feature_groups=feature_groups,
             feature_properties=feature_properties,
@@ -210,3 +211,10 @@ def pipeline_CBMultiplicativeQuantileRegressor(**kwargs):
     Convenience function containing CBMultiplicativeQuantileRegressor (estimator) + binning.
     """
     return pipeline_CB(CBMultiplicativeQuantileRegressor, **kwargs)
+
+
+def pipeline_CBAdditiveQuantileRegressor(**kwargs):
+    """
+    Convenience function containing CBAdditiveQuantileRegressor (estimator) + binning.
+    """
+    return pipeline_CB(CBAdditiveQuantileRegressor, **kwargs)

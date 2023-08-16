@@ -16,6 +16,7 @@ from cyclic_boosting.pipelines import (
     pipeline_CBNBinomC,
     pipeline_CBGBSRegressor,
     pipeline_CBMultiplicativeQuantileRegressor,
+    pipeline_CBAdditiveQuantileRegressor,
 )
 
 
@@ -543,3 +544,60 @@ def test_multiplicative_quantile_regression_90():
 
     quantile_acc = evaluate_quantile(y, yhat)
     np.testing.assert_almost_equal(quantile_acc, 0.9015, 3)
+
+
+def test_additive_quantile_regression_median():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+    fp = feature_properties()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBAdditiveQuantileRegressor(
+        # observers=plobs,
+        feature_properties=fp,
+        quantile = 0.5
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    quantile_acc = evaluate_quantile(y, yhat)
+    np.testing.assert_almost_equal(quantile_acc, 0.5014, 3)
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.7009, 3)
+
+
+def test_additive_quantile_regression_90():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+    fp = feature_properties()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBAdditiveQuantileRegressor(
+        # observers=plobs,
+        feature_properties=fp,
+        quantile = 0.9
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    quantile_acc = evaluate_quantile(y, yhat)
+    np.testing.assert_almost_equal(quantile_acc, 0.8998, 3)
