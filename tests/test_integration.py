@@ -15,6 +15,7 @@ from cyclic_boosting.pipelines import (
     pipeline_CBNBinomRegressor,
     pipeline_CBNBinomC,
     pipeline_CBGBSRegressor,
+    pipeline_CBMultiplicativeQuantileRegressor,
 )
 
 
@@ -464,3 +465,81 @@ def test_GBS_regression_default_features():
 
     mad = np.nanmean(np.abs(y - yhat))
     np.testing.assert_almost_equal(mad, 2.5755, 3)
+
+
+def evaluate_quantile(y, yhat):
+    quantile_acc = (y <= yhat).mean()
+    return quantile_acc
+
+
+def cb_multiplicative_quantile_regressor_model(quantile):
+    features = get_features()
+
+    fp = feature_properties()
+    explicit_smoothers = {
+        ("dayofyear",): SeasonalSmoother(order=3),
+        ("price_ratio",): IsotonicRegressor(increasing=False),
+    }
+
+    plobs = [
+        observers.PlottingObserver(iteration=1),
+        observers.PlottingObserver(iteration=-1),
+    ]
+
+    CB_pipeline = pipeline_CBMultiplicativeQuantileRegressor(
+        quantile=quantile,
+        feature_properties=fp,
+        feature_groups=features,
+        observers=plobs,
+        maximal_iterations=50,
+        smoother_choice=common_smoothers.SmootherChoiceGroupBy(
+            use_regression_type=True, use_normalization=False, explicit_smoothers=explicit_smoothers
+        ),
+    )
+
+    return CB_pipeline
+
+
+def test_multiplicative_quantile_regression_median():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+
+    quantile = 0.5
+    CB_est = cb_multiplicative_quantile_regressor_model(quantile)
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterfirst',
+    #         [CB_est[-1].observers[0]], CB_est[-2])
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    quantile_acc = evaluate_quantile(y, yhat)
+    np.testing.assert_almost_equal(quantile_acc, 0.5043, 3)
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.6559, 3)
+
+
+def test_multiplicative_quantile_regression_90():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+
+    quantile = 0.9
+    CB_est = cb_multiplicative_quantile_regressor_model(quantile)
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterfirst',
+    #         [CB_est[-1].observers[0]], CB_est[-2])
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    quantile_acc = evaluate_quantile(y, yhat)
+    np.testing.assert_almost_equal(quantile_acc, 0.9015, 3)
