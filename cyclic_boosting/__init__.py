@@ -13,12 +13,14 @@ Multiplicative Regression
 - :class:`~.CBNBinomRegressor`
 - :class:`~.CBExponential`
 - :class:`~.CBMultiplicativeQuantileRegressor`
+- :class:`~.CBMultiplicativeRegressor`
 
 Additive Regression
 
 - :class:`~.CBLocationRegressor`
 - :class:`~.CBLocPoissonRegressor`
 - :class:`~.CBAdditiveQuantileRegressor`
+- :class:`~.CBAdditiveRegressor`
 
 PDF Prediction
 
@@ -43,7 +45,12 @@ from cyclic_boosting.location import CBLocationRegressor, CBLocPoissonRegressor
 from cyclic_boosting.nbinom import CBNBinomC
 from cyclic_boosting.classification import CBClassifier
 from cyclic_boosting.GBSregression import CBGBSRegressor
-from cyclic_boosting.generic_loss import CBMultiplicativeQuantileRegressor, CBAdditiveQuantileRegressor
+from cyclic_boosting.generic_loss import (
+    CBMultiplicativeQuantileRegressor,
+    CBAdditiveQuantileRegressor,
+    CBMultiplicativeRegressor,
+    CBAdditiveRegressor,
+)
 from cyclic_boosting.pipelines import (
     pipeline_CBPoissonRegressor,
     pipeline_CBNBinomRegressor,
@@ -55,6 +62,8 @@ from cyclic_boosting.pipelines import (
     pipeline_CBGBSRegressor,
     pipeline_CBMultiplicativeQuantileRegressor,
     pipeline_CBAdditiveQuantileRegressor,
+    pipeline_CBMultiplicativeRegressor,
+    pipeline_CBAdditiveRegressor,
 )
 
 __all__ = [
@@ -69,6 +78,8 @@ __all__ = [
     "CBGBSRegressor",
     "CBMultiplicativeQuantileRegressor",
     "CBAdditiveQuantileRegressor",
+    "CBMultiplicativeRegressor",
+    "CBAdditiveRegressor",
     "pipeline_CBPoissonRegressor",
     "pipeline_CBNBinomRegressor",
     "pipeline_CBClassifier",
@@ -79,6 +90,8 @@ __all__ = [
     "pipeline_CBGBSRegressor",
     "pipeline_CBMultiplicativeQuantileRegressor",
     "pipeline_CBAdditiveQuantileRegressor",
+    "pipeline_CBMultiplicativeRegressor",
+    "pipeline_CBAdditiveRegressor",
 ]
 
 __version__ = "1.0"
