@@ -144,11 +144,11 @@ class CBGenericLoss(CyclicBoostingBase):
         return self.costs(model, y, weights)
 
     @abc.abstractmethod
-    def model(self, param, yhat_others):
+    def costs(self, prediction, y, weights):
         raise NotImplementedError("implement in subclass")
 
     @abc.abstractmethod
-    def costs(self, prediction, y, weights):
+    def model(self, param, yhat_others):
         raise NotImplementedError("implement in subclass")
 
     @abc.abstractmethod
@@ -197,7 +197,7 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
         smoother_choice=None,
         output_column=None,
         learn_rate=None,
-        quantile=0.5,
+        quantile=None,
         aggregate=True,
     ):
         CyclicBoostingBase.__init__(
@@ -219,11 +219,7 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
         self.quantile = quantile
 
     def _check_y(self, y: np.ndarray) -> None:
-        """Check that y has no negative values."""
-        if not (y >= 0.0).all():
-            raise ValueError(
-                "The target y must be positive semi-definite " "and not NAN. y[~(y>=0)] = {0}".format(y[~(y >= 0)])
-            )
+        check_y_multiplicative(y)
 
     def loss(self, prediction, y, weights):
         """
@@ -248,56 +244,18 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
         return quantile_costs(prediction, y, weights, self.quantile)
 
     def _init_global_scale(self, X, y):
-        """
-        Calculation of the global scale for quantile regression, corresponding
-        to the (continuous approximation of the) respective quantile of the
-        target values used in the training.
-
-        The exact value of the global scale is not critical for the model
-        accuracy (as the model has enough parameters to compensate), but a
-        value not representating a good overall average leads to factors with
-        averages unequal to 1 for each feature (making interpretation more
-        difficult).
-        """
-        if self.weights is None:
-            raise RuntimeError("The weights have to be initialized.")
-
-        self.global_scale_link_ = self.link_func(continuous_quantile_from_discrete(y, self.quantile))
-
-        if self.prior_prediction_column is not None:
-            prior_pred = get_X_column(X, self.prior_prediction_column)
-            finite = np.isfinite(prior_pred)
-            if not np.all(finite):
-                _logger.warning(
-                    "Found a total number of {} non-finite values in the prior prediction column".format(
-                        np.sum(~finite)
-                    )
-                )
-
-            prior_pred_mean = np.sum(prior_pred[finite] * self.weights[finite]) / np.sum(self.weights[finite])
-
-            prior_pred_link_mean = self.link_func(prior_pred_mean)
-
-            if np.isfinite(prior_pred_link_mean):
-                self.prior_pred_link_offset_ = self.global_scale_link_ - prior_pred_link_mean
-            else:
-                warnings.warn(
-                    "The mean prior prediction in link-space is not finite. "
-                    "Therefore no indiviualization is done "
-                    "and no prior mean substraction is necessary."
-                )
-                self.prior_pred_link_offset_ = float(self.global_scale_link_)
-
-    def model(self, param, yhat_others):
-        return param * yhat_others
+        self.global_scale_link_, self.prior_pred_link_offset_ = quantile_global_scale(
+            X, y, self.quantile, self.weights, self.prior_prediction_column, self.link_func
+        )
 
     def costs(self, prediction, y, weights):
         return quantile_costs(prediction, y, weights, self.quantile)
 
+    def model(self, param, yhat_others):
+        return model_multiplicative(param, yhat_others)
+
     def uncertainty(self, y):
-        # use moment-matching of a Gamma posterior with a log-normal
-        # distribution as approximation
-        return np.sqrt(np.log(1 + 2 + np.sum(y)) - np.log(2 + np.sum(y)))
+        return uncertainty_multiplicative(y)
 
 
 class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLinkMixin):
@@ -326,7 +284,7 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
         smoother_choice=None,
         output_column=None,
         learn_rate=None,
-        quantile=0.5,
+        quantile=None,
         aggregate=True,
     ):
         CyclicBoostingBase.__init__(
@@ -347,10 +305,8 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
 
         self.quantile = quantile
 
-    def _check_y(self, y):
-        """Check that y has no negative values."""
-        if not np.isfinite(y).all():
-            raise ValueError("The target y must be real value and not NAN.")
+    def _check_y(self, y: np.ndarray) -> None:
+        check_y_additive(y)
 
     def loss(self, prediction, y, weights):
         """
@@ -375,54 +331,18 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
         return quantile_costs(prediction, y, weights, self.quantile)
 
     def _init_global_scale(self, X, y):
-        """
-        Calculation of the global scale for quantile regression, corresponding
-        to the (continuous approximation of the) respective quantile of the
-        target values used in the training.
-
-        The exact value of the global scale is not critical for the model
-        accuracy (as the model has enough parameters to compensate), but a
-        value not representating a good overall average leads to factors with
-        averages unequal to 1 for each feature (making interpretation more
-        difficult).
-        """
-        if self.weights is None:
-            raise RuntimeError("The weights have to be initialized.")
-
-        self.global_scale_link_ = self.link_func(continuous_quantile_from_discrete(y, self.quantile))
-
-        if self.prior_prediction_column is not None:
-            prior_pred = get_X_column(X, self.prior_prediction_column)
-            finite = np.isfinite(prior_pred)
-            if not np.all(finite):
-                _logger.warning(
-                    "Found a total number of {} non-finite values in the prior prediction column".format(
-                        np.sum(~finite)
-                    )
-                )
-
-            prior_pred_mean = np.sum(prior_pred[finite] * self.weights[finite]) / np.sum(self.weights[finite])
-
-            prior_pred_link_mean = self.link_func(prior_pred_mean)
-
-            if np.isfinite(prior_pred_link_mean):
-                self.prior_pred_link_offset_ = self.global_scale_link_ - prior_pred_link_mean
-            else:
-                warnings.warn(
-                    "The mean prior prediction in link-space is not finite. "
-                    "Therefore no indiviualization is done "
-                    "and no prior mean substraction is necessary."
-                )
-                self.prior_pred_link_offset_ = float(self.global_scale_link_)
-
-    def model(self, param, yhat_others):
-        return param + yhat_others
+        self.global_scale_link_, self.prior_pred_link_offset_ = quantile_global_scale(
+            X, y, self.quantile, self.weights, self.prior_prediction_column, self.link_func
+        )
 
     def costs(self, prediction, y, weights):
         return quantile_costs(prediction, y, weights, self.quantile)
 
+    def model(self, param, yhat_others):
+        return model_additive(param, yhat_others)
+
     def uncertainty(self, y):
-        return 0.001
+        return uncertainty_additive(y)
 
 
 def quantile_costs(prediction, y, weights, quantile):
@@ -450,13 +370,213 @@ def quantile_costs(prediction, y, weights, quantile):
         raise ValueError("Loss cannot be computed on empty data")
     else:
         sum_weighted_error = np.nansum(
-            (
-                (y < prediction) * (1 - quantile) * (prediction - y)
-                + (y >= prediction) * quantile * (y - prediction)
-            )
+            ((y < prediction) * (1 - quantile) * (prediction - y) + (y >= prediction) * quantile * (y - prediction))
             * weights
         )
         return sum_weighted_error / np.nansum(weights)
 
 
-__all__ = ["CBMultiplicativeQuantileRegressor", "CBAdditiveQuantileRegressor"]
+def quantile_global_scale(X, y, quantile, weights, prior_prediction_column, link_func):
+    """
+    Calculation of the global scale for quantile regression, corresponding
+    to the (continuous approximation of the) respective quantile of the
+    target values used in the training.
+
+    The exact value of the global scale is not critical for the model
+    accuracy (as the model has enough parameters to compensate), but a
+    value not representating a good overall average leads to factors with
+    averages unequal to 1 for each feature (making interpretation more
+    difficult).
+    """
+    if weights is None:
+        raise RuntimeError("The weights have to be initialized.")
+
+    global_scale_link_ = link_func(continuous_quantile_from_discrete(y, quantile))
+
+    prior_pred_link_offset_ = None
+    if prior_prediction_column is not None:
+        prior_pred = get_X_column(X, prior_prediction_column)
+        finite = np.isfinite(prior_pred)
+        if not np.all(finite):
+            _logger.warning(
+                "Found a total number of {} non-finite values in the prior prediction column".format(np.sum(~finite))
+            )
+
+        prior_pred_mean = np.sum(prior_pred[finite] * weights[finite]) / np.sum(weights[finite])
+
+        prior_pred_link_mean = link_func(prior_pred_mean)
+
+        if np.isfinite(prior_pred_link_mean):
+            prior_pred_link_offset_ = global_scale_link_ - prior_pred_link_mean
+        else:
+            warnings.warn(
+                "The mean prior prediction in link-space is not finite. "
+                "Therefore no indiviualization is done "
+                "and no prior mean substraction is necessary."
+            )
+            prior_pred_link_offset_ = float(global_scale_link_)
+
+    return global_scale_link_, prior_pred_link_offset_
+
+
+def model_multiplicative(param, yhat_others):
+    return param * yhat_others
+
+
+def uncertainty_multiplicative(y):
+    # use moment-matching of a Gamma posterior with a log-normal
+    # distribution as approximation
+    return np.sqrt(np.log(1 + 2 + np.sum(y)) - np.log(2 + np.sum(y)))
+
+
+def model_additive(param, yhat_others):
+    return param + yhat_others
+
+
+def uncertainty_additive(y):
+    return 0.001
+
+
+def check_y_multiplicative(y: np.ndarray) -> None:
+    """Check that y has no negative values."""
+    if not (y >= 0.0).all():
+        raise ValueError(
+            "The target y must be positive semi-definite " "and not NAN. y[~(y>=0)] = {0}".format(y[~(y >= 0)])
+        )
+
+
+def check_y_additive(y: np.ndarray) -> None:
+    if not np.isfinite(y).all():
+        raise ValueError("The target y must be real value and not NAN.")
+
+
+class CBMultiplicativeRegressor(CBGenericLoss, sklearn.base.RegressorMixin, LogLinkMixin):
+    """
+    Multiplicative regression mode allowing an arbitrary loss function to be
+    minimized in each feature bin.
+
+    Parameters
+    ----------
+    costs : function
+        loss (to be exact, cost) function to be minimized
+    See :class:`cyclic_boosting.base` for all other parameters.
+    """
+
+    def __init__(
+        self,
+        feature_groups=None,
+        feature_properties=None,
+        weight_column=None,
+        prior_prediction_column=None,
+        minimal_loss_change=1e-10,
+        minimal_factor_change=1e-10,
+        maximal_iterations=10,
+        observers=None,
+        smoother_choice=None,
+        output_column=None,
+        learn_rate=None,
+        aggregate=True,
+        costs=None,
+    ):
+        CyclicBoostingBase.__init__(
+            self,
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+        )
+
+        self.costs = costs
+
+    def loss(self, prediction, y, weights):
+        return self.costs(prediction, y, weights)
+
+    def _check_y(self, y: np.ndarray) -> None:
+        check_y_multiplicative(y)
+
+    def costs(self, prediction, y, weights):
+        return self.costs(prediction, y, weights)
+
+    def model(self, param, yhat_others):
+        return model_multiplicative(param, yhat_others)
+
+    def uncertainty(self, y):
+        return uncertainty_multiplicative(y)
+
+
+class CBAdditiveRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLinkMixin):
+    """
+    Additive regression mode allowing an arbitrary loss function to be
+    minimized in each feature bin.
+
+    Parameters
+    ----------
+    costs : function
+        loss (to be exact, cost) function to be minimized
+    See :class:`cyclic_boosting.base` for all other parameters.
+    """
+
+    def __init__(
+        self,
+        feature_groups=None,
+        feature_properties=None,
+        weight_column=None,
+        prior_prediction_column=None,
+        minimal_loss_change=1e-10,
+        minimal_factor_change=1e-10,
+        maximal_iterations=10,
+        observers=None,
+        smoother_choice=None,
+        output_column=None,
+        learn_rate=None,
+        aggregate=True,
+        costs=None,
+    ):
+        CyclicBoostingBase.__init__(
+            self,
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+        )
+
+        self.costs = costs
+
+    def loss(self, prediction, y, weights):
+        return self.costs(prediction, y, weights)
+
+    def _check_y(self, y: np.ndarray) -> None:
+        check_y_additive(y)
+
+    def costs(self, prediction, y, weights):
+        return self.costs(prediction, y, weights)
+
+    def model(self, param, yhat_others):
+        return model_additive(param, yhat_others)
+
+    def uncertainty(self, y):
+        return uncertainty_additive(y)
+
+
+__all__ = [
+    "CBMultiplicativeQuantileRegressor",
+    "CBAdditiveQuantileRegressor",
+    "CBMultiplicativeRegressor",
+    "CBAdditiveRegressor",
+]

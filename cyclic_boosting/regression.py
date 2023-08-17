@@ -12,7 +12,6 @@ import scipy.special
 from cyclic_boosting.base import CyclicBoostingBase
 from cyclic_boosting.features import Feature
 from cyclic_boosting.link import LogLinkMixin
-from cyclic_boosting.utils import get_X_column
 
 from typing import Tuple
 

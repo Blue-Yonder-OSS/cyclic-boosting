@@ -9,6 +9,8 @@ from cyclic_boosting import (
     CBGBSRegressor,
     CBMultiplicativeQuantileRegressor,
     CBAdditiveQuantileRegressor,
+    CBMultiplicativeRegressor,
+    CBAdditiveRegressor,
     binning,
 )
 
@@ -42,7 +44,8 @@ def pipeline_CB(
     bayes=False,
     n_steps=15,
     regalpha=0.0,
-    quantile=0.5,
+    quantile=None,
+    costs=None,
 ):
     if estimator in [CBPoissonRegressor, CBLocPoissonRegressor, CBLocationRegressor, CBClassifier]:
         estimatorCB = estimator(
@@ -143,6 +146,22 @@ def pipeline_CB(
             aggregate=aggregate,
             quantile=quantile,
         )
+    elif estimator in [CBMultiplicativeRegressor, CBAdditiveRegressor]:
+        estimatorCB = estimator(
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+            costs=costs,
+        )
     else:
         raise Exception("No valid CB estimator.")
     binner = binning.BinNumberTransformer(n_bins=number_of_bins, feature_properties=feature_properties)
@@ -218,3 +237,17 @@ def pipeline_CBAdditiveQuantileRegressor(**kwargs):
     Convenience function containing CBAdditiveQuantileRegressor (estimator) + binning.
     """
     return pipeline_CB(CBAdditiveQuantileRegressor, **kwargs)
+
+
+def pipeline_CBMultiplicativeRegressor(**kwargs):
+    """
+    Convenience function containing CBMultiplicativeRegressor (estimator) + binning.
+    """
+    return pipeline_CB(CBMultiplicativeRegressor, **kwargs)
+
+
+def pipeline_CBAdditiveRegressor(**kwargs):
+    """
+    Convenience function containing CBAdditiveRegressor (estimator) + binning.
+    """
+    return pipeline_CB(CBAdditiveRegressor, **kwargs)
