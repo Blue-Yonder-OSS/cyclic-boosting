@@ -11,6 +11,7 @@ from cyclic_boosting import (
     CBAdditiveQuantileRegressor,
     CBMultiplicativeRegressor,
     CBAdditiveRegressor,
+    CBGenericClassifier,
     binning,
 )
 
@@ -146,7 +147,7 @@ def pipeline_CB(
             aggregate=aggregate,
             quantile=quantile,
         )
-    elif estimator in [CBMultiplicativeRegressor, CBAdditiveRegressor]:
+    elif estimator in [CBMultiplicativeRegressor, CBAdditiveRegressor, CBGenericClassifier]:
         estimatorCB = estimator(
             feature_groups=feature_groups,
             feature_properties=feature_properties,
@@ -251,3 +252,10 @@ def pipeline_CBAdditiveRegressor(**kwargs):
     Convenience function containing CBAdditiveRegressor (estimator) + binning.
     """
     return pipeline_CB(CBAdditiveRegressor, **kwargs)
+
+
+def pipeline_CBGenericClassifier(**kwargs):
+    """
+    Convenience function containing CBGenericClassifier (estimator) + binning.
+    """
+    return pipeline_CB(CBGenericClassifier, **kwargs)
