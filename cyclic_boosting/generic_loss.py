@@ -8,8 +8,9 @@ import numpy as np
 import six
 import sklearn.base
 from scipy.optimize import minimize
+from scipy.stats import beta
 
-from cyclic_boosting.base import CyclicBoostingBase
+from cyclic_boosting.base import CyclicBoostingBase, gaussian_matching_by_quantiles
 from cyclic_boosting.link import LogLinkMixin, IdentityLinkMixin, LogitLinkMixin
 from cyclic_boosting.utils import continuous_quantile_from_discrete, get_X_column
 
@@ -111,7 +112,7 @@ class CBGenericLoss(CyclicBoostingBase):
         """
         neutral_factor = self.unlink_func(np.array(self.neutral_factor_link))
         res = minimize(self.objective_function, neutral_factor, args=(yhat_others, y, weights))
-        return res.x, self.uncertainty(y)
+        return res.x, self.uncertainty(y, weights)
 
     def objective_function(self, param, yhat_others, y, weights):
         """
@@ -148,7 +149,7 @@ class CBGenericLoss(CyclicBoostingBase):
         raise NotImplementedError("implement in subclass")
 
     @abc.abstractmethod
-    def uncertainty(self, y):
+    def uncertainty(self, y, weights):
         """
         Estimation of parameter uncertainty for a given feature bin.
 
@@ -156,6 +157,8 @@ class CBGenericLoss(CyclicBoostingBase):
         ----------
         y : np.ndarray
             target variable, containing data with `float` type (potentially discrete)
+        weights : np.ndarray
+            optional (otherwise set to 1) sample weights, containing data with `float` type
 
         Returns
         -------
@@ -252,8 +255,8 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
     def model(self, param, yhat_others):
         return model_multiplicative(param, yhat_others)
 
-    def uncertainty(self, y):
-        return uncertainty_gamma(y)
+    def uncertainty(self, y, weights):
+        return uncertainty_gamma(y, weights)
 
 
 class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLinkMixin):
@@ -342,8 +345,8 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
     def model(self, param, yhat_others):
         return model_additive(param, yhat_others)
 
-    def uncertainty(self, y):
-        return uncertainty_gaussian(y)
+    def uncertainty(self, y, weights):
+        return uncertainty_gaussian(y, weights)
 
 
 def quantile_costs(prediction, y, weights, quantile):
@@ -428,18 +431,32 @@ def model_additive(param, yhat_others):
     return param + yhat_others
 
 
-def uncertainty_gamma(y):
+def uncertainty_gamma(y, weights):
     # use moment-matching of a Gamma posterior with a log-normal
     # distribution as approximation
-    return np.sqrt(np.log(1 + 2 + np.sum(y)) - np.log(2 + np.sum(y)))
+    alpha_prior = 2
+    alpha_posterior = np.sum(y) + alpha_prior
+    sigma = np.sqrt(np.log(1 + alpha_posterior) - np.log(alpha_posterior))
+    return sigma
 
 
-def uncertainty_gaussian(y):
-    return 0.001
+def uncertainty_gaussian(y, weights):
+    return np.sqrt(np.mean(y) / len(y))
 
 
-def uncertainty_beta(y):
-    return 0.001
+def uncertainty_beta(y, weights, link_func):
+    # use moment-matching of a Beta posterior with a log-normal
+    # distribution as approximation
+    alpha_prior = 1.001
+    beta_prior = 1.001
+    alpha_posterior = np.sum(y) + alpha_prior
+    beta_posterior = np.sum(1 - y) + beta_prior
+    shift = 0.4 * (alpha_posterior / (alpha_posterior + beta_posterior) - 0.5)
+    perc1 = 0.75 - shift
+    perc2 = 0.25 - shift
+    posterior = beta(alpha_posterior, beta_posterior)
+    _, sigma = gaussian_matching_by_quantiles(posterior, link_func, perc1, perc2)
+    return sigma
 
 
 def check_y_multiplicative(y: np.ndarray) -> None:
@@ -464,7 +481,7 @@ def check_y_classification(y: np.ndarray) -> None:
         )
 
 
-class CBMultiplicativeRegressor(CBGenericLoss, sklearn.base.RegressorMixin, LogLinkMixin):
+class CBMultiplicativeGenericCRegressor(CBGenericLoss, sklearn.base.RegressorMixin, LogLinkMixin):
     """
     Multiplicative regression mode allowing an arbitrary loss function to be
     minimized in each feature bin.This should be used for non-negative target
@@ -523,11 +540,11 @@ class CBMultiplicativeRegressor(CBGenericLoss, sklearn.base.RegressorMixin, LogL
     def model(self, param, yhat_others):
         return model_multiplicative(param, yhat_others)
 
-    def uncertainty(self, y):
-        return uncertainty_gamma(y)
+    def uncertainty(self, y, weights):
+        return uncertainty_gamma(y, weights)
 
 
-class CBAdditiveRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLinkMixin):
+class CBAdditiveGenericCRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLinkMixin):
     """
     Additive regression mode allowing an arbitrary loss function to be
     minimized in each feature bin. This should be used for unconstrained target
@@ -586,8 +603,8 @@ class CBAdditiveRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLi
     def model(self, param, yhat_others):
         return model_additive(param, yhat_others)
 
-    def uncertainty(self, y):
-        return uncertainty_gaussian(y)
+    def uncertainty(self, y, weights):
+        return uncertainty_gaussian(y, weights)
 
 
 class CBGenericClassifier(CBGenericLoss, sklearn.base.ClassifierMixin, LogitLinkMixin):
@@ -648,14 +665,14 @@ class CBGenericClassifier(CBGenericLoss, sklearn.base.ClassifierMixin, LogitLink
     def model(self, param, yhat_others):
         return model_multiplicative(param, yhat_others)
 
-    def uncertainty(self, y):
-        return uncertainty_beta(y)
+    def uncertainty(self, y, weights):
+        return uncertainty_beta(y, weights, self.link_func)
 
 
 __all__ = [
     "CBMultiplicativeQuantileRegressor",
     "CBAdditiveQuantileRegressor",
-    "CBMultiplicativeRegressor",
-    "CBAdditiveRegressor",
+    "CBMultiplicativeGenericCRegressor",
+    "CBAdditiveGenericCRegressor",
     "CBGenericClassifier",
 ]

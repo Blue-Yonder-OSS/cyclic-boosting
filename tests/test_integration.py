@@ -18,8 +18,8 @@ from cyclic_boosting.pipelines import (
     pipeline_CBGBSRegressor,
     pipeline_CBMultiplicativeQuantileRegressor,
     pipeline_CBAdditiveQuantileRegressor,
-    pipeline_CBMultiplicativeRegressor,
-    pipeline_CBAdditiveRegressor,
+    pipeline_CBMultiplicativeGenericCRegressor,
+    pipeline_CBAdditiveGenericCRegressor,
     pipeline_CBGenericClassifier,
 )
 
@@ -574,10 +574,10 @@ def test_additive_quantile_regression_median():
     yhat = CB_est.predict(X.copy())
 
     quantile_acc = evaluate_quantile(y, yhat)
-    np.testing.assert_almost_equal(quantile_acc, 0.5014, 3)
+    np.testing.assert_almost_equal(quantile_acc, 0.4973, 3)
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.7009, 3)
+    np.testing.assert_almost_equal(mad, 1.6990, 3)
 
 
 def test_additive_quantile_regression_90():
@@ -604,7 +604,7 @@ def test_additive_quantile_regression_90():
     yhat = CB_est.predict(X.copy())
 
     quantile_acc = evaluate_quantile(y, yhat)
-    np.testing.assert_almost_equal(quantile_acc, 0.8998, 3)
+    np.testing.assert_almost_equal(quantile_acc, 0.8969, 3)
 
 
 def costs_mad(prediction, y, weights):
@@ -627,7 +627,7 @@ def test_additive_regression_mad():
     # plobs = [
     #     observers.PlottingObserver(iteration=-1)
     # ]
-    CB_est = pipeline_CBAdditiveRegressor(
+    CB_est = pipeline_CBAdditiveGenericCRegressor(
         # observers=plobs,
         feature_properties=fp,
         costs=costs_mad,
@@ -639,7 +639,7 @@ def test_additive_regression_mad():
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.7003, 3)
+    np.testing.assert_almost_equal(mad, 1.6990, 3)
 
 
 def test_additive_regression_mse():
@@ -654,7 +654,7 @@ def test_additive_regression_mse():
     # plobs = [
     #     observers.PlottingObserver(iteration=-1)
     # ]
-    CB_est = pipeline_CBAdditiveRegressor(
+    CB_est = pipeline_CBAdditiveGenericCRegressor(
         # observers=plobs,
         feature_properties=fp,
         costs=costs_mse,
@@ -666,7 +666,7 @@ def test_additive_regression_mse():
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.7566, 3)
+    np.testing.assert_almost_equal(mad, 1.7480, 3)
 
 
 def test_multiplicative_regression_mad():
@@ -681,7 +681,7 @@ def test_multiplicative_regression_mad():
     # plobs = [
     #     observers.PlottingObserver(iteration=-1)
     # ]
-    CB_est = pipeline_CBMultiplicativeRegressor(
+    CB_est = pipeline_CBMultiplicativeGenericCRegressor(
         # observers=plobs,
         feature_properties=fp,
         costs=costs_mad,
@@ -708,7 +708,7 @@ def test_multiplicative_regression_mse():
     # plobs = [
     #     observers.PlottingObserver(iteration=-1)
     # ]
-    CB_est = pipeline_CBMultiplicativeRegressor(
+    CB_est = pipeline_CBMultiplicativeGenericCRegressor(
         # observers=plobs,
         feature_properties=fp,
         costs=costs_mse,
@@ -727,6 +727,7 @@ def poisson_likelihood(prediction, y, weights):
     negative_log_likelihood = np.nanmean(prediction + np.log(factorial(y)) - np.log(prediction) * y)
     return negative_log_likelihood
 
+
 # commented out due to rather long runtime
 # def test_multiplicative_regression_likelihood():
 #     np.random.seed(42)
@@ -740,7 +741,7 @@ def poisson_likelihood(prediction, y, weights):
 #     # plobs = [
 #     #     observers.PlottingObserver(iteration=-1)
 #     # ]
-#     CB_est = pipeline_CBMultiplicativeRegressor(
+#     CB_est = pipeline_CBMultiplicativeGenericCRegressor(
 #         # observers=plobs,
 #         feature_properties=fp,
 #         costs=poisson_likelihood,
@@ -802,4 +803,4 @@ def test_classification_logloss():
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 0.4021, 3)
+    np.testing.assert_almost_equal(mad, 0.4044, 3)
