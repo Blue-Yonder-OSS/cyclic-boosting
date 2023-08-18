@@ -1,9 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
+from cyclic_boosting.features import Feature
+from typing import Optional, Union
 
 
-def constant_learn_rate_one(iteration, maximal_iteration, feature=None):
+def constant_learn_rate_one(iteration: int, maximal_iteration: int, feature: Optional[Feature] = None) -> float:
     """Function to specify the learning rate of a cyclic boosting iteration.
     The learning rate returned is always 1.
 
@@ -22,7 +24,7 @@ def constant_learn_rate_one(iteration, maximal_iteration, feature=None):
     return 1.0
 
 
-def linear_learn_rate(iteration, maximal_iteration, feature=None):
+def linear_learn_rate(iteration: int, maximal_iteration: Union[int, float], feature: Optional[Feature] = None) -> float:
     """Function to specify the learning rate of a cyclic boosting iteration.
     The learning rate is linear increasing each iteration until it reaches 1 in
     the last iteration.
@@ -43,7 +45,7 @@ def linear_learn_rate(iteration, maximal_iteration, feature=None):
     return iteration * (1.0 / maximal_iteration)
 
 
-def logistic_learn_rate(iteration, maximal_iteration, feature=None):
+def logistic_learn_rate(iteration: int, maximal_iteration: int, feature: Optional[Feature] = None) -> float:
     """Function to specify the learning rate of a cyclic boosting iteration.
     The learning rate has a logistic form.
 
@@ -64,7 +66,7 @@ def logistic_learn_rate(iteration, maximal_iteration, feature=None):
     return (1.0 / (1.0 + np.exp(iteration / x_t)) - 0.5) * 2
 
 
-def half_linear_learn_rate(iteration, maximal_iteration, feature=None):
+def half_linear_learn_rate(iteration: int, maximal_iteration: int, feature: Optional[Feature] = None) -> float:
     """Function to specify the learning rate of a cyclic boosting iteration.
     The learning rate is linear increasing each iteration until it reaches 1 in
     half of the iterations.
