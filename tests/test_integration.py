@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from sklearn.preprocessing import OrdinalEncoder
+from scipy.special import factorial
 
 from cyclic_boosting import flags, common_smoothers, observers
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
@@ -720,6 +721,38 @@ def test_multiplicative_regression_mse():
 
     mad = np.nanmean(np.abs(y - yhat))
     np.testing.assert_almost_equal(mad, 1.7171, 3)
+
+
+def poisson_likelihood(prediction, y, weights):
+    negative_log_likelihood = np.nanmean(prediction + np.log(factorial(y)) - np.log(prediction) * y)
+    return negative_log_likelihood
+
+# commented out due to rather long runtime
+# def test_multiplicative_regression_likelihood():
+#     np.random.seed(42)
+
+#     df = pd.read_csv("./tests/integration_test_data.csv")
+
+#     X, y = prepare_data(df)
+#     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+#     fp = feature_properties()
+#     # plobs = [
+#     #     observers.PlottingObserver(iteration=-1)
+#     # ]
+#     CB_est = pipeline_CBMultiplicativeRegressor(
+#         # observers=plobs,
+#         feature_properties=fp,
+#         costs=poisson_likelihood,
+#     )
+#     CB_est.fit(X.copy(), y)
+#     # plot_CB('analysis_CB_iterlast',
+#     #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+#     yhat = CB_est.predict(X.copy())
+
+#     mad = np.nanmean(np.abs(y - yhat))
+#     np.testing.assert_almost_equal(mad, 1.9310, 3)
 
 
 def costs_logloss(prediction, y, weights):
