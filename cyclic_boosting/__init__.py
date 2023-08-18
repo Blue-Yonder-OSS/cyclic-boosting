@@ -29,6 +29,7 @@ PDF Prediction
 Classification
 
 - :class:`~.CBClassifier`
+- :class:`~.CBGenericClassifier`
 
 Background Subtraction
 
@@ -50,6 +51,7 @@ from cyclic_boosting.generic_loss import (
     CBAdditiveQuantileRegressor,
     CBMultiplicativeRegressor,
     CBAdditiveRegressor,
+    CBGenericClassifier,
 )
 from cyclic_boosting.pipelines import (
     pipeline_CBPoissonRegressor,
@@ -64,6 +66,7 @@ from cyclic_boosting.pipelines import (
     pipeline_CBAdditiveQuantileRegressor,
     pipeline_CBMultiplicativeRegressor,
     pipeline_CBAdditiveRegressor,
+    pipeline_CBGenericClassifier,
 )
 
 __all__ = [
@@ -80,6 +83,7 @@ __all__ = [
     "CBAdditiveQuantileRegressor",
     "CBMultiplicativeRegressor",
     "CBAdditiveRegressor",
+    "CBGenericClassifier",
     "pipeline_CBPoissonRegressor",
     "pipeline_CBNBinomRegressor",
     "pipeline_CBClassifier",
@@ -92,6 +96,7 @@ __all__ = [
     "pipeline_CBAdditiveQuantileRegressor",
     "pipeline_CBMultiplicativeRegressor",
     "pipeline_CBAdditiveRegressor",
+    "pipeline_CBGenericClassifier",
 ]
 
 __version__ = "1.0"

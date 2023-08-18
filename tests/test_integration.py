@@ -19,6 +19,7 @@ from cyclic_boosting.pipelines import (
     pipeline_CBAdditiveQuantileRegressor,
     pipeline_CBMultiplicativeRegressor,
     pipeline_CBAdditiveRegressor,
+    pipeline_CBGenericClassifier,
 )
 
 
@@ -719,3 +720,53 @@ def test_multiplicative_regression_mse():
 
     mad = np.nanmean(np.abs(y - yhat))
     np.testing.assert_almost_equal(mad, 1.7171, 3)
+
+
+def costs_logloss(prediction, y, weights):
+    prediction = np.where(prediction < 0.001, 0.001, prediction)
+    prediction = np.where(prediction > 0.999, 0.999, prediction)
+    return -np.nanmean(y * np.log(prediction) + (1 - y) * np.log(1 - prediction))
+
+
+def cb_classifier_logloss_model():
+    features = get_features()
+
+    fp = feature_properties()
+    explicit_smoothers = {
+        ("dayofyear",): SeasonalSmoother(order=3),
+        ("price_ratio",): IsotonicRegressor(increasing=False),
+    }
+
+    plobs = [observers.PlottingObserver(iteration=-1)]
+
+    CB_pipeline = pipeline_CBGenericClassifier(
+        feature_properties=fp,
+        feature_groups=features,
+        observers=plobs,
+        maximal_iterations=50,
+        smoother_choice=common_smoothers.SmootherChoiceGroupBy(
+            use_regression_type=True, use_normalization=False, explicit_smoothers=explicit_smoothers
+        ),
+        costs=costs_logloss,
+    )
+
+    return CB_pipeline
+
+
+def test_classification_logloss():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    y = y >= 3
+
+    CB_est = cb_classifier_logloss_model()
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 0.4021, 3)

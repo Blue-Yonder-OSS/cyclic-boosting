@@ -10,7 +10,7 @@ import sklearn.base
 from scipy.optimize import minimize
 
 from cyclic_boosting.base import CyclicBoostingBase
-from cyclic_boosting.link import LogLinkMixin, IdentityLinkMixin
+from cyclic_boosting.link import LogLinkMixin, IdentityLinkMixin, LogitLinkMixin
 from cyclic_boosting.utils import continuous_quantile_from_discrete, get_X_column
 
 _logger = logging.getLogger(__name__)
@@ -75,17 +75,16 @@ class CBGenericLoss(CyclicBoostingBase):
                 y_pred_bins[bin][:, 0], y_pred_bins[bin][:, 1], y_pred_bins[bin][:, 2]
             )
 
+        neutral_factor = self.unlink_func(np.array(self.neutral_factor_link))
         if n_bins + 1 == feature.n_bins:
-            if self.neutral_factor_link == 0:
-                neutral_factor = 0
-            else:
-                neutral_factor = self.unlink_func(self.neutral_factor_link)
             parameters = np.append(parameters, neutral_factor)
             uncertainties = np.append(uncertainties, 0)
 
-        epsilon = 1e-5
-        parameters = np.where(np.abs(parameters) < epsilon, epsilon, parameters)
-        return self.link_func(parameters), uncertainties
+        if neutral_factor != 0:
+            epsilon = 1e-5
+            parameters = np.where(np.abs(parameters) < epsilon, epsilon, parameters)
+            parameters = np.log(parameters)
+        return parameters, uncertainties
 
     def optimization(self, y, yhat_others, weights):
         """
@@ -110,10 +109,7 @@ class CBGenericLoss(CyclicBoostingBase):
         float, float
             estimated parameter and its uncertainty
         """
-        if self.neutral_factor_link == 0:
-            neutral_factor = 0
-        else:
-            neutral_factor = self.unlink_func(self.neutral_factor_link)
+        neutral_factor = self.unlink_func(np.array(self.neutral_factor_link))
         res = minimize(self.objective_function, neutral_factor, args=(yhat_others, y, weights))
         return res.x, self.uncertainty(y)
 
@@ -176,6 +172,8 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
     of each feature. While its general structure allows arbitrary/empirical
     target ranges/distributions, the multiplicative model of this mode requires
     non-negative target values.
+
+    This should be used for non-negative target ranges, i.e., 0 to infinity.
 
     Parameters
     ----------
@@ -255,7 +253,7 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
         return model_multiplicative(param, yhat_others)
 
     def uncertainty(self, y):
-        return uncertainty_multiplicative(y)
+        return uncertainty_gamma(y)
 
 
 class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLinkMixin):
@@ -263,6 +261,9 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
     Cyclic Boosting additive quantile-regression mode. A quantile loss,
     according to the desired quantile to be predicted, is minimized in each bin
     of each feature.
+
+    This should be used for unconstrained target ranges, i.e., -infinity to
+    infinity.
 
     Parameters
     ----------
@@ -342,7 +343,7 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
         return model_additive(param, yhat_others)
 
     def uncertainty(self, y):
-        return uncertainty_additive(y)
+        return uncertainty_gaussian(y)
 
 
 def quantile_costs(prediction, y, weights, quantile):
@@ -423,17 +424,21 @@ def model_multiplicative(param, yhat_others):
     return param * yhat_others
 
 
-def uncertainty_multiplicative(y):
+def model_additive(param, yhat_others):
+    return param + yhat_others
+
+
+def uncertainty_gamma(y):
     # use moment-matching of a Gamma posterior with a log-normal
     # distribution as approximation
     return np.sqrt(np.log(1 + 2 + np.sum(y)) - np.log(2 + np.sum(y)))
 
 
-def model_additive(param, yhat_others):
-    return param + yhat_others
+def uncertainty_gaussian(y):
+    return 0.001
 
 
-def uncertainty_additive(y):
+def uncertainty_beta(y):
     return 0.001
 
 
@@ -450,10 +455,20 @@ def check_y_additive(y: np.ndarray) -> None:
         raise ValueError("The target y must be real value and not NAN.")
 
 
+def check_y_classification(y: np.ndarray) -> None:
+    """Check that y has only values 0. or 1."""
+    if not ((y == 0.0) | (y == 1.0)).all():
+        raise ValueError(
+            "The target y must be either 0 or 1 "
+            "and not NAN. y[(y != 0) & (y != 1)] = {0}".format(y[(y != 0) & (y != 1)])
+        )
+
+
 class CBMultiplicativeRegressor(CBGenericLoss, sklearn.base.RegressorMixin, LogLinkMixin):
     """
     Multiplicative regression mode allowing an arbitrary loss function to be
-    minimized in each feature bin.
+    minimized in each feature bin.This should be used for non-negative target
+    ranges, i.e., 0 to infinity.
 
     Parameters
     ----------
@@ -509,13 +524,14 @@ class CBMultiplicativeRegressor(CBGenericLoss, sklearn.base.RegressorMixin, LogL
         return model_multiplicative(param, yhat_others)
 
     def uncertainty(self, y):
-        return uncertainty_multiplicative(y)
+        return uncertainty_gamma(y)
 
 
 class CBAdditiveRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLinkMixin):
     """
     Additive regression mode allowing an arbitrary loss function to be
-    minimized in each feature bin.
+    minimized in each feature bin. This should be used for unconstrained target
+    ranges, i.e., -infinity to infinity.
 
     Parameters
     ----------
@@ -571,7 +587,69 @@ class CBAdditiveRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLi
         return model_additive(param, yhat_others)
 
     def uncertainty(self, y):
-        return uncertainty_additive(y)
+        return uncertainty_gaussian(y)
+
+
+class CBGenericClassifier(CBGenericLoss, sklearn.base.ClassifierMixin, LogitLinkMixin):
+    """
+    Multiplicative (binary, i.e., target values 0 and 1) classification mode
+    allowing an arbitrary loss function to be minimized in each feature bin.
+
+    Parameters
+    ----------
+    costs : function
+        loss (to be exact, cost) function to be minimized
+    See :class:`cyclic_boosting.base` for all other parameters.
+    """
+
+    def __init__(
+        self,
+        feature_groups=None,
+        feature_properties=None,
+        weight_column=None,
+        prior_prediction_column=None,
+        minimal_loss_change=1e-10,
+        minimal_factor_change=1e-10,
+        maximal_iterations=10,
+        observers=None,
+        smoother_choice=None,
+        output_column=None,
+        learn_rate=None,
+        aggregate=True,
+        costs=None,
+    ):
+        CyclicBoostingBase.__init__(
+            self,
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+        )
+
+        self.costs = costs
+
+    def loss(self, prediction, y, weights):
+        return self.costs(prediction, y, weights)
+
+    def _check_y(self, y: np.ndarray) -> None:
+        check_y_classification(y)
+
+    def costs(self, prediction, y, weights):
+        return self.costs(prediction, y, weights)
+
+    def model(self, param, yhat_others):
+        return model_multiplicative(param, yhat_others)
+
+    def uncertainty(self, y):
+        return uncertainty_beta(y)
 
 
 __all__ = [
@@ -579,4 +657,5 @@ __all__ = [
     "CBAdditiveQuantileRegressor",
     "CBMultiplicativeRegressor",
     "CBAdditiveRegressor",
+    "CBGenericClassifier",
 ]
