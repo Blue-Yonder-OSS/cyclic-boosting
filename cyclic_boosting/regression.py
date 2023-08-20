@@ -13,7 +13,7 @@ from cyclic_boosting.base import CyclicBoostingBase, CBLinkPredictionsFactors
 from cyclic_boosting.features import Feature
 from cyclic_boosting.link import LogLinkMixin
 
-from typing import Tuple, Union
+from typing import Tuple
 
 _logger = logging.getLogger(__name__)
 

@@ -5,14 +5,18 @@ import logging
 import warnings
 
 import numpy as np
+import pandas as pd
 import six
 import sklearn.base
 from scipy.optimize import minimize
 from scipy.stats import beta
 
-from cyclic_boosting.base import CyclicBoostingBase, gaussian_matching_by_quantiles
+from cyclic_boosting.base import CyclicBoostingBase, gaussian_matching_by_quantiles, Feature, CBLinkPredictionsFactors
 from cyclic_boosting.link import LogLinkMixin, IdentityLinkMixin, LogitLinkMixin
 from cyclic_boosting.utils import continuous_quantile_from_discrete, get_X_column
+from cyclic_boosting.classification import get_beta_priors
+
+from typing import Tuple, Union
 
 _logger = logging.getLogger(__name__)
 
@@ -28,10 +32,12 @@ class CBGenericLoss(CyclicBoostingBase):
     ``CBNBinomRegressor``, or ``CBLocationRegressor``).
     """
 
-    def precalc_parameters(self, feature, y, pred):
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors) -> None:
         pass
 
-    def calc_parameters(self, feature, y, pred, prefit_data):
+    def calc_parameters(
+        self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors, prefit_data
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calling of the optimization (loss minimization) for the different bins
         of the feature at hand. In contrast to the analytical solution in most
@@ -87,7 +93,7 @@ class CBGenericLoss(CyclicBoostingBase):
             parameters = np.log(parameters)
         return parameters, uncertainties
 
-    def optimization(self, y, yhat_others, weights):
+    def optimization(self, y: np.ndarray, yhat_others: np.ndarray, weights: np.ndarray) -> Tuple[float, float]:
         """
         Minimization of the costs (potentially including sample weights) for
         individual feature bins. The initial value for the parameters is set to
@@ -114,7 +120,7 @@ class CBGenericLoss(CyclicBoostingBase):
         res = minimize(self.objective_function, neutral_factor, args=(yhat_others, y, weights))
         return res.x, self.uncertainty(y, weights)
 
-    def objective_function(self, param, yhat_others, y, weights):
+    def objective_function(self, param: float, yhat_others: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Calculation of the in-sample costs (potentially including sample
         weights) for individual feature bins according to a given loss
@@ -141,15 +147,15 @@ class CBGenericLoss(CyclicBoostingBase):
         return self.costs(model, y, weights)
 
     @abc.abstractmethod
-    def costs(self, prediction, y, weights):
+    def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         raise NotImplementedError("implement in subclass")
 
     @abc.abstractmethod
-    def model(self, param, yhat_others):
+    def model(self, param: float, yhat_others: np.ndarray) -> np.ndarray:
         raise NotImplementedError("implement in subclass")
 
     @abc.abstractmethod
-    def uncertainty(self, y, weights):
+    def uncertainty(self, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Estimation of parameter uncertainty for a given feature bin.
 
@@ -222,7 +228,7 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
     def _check_y(self, y: np.ndarray) -> None:
         check_y_multiplicative(y)
 
-    def loss(self, prediction, y, weights):
+    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Calculation of the in-sample quantile loss, or to be exact costs,
         (potentially including sample weights) after full feature cycles, i.e.,
@@ -244,18 +250,18 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
         """
         return quantile_costs(prediction, y, weights, self.quantile)
 
-    def _init_global_scale(self, X, y):
+    def _init_global_scale(self, X: Union[pd.DataFrame, np.ndarray], y: np.ndarray) -> None:
         self.global_scale_link_, self.prior_pred_link_offset_ = quantile_global_scale(
             X, y, self.quantile, self.weights, self.prior_prediction_column, self.link_func
         )
 
-    def costs(self, prediction, y, weights):
+    def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         return quantile_costs(prediction, y, weights, self.quantile)
 
-    def model(self, param, yhat_others):
+    def model(self, param: float, yhat_others: np.ndarray) -> np.ndarray:
         return model_multiplicative(param, yhat_others)
 
-    def uncertainty(self, y, weights):
+    def uncertainty(self, y: np.ndarray, weights: np.ndarray) -> float:
         return uncertainty_gamma(y, weights)
 
 
@@ -312,7 +318,7 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
     def _check_y(self, y: np.ndarray) -> None:
         check_y_additive(y)
 
-    def loss(self, prediction, y, weights):
+    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Calculation of the in-sample quantile loss, or to be exact costs,
         (potentially including sample weights) after full feature cycles, i.e.,
@@ -334,22 +340,22 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
         """
         return quantile_costs(prediction, y, weights, self.quantile)
 
-    def _init_global_scale(self, X, y):
+    def _init_global_scale(self, X: Union[pd.DataFrame, np.ndarray], y: np.ndarray) -> None:
         self.global_scale_link_, self.prior_pred_link_offset_ = quantile_global_scale(
             X, y, self.quantile, self.weights, self.prior_prediction_column, self.link_func
         )
 
-    def costs(self, prediction, y, weights):
+    def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         return quantile_costs(prediction, y, weights, self.quantile)
 
-    def model(self, param, yhat_others):
+    def model(self, param: float, yhat_others: np.ndarray) -> np.ndarray:
         return model_additive(param, yhat_others)
 
-    def uncertainty(self, y, weights):
+    def uncertainty(self, y: np.ndarray, weights: np.ndarray) -> float:
         return uncertainty_gaussian(y, weights)
 
 
-def quantile_costs(prediction, y, weights, quantile):
+def quantile_costs(prediction: np.ndarray, y: np.ndarray, weights: np.ndarray, quantile: float) -> float:
     """
     Calculation of the in-sample quantile costs (potentially including sample
     weights).
@@ -380,7 +386,14 @@ def quantile_costs(prediction, y, weights, quantile):
         return sum_weighted_error / np.nansum(weights)
 
 
-def quantile_global_scale(X, y, quantile, weights, prior_prediction_column, link_func):
+def quantile_global_scale(
+    X: Union[pd.DataFrame, np.ndarray],
+    y: np.ndarray,
+    quantile: float,
+    weights: np.ndarray,
+    prior_prediction_column: Union[str, int, None],
+    link_func,
+) -> None:
     """
     Calculation of the global scale for quantile regression, corresponding
     to the (continuous approximation of the) respective quantile of the
@@ -423,15 +436,15 @@ def quantile_global_scale(X, y, quantile, weights, prior_prediction_column, link
     return global_scale_link_, prior_pred_link_offset_
 
 
-def model_multiplicative(param, yhat_others):
+def model_multiplicative(param: float, yhat_others: np.ndarray) -> np.ndarray:
     return param * yhat_others
 
 
-def model_additive(param, yhat_others):
+def model_additive(param: float, yhat_others: np.ndarray) -> np.ndarray:
     return param + yhat_others
 
 
-def uncertainty_gamma(y, weights):
+def uncertainty_gamma(y: np.ndarray, weights: np.ndarray) -> float:
     # use moment-matching of a Gamma posterior with a log-normal
     # distribution as approximation
     alpha_prior = 2
@@ -440,15 +453,14 @@ def uncertainty_gamma(y, weights):
     return sigma
 
 
-def uncertainty_gaussian(y, weights):
+def uncertainty_gaussian(y: np.ndarray, weights: np.ndarray) -> float:
     return np.sqrt(np.mean(y) / len(y))
 
 
-def uncertainty_beta(y, weights, link_func):
+def uncertainty_beta(y: np.ndarray, weights: np.ndarray, link_func) -> float:
     # use moment-matching of a Beta posterior with a log-normal
     # distribution as approximation
-    alpha_prior = 1.001
-    beta_prior = 1.001
+    alpha_prior, beta_prior = get_beta_priors()
     alpha_posterior = np.sum(y) + alpha_prior
     beta_posterior = np.sum(1 - y) + beta_prior
     shift = 0.4 * (alpha_posterior / (alpha_posterior + beta_posterior) - 0.5)
@@ -528,19 +540,19 @@ class CBMultiplicativeGenericCRegressor(CBGenericLoss, sklearn.base.RegressorMix
 
         self.costs = costs
 
-    def loss(self, prediction, y, weights):
+    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         return self.costs(prediction, y, weights)
 
     def _check_y(self, y: np.ndarray) -> None:
         check_y_multiplicative(y)
 
-    def costs(self, prediction, y, weights):
+    def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         return self.costs(prediction, y, weights)
 
-    def model(self, param, yhat_others):
+    def model(self, param: float, yhat_others: np.ndarray) -> np.ndarray:
         return model_multiplicative(param, yhat_others)
 
-    def uncertainty(self, y, weights):
+    def uncertainty(self, y: np.ndarray, weights: np.ndarray) -> float:
         return uncertainty_gamma(y, weights)
 
 
@@ -591,19 +603,19 @@ class CBAdditiveGenericCRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
 
         self.costs = costs
 
-    def loss(self, prediction, y, weights):
+    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         return self.costs(prediction, y, weights)
 
     def _check_y(self, y: np.ndarray) -> None:
         check_y_additive(y)
 
-    def costs(self, prediction, y, weights):
+    def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         return self.costs(prediction, y, weights)
 
-    def model(self, param, yhat_others):
+    def model(self, param: float, yhat_others: np.ndarray) -> np.ndarray:
         return model_additive(param, yhat_others)
 
-    def uncertainty(self, y, weights):
+    def uncertainty(self, y: np.ndarray, weights: np.ndarray) -> float:
         return uncertainty_gaussian(y, weights)
 
 
@@ -653,19 +665,19 @@ class CBGenericClassifier(CBGenericLoss, sklearn.base.ClassifierMixin, LogitLink
 
         self.costs = costs
 
-    def loss(self, prediction, y, weights):
+    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         return self.costs(prediction, y, weights)
 
     def _check_y(self, y: np.ndarray) -> None:
         check_y_classification(y)
 
-    def costs(self, prediction, y, weights):
+    def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         return self.costs(prediction, y, weights)
 
-    def model(self, param, yhat_others):
+    def model(self, param: float, yhat_others: np.ndarray) -> np.ndarray:
         return model_multiplicative(param, yhat_others)
 
-    def uncertainty(self, y, weights):
+    def uncertainty(self, y: np.ndarray, weights: np.ndarray) -> float:
         return uncertainty_beta(y, weights, self.link_func)
 
 
