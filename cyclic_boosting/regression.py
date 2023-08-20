@@ -9,14 +9,15 @@ import numpy as np
 import six
 import sklearn.base
 import scipy.special
+import pandas as pd
 from scipy.optimize import minimize
 
-from cyclic_boosting.base import CyclicBoostingBase
+from cyclic_boosting.base import CyclicBoostingBase, CBLinkPredictionsFactors
 from cyclic_boosting.features import Feature
 from cyclic_boosting.link import LogLinkMixin
 from cyclic_boosting.utils import continuous_quantile_from_discrete, get_X_column
 
-from typing import Tuple
+from typing import Tuple, Union
 
 _logger = logging.getLogger(__name__)
 
@@ -77,11 +78,11 @@ class CBBaseRegressor(CyclicBoostingBase, sklearn.base.RegressorMixin, LogLinkMi
             )
 
     @abc.abstractmethod
-    def calc_parameters(self, feature: Feature, y: np.ndarray, pred, prefit_data):
+    def calc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors, prefit_data):
         raise NotImplementedError("implement in subclass")
 
     @abc.abstractmethod
-    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred) -> None:
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors) -> None:
         return None
 
 
@@ -138,26 +139,27 @@ class CBNBinomRegressor(CBBaseRegressor):
             learn_rate=learn_rate,
             aggregate=aggregate,
         )
-        self.a = a
+        self.a = a  # TODO: a and c as variable names are too vague
         self.c = c
 
-    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred):
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors):
         pass
 
-    def calc_parameters(self, feature: Feature, y: np.ndarray, pred, prefit_data) -> Tuple[np.ndarray]:
-        prediction_link = pred.predict_link()
-        weights = self.weights  # noqa: F841
-        lex_binnumbers = feature.lex_binned_data
-        minlength = feature.n_bins
-        prediction = self.unlink_func(prediction_link)  # noqa: F841
+    def calc_parameters(
+        self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors, prefit_data
+    ) -> Tuple[np.ndarray]:
         a = self.a  # noqa: F841
         c = self.c  # noqa: F841
+        weights = self.weights  # noqa: F841
+        prediction_link = pred.predict_link()
+        prediction = self.unlink_func(prediction_link)  # noqa: F841
 
-        w = numexpr.evaluate("weights * y / (a + c * prediction)")
-        alpha = np.bincount(lex_binnumbers, weights=w, minlength=minlength)
+        alpha_w = numexpr.evaluate("weights * y / (a + c * prediction)")
+        beta_w = numexpr.evaluate("weights * prediction / (a + c * prediction)")
 
-        w = numexpr.evaluate("weights * prediction / (a + c * prediction)")
-        beta = np.bincount(lex_binnumbers, weights=w, minlength=minlength)
+        lex_binnumbers = feature.lex_binned_data
+        minlength = feature.n_bins
+        alpha, beta = (np.bincount(lex_binnumbers, weights=w, minlength=minlength) for w in [alpha_w, beta_w])
         link_func = self.link_func
 
         return _calc_factors_and_uncertainties(alpha, beta, link_func)
@@ -172,10 +174,10 @@ class CBPoissonRegressor(CBBaseRegressor):
     Poisson-distributed target values.
     """
 
-    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred):
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors):
         return np.bincount(feature.lex_binned_data, weights=y * self.weights, minlength=feature.n_bins)
 
-    def calc_parameters(self, feature: Feature, y: np.ndarray, pred, prefit_data):
+    def calc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors, prefit_data):
         prediction = self.unlink_func(pred.predict_link())
 
         prediction_sum_of_bins = np.bincount(
@@ -241,10 +243,10 @@ class CBMultiplicativeQuantileRegressor(CBBaseRegressor):
 
         self.quantile = quantile
 
-    def precalc_parameters(self, feature, y, pred):
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors):
         pass
 
-    def loss(self, prediction, y, weights):
+    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> np.ndarray:
         """
         Calculation of the in-sample quantile loss, or to be exact costs,
         (potentially including sample weights) after full feature cycles, i.e.,
@@ -276,7 +278,7 @@ class CBMultiplicativeQuantileRegressor(CBBaseRegressor):
             )
             return sum_weighted_error / np.nansum(weights)
 
-    def _init_global_scale(self, X, y):
+    def _init_global_scale(self, X: Union[pd.DataFrame, np.ndarray], y: np.ndarray) -> None:
         """
         Calculation of the global scale for quantile regression, corresponding
         to the (continuous approximation of the) respective quantile of the
@@ -317,7 +319,7 @@ class CBMultiplicativeQuantileRegressor(CBBaseRegressor):
                 )
                 self.prior_pred_link_offset_ = float(self.global_scale_link_)
 
-    def quantile_costs(self, param, yhat_others, y, weights):
+    def quantile_costs(self, param: float, yhat_others: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Calculation of the in-sample quantile costs (potentially including
         sample weights) for individual feature bins according to a quantile
@@ -346,7 +348,7 @@ class CBMultiplicativeQuantileRegressor(CBBaseRegressor):
         sum_weighted_error = np.nansum(quantile_loss * weights)
         return sum_weighted_error / np.nansum(weights)
 
-    def optimization(self, y, yhat_others, weights):
+    def optimization(self, y: np.ndarray, yhat_others: np.ndarray, weights: np.ndarray) -> Tuple[float, float]:
         """
         Minimization of the quantile costs (potentially including sample
         weights) for individual feature bins. The initial value for the factors
@@ -369,13 +371,15 @@ class CBMultiplicativeQuantileRegressor(CBBaseRegressor):
         float, float
             estimated parameter (factor) and its uncertainty
         """
-        res = minimize(self.quantile_costs, 1, args=(yhat_others, y, weights))
+        res = minimize(fun=self.quantile_costs, x0=1, args=(yhat_others, y, weights))
         # use moment-matching of a Gamma posterior with a log-normal
         # distribution as approximation
         uncertainty = np.sqrt(np.log(1 + 2 + np.sum(y)) - np.log(2 + np.sum(y)))
         return res.x, uncertainty
 
-    def calc_parameters(self, feature, y, pred, prefit_data):
+    def calc_parameters(
+        self, feature: Feature, y: np.ndarray, pred: np.ndarray, prefit_data
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Calling of the optimization (quantile loss minimization) for the
         different bins of the feature at hand. In contrast to the analytical
@@ -415,9 +419,9 @@ class CBMultiplicativeQuantileRegressor(CBBaseRegressor):
         factors = np.zeros(n_bins)
         uncertainties = np.zeros(n_bins)
 
-        for bin in range(n_bins):
-            factors[bin], uncertainties[bin] = self.optimization(
-                y_pred_bins[bin][:, 0], y_pred_bins[bin][:, 1], y_pred_bins[bin][:, 2]
+        for bin_i in range(n_bins):
+            factors[bin_i], uncertainties[bin_i] = self.optimization(
+                y_pred_bins[bin_i][:, 0], y_pred_bins[bin_i][:, 1], y_pred_bins[bin_i][:, 2]
             )
 
         if n_bins + 1 == feature.n_bins:
