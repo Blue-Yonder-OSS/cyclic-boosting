@@ -23,7 +23,27 @@ scikit-learn = ">=0.18.2"
 pandas = ">=0.20.3"
 matplotlib = ">=1.5.1"
 hypothesis = "^6.70.0"
-scipy = ">=1.7"
+
+scipy = "^1.9"
+
+# I expected this to work, but it returns the following error despite
+# numba-scipy is not defined for python >= 3.10
+#
+# Because numba-scipy (0.3.1) depends on scipy (>=0.16,<=1.7.3)
+# and no versions of numba-scipy match >0.3.1, numba-scipy (>=0.3.1) requires scipy (>=0.16,<=1.7.3).
+# So, because cyclic-boosting depends on both numba-scipy (>=0.3.1) and scipy (>=1.9), version solving failed.
+
+
+# numba-scipy = [
+#    { version  = ">=0.3.1", python = "<3.10", optional = true }
+# ]
+# scipy = [
+#    { version = ">=0.16,<=1.7.3", python = "<3.10"},
+#    { version = ">=1.9", python = ">=3.10" }
+# ]
+
+# [tool.poetry.extras]
+# nb_scipy = ['numba-scipy']
 
 
 [tool.poetry.group.dev.dependencies]
