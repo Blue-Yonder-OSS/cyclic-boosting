@@ -8,6 +8,10 @@ from cyclic_boosting import (
     CBClassifier,
     CBGBSRegressor,
     CBMultiplicativeQuantileRegressor,
+    CBAdditiveQuantileRegressor,
+    CBMultiplicativeGenericCRegressor,
+    CBAdditiveGenericCRegressor,
+    CBGenericClassifier,
     binning,
 )
 
@@ -41,7 +45,8 @@ def pipeline_CB(
     bayes=False,
     n_steps=15,
     regalpha=0.0,
-    quantile=0.5,
+    quantile=None,
+    costs=None,
 ):
     if estimator in [CBPoissonRegressor, CBLocPoissonRegressor, CBLocationRegressor, CBClassifier]:
         estimatorCB = estimator(
@@ -126,7 +131,7 @@ def pipeline_CB(
             aggregate=aggregate,
             regalpha=regalpha,
         )
-    elif estimator == CBMultiplicativeQuantileRegressor:
+    elif estimator in [CBMultiplicativeQuantileRegressor, CBAdditiveQuantileRegressor]:
         estimatorCB = estimator(
             feature_groups=feature_groups,
             feature_properties=feature_properties,
@@ -141,6 +146,22 @@ def pipeline_CB(
             learn_rate=learn_rate,
             aggregate=aggregate,
             quantile=quantile,
+        )
+    elif estimator in [CBMultiplicativeGenericCRegressor, CBAdditiveGenericCRegressor, CBGenericClassifier]:
+        estimatorCB = estimator(
+            feature_groups=feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+            costs=costs,
         )
     else:
         raise Exception("No valid CB estimator.")
@@ -210,3 +231,31 @@ def pipeline_CBMultiplicativeQuantileRegressor(**kwargs):
     Convenience function containing CBMultiplicativeQuantileRegressor (estimator) + binning.
     """
     return pipeline_CB(CBMultiplicativeQuantileRegressor, **kwargs)
+
+
+def pipeline_CBAdditiveQuantileRegressor(**kwargs):
+    """
+    Convenience function containing CBAdditiveQuantileRegressor (estimator) + binning.
+    """
+    return pipeline_CB(CBAdditiveQuantileRegressor, **kwargs)
+
+
+def pipeline_CBMultiplicativeGenericCRegressor(**kwargs):
+    """
+    Convenience function containing CBMultiplicativeGenericCRegressor (estimator) + binning.
+    """
+    return pipeline_CB(CBMultiplicativeGenericCRegressor, **kwargs)
+
+
+def pipeline_CBAdditiveGenericCRegressor(**kwargs):
+    """
+    Convenience function containing CBAdditiveGenericCRegressor (estimator) + binning.
+    """
+    return pipeline_CB(CBAdditiveGenericCRegressor, **kwargs)
+
+
+def pipeline_CBGenericClassifier(**kwargs):
+    """
+    Convenience function containing CBGenericClassifier (estimator) + binning.
+    """
+    return pipeline_CB(CBGenericClassifier, **kwargs)

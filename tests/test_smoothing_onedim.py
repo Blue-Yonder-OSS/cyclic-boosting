@@ -100,7 +100,8 @@ def test_exceptions():
 
 
 def test_warning_custom_function_and_order():
-    my_cff = lambda x: x
+    def my_cff(x):
+        return x
 
     with warnings.catch_warnings(record=True) as w:
         smoothing.onedim.SeasonalSmoother(order=3, custom_fit_function=my_cff)

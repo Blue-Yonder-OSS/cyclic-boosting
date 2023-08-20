@@ -923,7 +923,7 @@ class CyclicBoostingBase(
             return [(feature.feature_id, feature.smoother) for feature in self.features]
 
     @abc.abstractmethod
-    def calc_parameters(self, feature: Feature, y: np.ndarray, prediction_link: np.ndarray, prefit_data):
+    def calc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors, prefit_data):
         """Calculates factors and uncertainties of the bins of a feature group
         in the original space (not the link space) and transforms them to the
         link space afterwards
@@ -944,8 +944,9 @@ class CyclicBoostingBase(
             class containing all features
         y: np.ndarray
             target, truth
-        prediction_link: np.ndarray
-            prediction in link space of all *other* features.
+        pred
+            (in-sample) predictions from all other features (excluding the one
+            at hand)
         prefit_data
             data returned by :meth:`~.precalc_parameters` during fit
 
@@ -958,7 +959,7 @@ class CyclicBoostingBase(
         raise NotImplementedError("implement in subclass")
 
     @abc.abstractmethod
-    def precalc_parameters(self, feature: Feature, y: np.ndarray, prediction_link: np.ndarray):
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors):
         """Calculations that are not  dependent on intermediate predictions. If
         these are not needed, return :obj:`None` in the subclass.
 
@@ -971,8 +972,9 @@ class CyclicBoostingBase(
             class containing all features
         y: np.ndarray
             target, truth
-        prediction_link: np.ndarray
-            prediction in link space.
+        pred
+            (in-sample) predictions from all other features (excluding the one
+            at hand)
         """
         return None
 

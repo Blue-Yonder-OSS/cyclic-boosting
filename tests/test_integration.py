@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from sklearn.preprocessing import OrdinalEncoder
+from scipy.special import factorial
 
 from cyclic_boosting import flags, common_smoothers, observers
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
@@ -16,6 +17,10 @@ from cyclic_boosting.pipelines import (
     pipeline_CBNBinomC,
     pipeline_CBGBSRegressor,
     pipeline_CBMultiplicativeQuantileRegressor,
+    pipeline_CBAdditiveQuantileRegressor,
+    pipeline_CBMultiplicativeGenericCRegressor,
+    pipeline_CBAdditiveGenericCRegressor,
+    pipeline_CBGenericClassifier,
 )
 
 
@@ -543,3 +548,259 @@ def test_multiplicative_quantile_regression_90():
 
     quantile_acc = evaluate_quantile(y, yhat)
     np.testing.assert_almost_equal(quantile_acc, 0.9015, 3)
+
+
+def test_additive_quantile_regression_median():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+    fp = feature_properties()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBAdditiveQuantileRegressor(
+        # observers=plobs,
+        feature_properties=fp,
+        quantile=0.5,
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    quantile_acc = evaluate_quantile(y, yhat)
+    np.testing.assert_almost_equal(quantile_acc, 0.4973, 3)
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.6990, 3)
+
+
+def test_additive_quantile_regression_90():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+    fp = feature_properties()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBAdditiveQuantileRegressor(
+        # observers=plobs,
+        feature_properties=fp,
+        quantile=0.9,
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    quantile_acc = evaluate_quantile(y, yhat)
+    np.testing.assert_almost_equal(quantile_acc, 0.8969, 3)
+
+
+def costs_mad(prediction, y, weights):
+    return np.nanmean(np.abs(y - prediction))
+
+
+def costs_mse(prediction, y, weights):
+    return np.nanmean(np.square(y - prediction))
+
+
+def test_additive_regression_mad():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+    fp = feature_properties()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBAdditiveGenericCRegressor(
+        # observers=plobs,
+        feature_properties=fp,
+        costs=costs_mad,
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.6990, 3)
+
+
+def test_additive_regression_mse():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+    fp = feature_properties()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBAdditiveGenericCRegressor(
+        # observers=plobs,
+        feature_properties=fp,
+        costs=costs_mse,
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.7480, 3)
+
+
+def test_multiplicative_regression_mad():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+    fp = feature_properties()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBMultiplicativeGenericCRegressor(
+        # observers=plobs,
+        feature_properties=fp,
+        costs=costs_mad,
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.6705, 3)
+
+
+def test_multiplicative_regression_mse():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+    fp = feature_properties()
+    # plobs = [
+    #     observers.PlottingObserver(iteration=-1)
+    # ]
+    CB_est = pipeline_CBMultiplicativeGenericCRegressor(
+        # observers=plobs,
+        feature_properties=fp,
+        costs=costs_mse,
+    )
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.7171, 3)
+
+
+def poisson_likelihood(prediction, y, weights):
+    negative_log_likelihood = np.nanmean(prediction + np.log(factorial(y)) - np.log(prediction) * y)
+    return negative_log_likelihood
+
+
+# commented out due to rather long runtime
+# def test_multiplicative_regression_likelihood():
+#     np.random.seed(42)
+
+#     df = pd.read_csv("./tests/integration_test_data.csv")
+
+#     X, y = prepare_data(df)
+#     X = X[["dayofweek", "L_ID", "PG_ID_3", "P_ID", "PROMOTION_TYPE", "price_ratio", "dayofyear"]]
+
+#     fp = feature_properties()
+#     # plobs = [
+#     #     observers.PlottingObserver(iteration=-1)
+#     # ]
+#     CB_est = pipeline_CBMultiplicativeGenericCRegressor(
+#         # observers=plobs,
+#         feature_properties=fp,
+#         costs=poisson_likelihood,
+#     )
+#     CB_est.fit(X.copy(), y)
+#     # plot_CB('analysis_CB_iterlast',
+#     #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+#     yhat = CB_est.predict(X.copy())
+
+#     mad = np.nanmean(np.abs(y - yhat))
+#     np.testing.assert_almost_equal(mad, 1.9310, 3)
+
+
+def costs_logloss(prediction, y, weights):
+    prediction = np.where(prediction < 0.001, 0.001, prediction)
+    prediction = np.where(prediction > 0.999, 0.999, prediction)
+    return -np.nanmean(y * np.log(prediction) + (1 - y) * np.log(1 - prediction))
+
+
+def cb_classifier_logloss_model():
+    features = get_features()
+
+    fp = feature_properties()
+    explicit_smoothers = {
+        ("dayofyear",): SeasonalSmoother(order=3),
+        ("price_ratio",): IsotonicRegressor(increasing=False),
+    }
+
+    plobs = [observers.PlottingObserver(iteration=-1)]
+
+    CB_pipeline = pipeline_CBGenericClassifier(
+        feature_properties=fp,
+        feature_groups=features,
+        observers=plobs,
+        maximal_iterations=50,
+        smoother_choice=common_smoothers.SmootherChoiceGroupBy(
+            use_regression_type=True, use_normalization=False, explicit_smoothers=explicit_smoothers
+        ),
+        costs=costs_logloss,
+    )
+
+    return CB_pipeline
+
+
+def test_classification_logloss():
+    np.random.seed(42)
+
+    df = pd.read_csv("./tests/integration_test_data.csv")
+
+    X, y = prepare_data(df)
+    y = y >= 3
+
+    CB_est = cb_classifier_logloss_model()
+    CB_est.fit(X.copy(), y)
+    # plot_CB('analysis_CB_iterlast',
+    #         [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 0.4044, 3)
