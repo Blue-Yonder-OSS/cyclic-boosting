@@ -37,6 +37,11 @@ $[-\infty, \infty]$ and supporting additive dependencies. It should be noted
 though that, in contrast to Generalized Linear Models, Cyclic Boosting in
 either mode enables highly non-linear models, similar to
 [Generalized Additive Models](https://en.wikipedia.org/wiki/Generalized_additive_model).
+Instead of minimizing the mean squared error as objective function in each
+feature bin (as it is the case for the modes mentioned above), it is also
+possible to use another loss function (also possible for classification tasks).
+An important example for this is optimizing for an arbitrary quantile (e.g.,
+the median), aka [quantile regression](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.generic_loss).
 
 Classification
 --------------
