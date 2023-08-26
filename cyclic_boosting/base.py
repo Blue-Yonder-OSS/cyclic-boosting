@@ -81,7 +81,7 @@ class CBLinkPredictionsFactors(UpdateMixin):
         return self.df["factors"].values
 
 
-def get_influence_category(feature: Feature, influence_categories: dict[Any, Any]) -> Union[None, str]:
+def get_influence_category(feature: Feature, influence_categories: dict) -> Union[None, str]:
     influence_category = None
     if influence_categories is not None:
         influence_category = influence_categories.get(feature.feature_group, None)

@@ -369,7 +369,7 @@ class FeatureList(object):
 
 def create_features(
     feature_groups_or_ids: List[Union[str, int, tuple, FeatureID]],
-    feature_properties: dict[Union[str, int], int],
+    feature_properties: dict,
     smoother_choice: SmootherChoice,
 ) -> FeatureList:
     """
