@@ -294,7 +294,7 @@ def bin_steps(n_bins: nb.int64[:]):
 
 
 @nb.njit()
-def arange_multi(stops):
+def arange_multi(stops) -> np.ndarray:
     """
     Multidimensional generalization of :func:`numpy.arange`
 

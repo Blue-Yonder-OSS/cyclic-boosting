@@ -15,10 +15,12 @@ from cyclic_boosting.smoothing.meta_smoother import (
     RegressionTypeSmoother,
 )
 
+from typing import Optional
+
 _logger = logging.getLogger(__name__)
 
 
-def _simplify_flags(feature_property, feature_group=None):
+def _simplify_flags(feature_property: int, feature_group: Optional[str] = None):
     """
     Simplifies a general flag to a basic set to select a smoother later on.
 
