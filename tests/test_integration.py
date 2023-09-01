@@ -22,8 +22,6 @@ from cyclic_boosting.pipelines import (
 )
 from tests.utils import plot_CB, costs_mad, costs_mse
 
-np.random.seed(42)
-
 
 @pytest.fixture(scope="function")
 def cb_poisson_regressor_model(features, feature_properties):
@@ -51,6 +49,7 @@ def cb_poisson_regressor_model(features, feature_properties):
 
 
 def test_poisson_regression(is_plot, prepare_data, cb_poisson_regressor_model):
+    np.random.seed(42)
     X, y = prepare_data
 
     CB_est = cb_poisson_regressor_model
@@ -67,6 +66,7 @@ def test_poisson_regression(is_plot, prepare_data, cb_poisson_regressor_model):
 
 
 def test_poisson_regression_default_features(prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -81,6 +81,7 @@ def test_poisson_regression_default_features(prepare_data, default_features, fea
 
 @pytest.mark.parametrize(("feature_groups", "expected"), [(None, 1.689), ([0, 1, 4, 5], 1.950)])
 def test_poisson_regression_ndarray(prepare_data, default_features, feature_properties, feature_groups, expected):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features].to_numpy()
 
@@ -95,6 +96,7 @@ def test_poisson_regression_ndarray(prepare_data, default_features, feature_prop
 
 @pytest.mark.parametrize("regressor", ["BinomRegressor", "PoissonRegressor"])
 def test_regression_ndarray_w_feature_properties(prepare_data, default_features, regressor):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features].to_numpy()
 
@@ -118,6 +120,7 @@ def test_regression_ndarray_w_feature_properties(prepare_data, default_features,
 
 
 def test_poisson_regression_default_features_and_properties(is_plot, prepare_data, default_features):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -141,6 +144,7 @@ def test_poisson_regression_default_features_and_properties(is_plot, prepare_dat
 
 
 def test_poisson_regression_default_features_notaggregated(prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -154,6 +158,7 @@ def test_poisson_regression_default_features_notaggregated(prepare_data, default
 
 
 def test_nbinom_regression_default_features(prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -172,6 +177,7 @@ def test_nbinom_regression_default_features(prepare_data, default_features, feat
 
 @pytest.mark.parametrize(("feature_groups", "expected"), [(None, 1.689), ([0, 1, 4, 5], 1.950)])
 def test_nbinom_regression_ndarray(prepare_data, default_features, feature_properties, feature_groups, expected):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features].to_numpy()
 
@@ -228,6 +234,7 @@ def cb_exponential_regressor_model(features, feature_properties):
 
 
 def test_exponential_regression(is_plot, prepare_data, cb_exponential_regressor_model):
+    np.random.seed(42)
     X, y = prepare_data
     X.loc[X["price_ratio"] == np.nan, "price_ratio"] = 1.0
 
@@ -267,6 +274,7 @@ def cb_classifier_model(features, feature_properties):
 
 
 def test_classification(is_plot, prepare_data, cb_classifier_model):
+    np.random.seed(42)
     X, y = prepare_data
     y = y >= 3
 
@@ -283,6 +291,7 @@ def test_classification(is_plot, prepare_data, cb_classifier_model):
 
 
 def test_location_regression_default_features(is_plot, feature_properties, default_features, prepare_data):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -323,6 +332,7 @@ def cb_width_model(feature_properties):
 
 
 def test_width_regression_default_features(feature_properties, default_features, prepare_data, cb_width_model):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -339,6 +349,7 @@ def test_width_regression_default_features(feature_properties, default_features,
 
 
 def test_GBS_regression_default_features(is_plot, feature_properties, default_features, prepare_data):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -387,6 +398,7 @@ def cb_multiplicative_quantile_regressor_model(quantile, features, feature_prope
 
 
 def test_multiplicative_quantile_regression_median(is_plot, prepare_data, features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     y = abs(y)
 
@@ -406,10 +418,11 @@ def test_multiplicative_quantile_regression_median(is_plot, prepare_data, featur
     np.testing.assert_almost_equal(quantile_acc, 0.5043, 3)
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6559, 3)
+    np.testing.assert_almost_equal(mad, 1.6575, 3)
 
 
 def test_multiplicative_quantile_regression_90(is_plot, prepare_data, features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     y = abs(y)
 
@@ -430,6 +443,7 @@ def test_multiplicative_quantile_regression_90(is_plot, prepare_data, features, 
 
 
 def test_additive_quantile_regression_median(is_plot, prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -445,13 +459,14 @@ def test_additive_quantile_regression_median(is_plot, prepare_data, default_feat
     yhat = CB_est.predict(X.copy())
 
     quantile_acc = evaluate_quantile(y, yhat)
-    np.testing.assert_almost_equal(quantile_acc, 0.4973, 3)
+    np.testing.assert_almost_equal(quantile_acc, 0.5007, 3)
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6990, 3)
+    np.testing.assert_almost_equal(mad, 2.5565, 3)
 
 
 def test_additive_quantile_regression_90(is_plot, prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -471,6 +486,7 @@ def test_additive_quantile_regression_90(is_plot, prepare_data, default_features
 
 
 def test_additive_regression_mad(is_plot, prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -486,10 +502,11 @@ def test_additive_regression_mad(is_plot, prepare_data, default_features, featur
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6990, 3)
+    np.testing.assert_almost_equal(mad, 2.5565, 3)
 
 
 def test_additive_regression_mse(is_plot, prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -505,10 +522,11 @@ def test_additive_regression_mse(is_plot, prepare_data, default_features, featur
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.7480, 3)
+    np.testing.assert_almost_equal(mad, 2.5735, 3)
 
 
 def test_multiplicative_regression_mad(is_plot, prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     y = abs(y)
 
@@ -530,6 +548,7 @@ def test_multiplicative_regression_mad(is_plot, prepare_data, default_features, 
 
 
 def test_multiplicative_regression_mse(is_plot, prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     y = abs(y)
 
@@ -557,6 +576,7 @@ def poisson_likelihood(prediction, y, weights):
 
 @pytest.mark.skip(reason="Long running time")
 def test_multiplicative_regression_likelihood(is_plot, prepare_data, default_features, feature_properties):
+    np.random.seed(42)
     X, y = prepare_data
     X = X[default_features]
 
@@ -605,6 +625,7 @@ def cb_classifier_logloss_model(features, feature_properties):
 
 
 def test_classification_logloss(is_plot, prepare_data, cb_classifier_logloss_model):
+    np.random.seed(42)
     X, y = prepare_data
     y = y >= 3
 
@@ -617,4 +638,4 @@ def test_classification_logloss(is_plot, prepare_data, cb_classifier_logloss_mod
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 0.4044, 3)
+    np.testing.assert_almost_equal(mad, 0.3811, 3)
