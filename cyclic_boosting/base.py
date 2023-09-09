@@ -25,6 +25,7 @@ from cyclic_boosting.utils import (
     ConvergenceParameters,
 )
 
+from cyclic_boosting.utils import get_normalized_values
 
 from typing import Any, Dict, Optional, Union, Tuple, List, Set
 
@@ -278,6 +279,7 @@ class CyclicBoostingBase(
         self.feature_properties = feature_properties
 
         self.features = None
+        self.feature_importances = {}
         self.aggregate = aggregate
 
         self.weight_column = weight_column
@@ -658,7 +660,6 @@ class CyclicBoostingBase(
             else:
                 feature.bind_data(X, weights)
             yield i, feature, prefit_data[i]
-            feature.unbind_data()
 
     def fit(
         self, X: np.ndarray, y: Optional[np.ndarray] = None, fit_mode: int = 0
@@ -723,6 +724,8 @@ class CyclicBoostingBase(
 
         for feature in self.features:
             feature.prepare_feature()
+            feature.set_feature_bin_deviations_from_neutral(self.neutral_factor_link)
+            self.feature_importances[feature.feature_id] = feature.bin_weighted_average
 
         if len(self.observers) > 0:
             self.prepare_plots(X, y, prediction)
@@ -928,6 +931,16 @@ class CyclicBoostingBase(
         else:
             self._check_fitted()
             return [(feature.feature_id, feature.smoother) for feature in self.features]
+
+    def get_feature_importances(self) -> Dict[tuple, float]:
+        if not self.feature_importances:
+            raise ValueError("_fit_main has to be called first to compute the feature importance.")
+        else:
+            normalized_values = get_normalized_values(self.feature_importances.values())
+            norm_feature_importances = {
+                feature: normalized_values[i] for i, feature in enumerate(self.feature_importances.items())
+            }
+            return norm_feature_importances
 
     @abc.abstractmethod
     def calc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors, prefit_data):

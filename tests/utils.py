@@ -11,9 +11,9 @@ def plot_CB(filename: str, plobs: list, binner: Optional[BinNumberTransformer] =
         plot_analysis(plot_observer=p, file_obj=filename + "_{}".format(i), use_tightlayout=False, binners=[binner])
 
 
-def costs_mad(prediction, y, weights):
+def costs_mad(prediction: np.ndarray, y: np.ndarray, weights):
     return np.nanmean(np.abs(y - prediction))
 
 
-def costs_mse(prediction, y, weights):
+def costs_mse(prediction: np.ndarray, y: np.ndarray, weights):
     return np.nanmean(np.square(y - prediction))

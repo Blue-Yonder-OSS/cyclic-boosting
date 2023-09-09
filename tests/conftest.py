@@ -68,3 +68,42 @@ def default_features() -> List[str]:
 @pytest.fixture(scope="session")
 def is_plot() -> bool:
     return False
+
+
+def generate_binned_data(n_samples, n_features=10, seed=123):
+    """
+    Generate uncorrelated binned data for a sales problem.
+
+    :param n_samples: number of samples that ought to be created.
+    :type n_samples: int
+
+    :param seed: random seed used in data creation
+    :type seed: int
+
+    :returns: Randomly generated binned feature matrix and binned target array.
+    :rtype: :obj:`tuple` of :class:`pandas.DataFrame` and
+        :class:`numpy.ndarray`
+
+    """
+    np.random.seed(seed)
+    X = pd.DataFrame()
+    y = np.random.randint(0, 10, n_samples)
+    for i in range(0, n_features):
+        n_bins = np.random.randint(1, 100)
+        X[str(i)] = np.random.randint(0, n_bins, n_samples)
+    return X, y
+
+
+@pytest.fixture(scope="session")
+def get_inputs():
+    n = 10000
+    d = 10
+    X, y = generate_binned_data(n, d)
+    feature_prop = dict(
+        [(str(i), flags.IS_CONTINUOUS) for i in range(5)]
+        + [(str(i), flags.IS_UNORDERED) for i in range(5, 8)]
+        + [("8", flags.IS_CONTINUOUS | flags.IS_LINEAR)]
+        + [("9", flags.IS_CONTINUOUS | flags.IS_SEASONAL)]
+    )
+    feature_groups = [str(i) for i in range(d)] + [("1", "7"), ("2", "4", "8")]
+    return X, y, feature_prop, feature_groups
