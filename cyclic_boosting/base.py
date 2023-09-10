@@ -521,7 +521,7 @@ class CyclicBoostingBase(
             else:
                 weights = self.weights_external
 
-            feature.bind_data(X, weights, False)
+            feature.bind_data(X, weights)
             feature_predictions = self._pred_feature(X, feature, True)
 
             pred.remove_predictions(feature_predictions, feature)
@@ -643,12 +643,12 @@ class CyclicBoostingBase(
             else:
                 weights = self.weights_external
             if self.iteration_ == 0:
-                feature.bind_data(X, weights, True)
+                feature.bind_data(X, weights)
                 feature.factors_link = np.ones(feature.n_bins) * self.neutral_factor_link
                 if prefit_data is not None:
                     prefit_data[i] = self.precalc_parameters(feature, y, pred)
             else:
-                feature.bind_data(X, weights, False)
+                feature.bind_data(X, weights)
             yield i, feature, prefit_data[i]
             feature.unbind_data()
 
@@ -722,12 +722,8 @@ class CyclicBoostingBase(
         _logger.info("Cyclic Boosting, final global scale {}".format(self.global_scale_))
 
         for feature in self.features:
-            feature.factors_link = feature.fitted_aggregated
-            feature.unbind_data()
-            if len(self.observers) == 0:
-                feature.bin_weightsums = None
-            feature.unbind_factor_data()  # TODO: above feature.factors_link = feature.fitted_aggregated
-            # but here self.factors_link = [self.factors_link[-1]] so the above is irrelevant?
+            feature.get_final_feature(observers=self.observers)
+
         return prediction
 
     def prepare_plots(self, X: np.ndarray, y: np.ndarray, prediction: np.ndarray) -> None:
@@ -737,7 +733,7 @@ class CyclicBoostingBase(
             else:
                 weights = self.weights_external
 
-            feature.bind_data(X, weights, True)
+            feature.bind_data(X, weights)
 
             sum_w, sum_yw, sum_pw = (
                 np.bincount(feature.lex_binned_data, weights=w, minlength=feature.n_bins)
