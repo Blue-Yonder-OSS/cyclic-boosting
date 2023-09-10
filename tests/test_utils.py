@@ -47,3 +47,9 @@ def test_continuous_quantile_from_discrete():
     y = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] * 2)
     quantile_value = utils.continuous_quantile_from_discrete(y, 0.35)
     assert quantile_value == 3.5
+
+
+def test_convergence_parameters():
+    cp = utils.ConvergenceParameters()
+    assert cp.loss_change == 1e20
+    assert cp.delta == 100.0

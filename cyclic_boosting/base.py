@@ -12,15 +12,38 @@ import scipy.special
 import six
 from sklearn import base as sklearnb
 
-from cyclic_boosting import common_smoothers, learning_rate, link, utils
+from cyclic_boosting import common_smoothers, learning_rate, link
 from cyclic_boosting.binning import get_feature_column_names_or_indices
 from cyclic_boosting.common_smoothers import SmootherChoice
 from cyclic_boosting.features import create_features, Feature, FeatureList, FeatureTypes
 from cyclic_boosting.link import IdentityLinkMixin, LogLinkMixin
+from cyclic_boosting.utils import (
+    slice_finite_semi_positive,
+    nans,
+    get_X_column,
+    ConvergenceError,
+    ConvergenceParameters,
+)
+
 
 from typing import Any, Dict, Optional, Union, Tuple, List, Set
 
 _logger = logging.getLogger(__name__)
+
+
+def get_influence_category(feature: Feature, influence_categories: dict) -> Union[None, str]:
+    influence_category = None
+    if influence_categories is not None:
+        influence_category = influence_categories.get(feature.feature_group, None)
+        if (
+            influence_category is None
+        ):  # this is due to the flaws in create features, i would propose to only allow tuple
+            if len(feature.feature_group) == 1:
+                fg = feature.feature_group[0]
+                influence_category = influence_categories.get(fg, None)
+        if influence_category is None:
+            raise KeyError(f"Please add {feature.feature_group} to influence_categories")
+    return influence_category
 
 
 class UpdateMixin(object):
@@ -81,21 +104,6 @@ class CBLinkPredictionsFactors(UpdateMixin):
         return self.df["factors"].values
 
 
-def get_influence_category(feature: Feature, influence_categories: dict) -> Union[None, str]:
-    influence_category = None
-    if influence_categories is not None:
-        influence_category = influence_categories.get(feature.feature_group, None)
-        if (
-            influence_category is None
-        ):  # this is due to the flaws in create features, i would propose to only allow tuple
-            if len(feature.feature_group) == 1:
-                fg = feature.feature_group[0]
-                influence_category = influence_categories.get(fg, None)
-        if influence_category is None:
-            raise KeyError(f"Please add {feature.feature_group} to influence_categories")
-    return influence_category
-
-
 class ZeroSmoother(sklearnb.BaseEstimator, sklearnb.RegressorMixin):
     def fit(self, X_for_smoother: np.ndarray, y: np.ndarray) -> Union[sklearnb.BaseEstimator, sklearnb.RegressorMixin]:
         return self
@@ -105,8 +113,8 @@ class ZeroSmoother(sklearnb.BaseEstimator, sklearnb.RegressorMixin):
 
 
 def _predict_factors(feature: Feature, X_for_smoother: np.ndarray, neutral_factor: float) -> np.ndarray:
-    isfinite_all = utils.slice_finite_semi_positive(X_for_smoother)
-    prediction_smoother = utils.nans(len(X_for_smoother))
+    isfinite_all = slice_finite_semi_positive(X_for_smoother)
+    prediction_smoother = nans(len(X_for_smoother))
 
     if isfinite_all.any() and (feature.smoother is not None):
         prediction_smoother[isfinite_all] = feature.learn_rate * feature.smoother.predict(X_for_smoother[isfinite_all])
@@ -117,7 +125,7 @@ def _predict_factors(feature: Feature, X_for_smoother: np.ndarray, neutral_facto
     return prediction_smoother
 
 
-def _factors_deviation(features: FeatureList) -> np.ndarray:
+def _factors_deviation(features: FeatureList) -> float:
     """Calculate mean absolute deviation of all factors.
 
     Parameters
@@ -332,7 +340,7 @@ class CyclicBoostingBase(
         if self.weight_column is None:
             self.weights = np.ones(len(X))
         else:
-            self.weights = utils.get_X_column(X, self.weight_column)
+            self.weights = get_X_column(X, self.weight_column)
 
     def _init_external_column(self, X: Union[pd.DataFrame, np.ndarray], is_fit: bool) -> None:
         """Init the external column.
@@ -376,7 +384,7 @@ class CyclicBoostingBase(
         self.global_scale_link_ = self.link_func(np.sum(y * self.weights) / np.sum(self.weights) + minimal_prediction)
 
         if self.prior_prediction_column is not None:
-            prior_pred = utils.get_X_column(X, self.prior_prediction_column)
+            prior_pred = get_X_column(X, self.prior_prediction_column)
             finite = np.isfinite(prior_pred)
 
             if not np.all(finite):
@@ -415,7 +423,7 @@ class CyclicBoostingBase(
         if self.prior_prediction_column is None:
             prior_prediction_link = np.repeat(self.global_scale_link_, X.shape[0])
         else:
-            prior_pred = utils.get_X_column(X, self.prior_prediction_column)
+            prior_pred = get_X_column(X, self.prior_prediction_column)
             prior_prediction_link = self.link_func(prior_pred) + self.prior_pred_link_offset_
             finite = np.isfinite(prior_prediction_link)
             prior_prediction_link[~finite] = self.global_scale_link_
@@ -463,7 +471,7 @@ class CyclicBoostingBase(
             self.diverging += 1
             warnings.warn(msg)
             if self.diverging >= 5:
-                raise utils.ConvergenceError(msg)
+                raise ConvergenceError(msg)
         else:
             self.is_diverging = False
 
@@ -482,7 +490,7 @@ class CyclicBoostingBase(
 
         return loss_change
 
-    def _log_iteration_info(self, deviation: float, loss_change: float) -> None:
+    def _log_iteration_info(self, convergence_parameters: ConvergenceParameters) -> None:
         if self.iteration_ == 0:
             _logger.info("Factor model iteration 1")
         else:
@@ -491,8 +499,8 @@ class CyclicBoostingBase(
                 "factors_deviation = {deviation}, "
                 "loss_change = {loss_change}".format(
                     iteration=self.iteration_ + 1,
-                    loss_change=loss_change,
-                    deviation=deviation,
+                    loss_change=convergence_parameters.loss_change,
+                    deviation=convergence_parameters.delta,
                 )
             )
 
@@ -685,13 +693,12 @@ class CyclicBoostingBase(
         self.iteration_ = 0
         prefit_data = [None for _ in self.features]
 
-        loss_change = 1e20
-        delta = 100.0
+        convergence_parameters = ConvergenceParameters()
 
-        while (not self._check_stop_criteria(self.iteration_, delta, loss_change)) or self.is_diverging:
-            self._call_observe_iterations(self.iteration_, X, y, prediction, delta)
+        while (not self._check_stop_criteria(self.iteration_, convergence_parameters)) or self.is_diverging:
+            self._call_observe_iterations(self.iteration_, X, y, prediction, convergence_parameters.delta)
 
-            self._log_iteration_info(delta, loss_change)
+            self._log_iteration_info(convergence_parameters)
             for i, feature, pf_data in self.cb_features(X, y, pred, prefit_data):
                 pred = self.feature_iteration(X, y, feature, pred, pf_data)
                 self._call_observe_feature_iterations(self.iteration_, i, X, y, prediction)
@@ -702,8 +709,12 @@ class CyclicBoostingBase(
                     feature.factor_sum.append(np.sum(np.abs(feature.fitted_aggregated)))
 
             prediction = self.unlink_func(pred.predict_link())
-            loss_change = self._update_loss(prediction, y)
-            delta = _factors_deviation(self.features)
+
+            updated_loss_change = self._update_loss(prediction, y)
+            convergence_parameters.set_loss_change(updated_loss_change=updated_loss_change)
+
+            updated_delta = _factors_deviation(self.features)
+            convergence_parameters.set_delta(updated_delta=updated_delta)
 
             if self.is_diverging:
                 self.remove_preds(pred, X)
@@ -716,7 +727,7 @@ class CyclicBoostingBase(
         if len(self.observers) > 0:
             self.prepare_plots(X, y, prediction)
 
-        self._call_observe_iterations(-1, X, y, prediction, delta)
+        self._call_observe_iterations(-1, X, y, prediction, convergence_parameters.delta)
         self._check_convergence()
 
         _logger.info("Cyclic Boosting, final global scale {}".format(self.global_scale_))
@@ -785,7 +796,7 @@ class CyclicBoostingBase(
         if is_fit:
             return feature.factors_link[feature.lex_binned_data]
         else:
-            X_for_predict = utils.get_X_column(X, feature.feature_group, array_for_1_dim=False)
+            X_for_predict = get_X_column(X, feature.feature_group, array_for_1_dim=False)
             pred = _predict_factors(feature, X_for_predict, self.neutral_factor_link)
             return pred
 
@@ -835,7 +846,7 @@ class CyclicBoostingBase(
         X[self.output_column] = self.predict(X=X, y=y, fit_mode=fit_mode)
         return X
 
-    def _check_stop_criteria(self, iterations: int, delta: float, loss_change: float) -> bool:
+    def _check_stop_criteria(self, iterations: int, convergence_parameters: ConvergenceParameters) -> bool:
         """
         Checks the stop criteria and returns True if none are satisfied else False.
 
@@ -847,6 +858,9 @@ class CyclicBoostingBase(
         stop_iterations = False
         stop_factor_change = False
         stop_loss_change = False
+
+        delta = convergence_parameters.delta
+        loss_change = convergence_parameters.loss_change
 
         if iterations >= self.maximal_iterations:
             _logger.info(
