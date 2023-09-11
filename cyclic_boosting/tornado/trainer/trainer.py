@@ -16,7 +16,7 @@ class Trainer():
             test_size=0.2,
             seed=0,
             save_dir='./models',
-            log_policy='vote',
+            log_policy='vote_by_num',
             metrix=None,
             verbose=True):
         dataset = self.data_deliveler.generate()
@@ -42,3 +42,6 @@ class Trainer():
 
             # log
             logger.log(estimater, evaluator, self.manager)
+
+            self.manager.reset(train, target)
+
