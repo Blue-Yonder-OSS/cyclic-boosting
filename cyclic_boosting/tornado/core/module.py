@@ -5,6 +5,7 @@
 
 import abc
 import six
+import copy
 import itertools
 import pandas as pd
 import numpy as np
@@ -51,6 +52,16 @@ class TornadoModule():
                 self.feature_properties[col] = flags.IS_CONTINUOUS
             else:
                 raise ValueError("please type 'cat' or 'con'")
+    
+    def int_or_float_feature_property(self) -> None:
+        cols = self.X.select_dtypes(include=['int', 'float', 'object'])
+        for col in cols:
+            if type(self.X[col][0]) == np.int64:
+                self.feature_properties[col] = flags.IS_UNORDERED
+            elif type(self.X[col][0]) == np.float64:
+                self.feature_properties[col] = flags.IS_CONTINUOUS
+            else:
+                raise ValueError("整数または小数ではない")
 
     def set_feature_property(self) -> None:
 
@@ -59,7 +70,8 @@ class TornadoModule():
         # datetimeなど、モデルが処理できない変数はおとす
 
         if self.mfp is None:
-            self.gen_base_feature_property()
+            # self.gen_base_feature_property()
+            self.int_or_float_feature_property()
             analyzer = TornadoAnalysisModule(self.X, is_time_series=self.is_ts)
             self.report = analyzer.analyze()
             for key, cols in self.report.items():
@@ -92,8 +104,8 @@ class TornadoModule():
 
         # set interaction term
         point = self.experiment - 1
-        for term in self.interaction_term[point]:
-            self.features.append(term)
+        self.features.append(self.interaction_term[point])
+
 
     def create_interaction_term(self, size=2) -> None:
         if size <= 1:
@@ -144,12 +156,18 @@ class TornadoModule():
 
     def init(self, dataset, target) -> None:
         self.target = target.lower()
-        self.y = np.asarray(dataset[self.target])
-        self.X = dataset.drop(self.target, axis=1)
+        self.y = copy.deepcopy(np.asarray(dataset[self.target]))
+        self.X = copy.deepcopy(dataset.drop(self.target, axis=1))
         if not self.is_ts:
             self.X = self.X.drop('date', axis=1)
         self.set_feature_property()
         self.create_interaction_term()
+
+    def reset(self, dataset, target) -> None:
+        self.y = copy.deepcopy(np.asarray(dataset[self.target]))
+        self.X = copy.deepcopy(dataset.drop(self.target, axis=1))
+        if not self.is_ts:
+            self.X = self.X.drop('date', axis=1)
 
     def update(self) -> None:
         self.set_feature()
