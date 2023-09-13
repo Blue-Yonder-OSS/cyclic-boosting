@@ -132,6 +132,7 @@ class Logger():
         is_first_iteration = self.iter <= 0
         if is_first_iteration:
             for metrics, value in evt.result.items():
+                self.log_data[metrics] = value
                 self.smallest_data[metrics] = copy.copy(value)
             self.smallest_est = est
             self.smallest_mng = mng
@@ -139,6 +140,7 @@ class Logger():
         else:
             cnt = 0
             for metrics, value in evt.result.items():
+                self.log_data[metrics] = value
                 if value[-1] < self.smallest_data[metrics]:
                     #ここのif文の中で重みづけをしたい
                     #モード切替で重みづけの切替ができたらいいかも
