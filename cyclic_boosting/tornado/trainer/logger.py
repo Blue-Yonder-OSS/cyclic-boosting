@@ -11,15 +11,14 @@ class Logger():
         # super().__init__()
         self.id = 1
         self.iter = 0
-        self.log_data = {}
-        self.smallest_id = 0
-        self.smallest_data = {}
-        self.smallest_mng = {}
-        self.smallest_est = {}
         self.save_dir = save_dir
         self.model_dir = None
         self.policy = policy
         self.make_dir()
+        self.CODs = {}
+        self.sorted_CODs = {}
+        self.best_features = {}
+
 
         # for vote
         self.counter = 0
@@ -79,97 +78,44 @@ class Logger():
             if self.policy == "vote_by_num":
                 f.write(f"{mng.interaction_term[self.smallest_id-1]}\n")
 
-    def vote(self, est, evt, mng):
-        is_first_iteration = len(self.log_data) <= 0
-        if is_first_iteration:
-            for metrics, value in evt.result.items():
-                self.log_data[metrics] = np.nanmean(value)
-
-            self.make_model_dir()
-            self.save_metrics(self.log_data,
-                              os.path.join(self.model_dir,
-                                           f'metrics_{self.id}.txt'))
-            self.save_setting(mng,
-                              os.path.join(self.model_dir,
-                                           f'setting_{self.id}.txt'))
-            self.save_model(est,
-                            os.path.join(self.model_dir,
-                                         f'model_{self.id}.pkl'))
-        else:
-            # NOTE: 小さい値を持つほうがよい指標ばかりであるのが前提
-            # 修正の必要の可能性あり
-            cnt = 0
-            report = {}
-            for metrics, value in evt.result.items():
-                before = self.log_data[metrics]
-                after = np.nanmean(value)
-                if abs(before) > abs(after):
-                    cnt += 1
-                report[metrics] = after
-
-            print(self.counter, cnt)
-            if self.counter < cnt:
-                print(self.log_data)
-                print(report)
-                print(self.counter, cnt)
-                # NOTE: 投票ロジックを賢くする
-                self.make_model_dir()
-                self.save_metrics(self.log_data,
-                                  os.path.join(self.model_dir,
-                                               f'metrics_{self.id}.txt'))
-                self.save_setting(mng,
-                                  os.path.join(self.model_dir,
-                                               f'setting_{self.id}.txt'))
-                self.save_model(est,
-                                os.path.join(self.model_dir,
-                                             f'model_{self.id}.pkl'))
-                self.counter = cnt
-                self.log_data = report
-
-    def vote_by_smaller_num_of_criteria(self, est, evt, mng):
-        #評価基準を比べた時に小さい物の数が多ければ入れ替える
-        
-        is_first_iteration = self.iter <= 0
-        if is_first_iteration:
-            for metrics, value in evt.result.items():
-                self.log_data[metrics] = copy.copy(value)
-                self.smallest_data[metrics] = copy.copy(value)
-            self.smallest_est = copy.copy(est)
-            self.smallest_mng = copy.copy(mng)
-            self.smallest_id = self.id
-        else:
-            cnt = 0
-            for metrics, value in evt.result.items():
-                self.log_data[metrics] = copy.copy(value)
-                if value[-1] < self .smallest_data[metrics]:
-                    #ここのif文の中で重みづけをしたい
-                    #モード切替で重みづけの切替ができたらいいかも
-                    cnt += 1
-            if cnt > len(evt.result.items().mapping) / 2:
-                self.smallest_data = {}
-                for metrics, value in evt.result.items():
-                    self.smallest_data[metrics] = copy.copy(value[-1])
-                self.smallest_est = copy.copy(est)
-                self.smallest_mng = copy.copy(mng)
-                self.smallest_id = self.id
-                print(f"smallestが入れ替わった:{self.smallest_data}")
-
+    def compute_COD(self, est, evt, mng):
         print(f"iter: {self.iter+1} / {mng.max_interaction}")
+        is_first_iteration = self.iter == 0
         is_last_iteration = mng.max_interaction <= self.iter + 1
-        if is_last_iteration:
-                self.make_model_dir()
-                self.save_metrics(self.smallest_data,
-                                  os.path.join(self.model_dir,
-                                               f'metrics_{self.smallest_id}.txt'))
-                self.save_setting(self.smallest_mng,
-                                  os.path.join(self.model_dir,
-                                               f'setting_{self.smallest_id}.txt'))
-                self.save_model(self.smallest_est,
-                                os.path.join(self.model_dir,
-                                             f'model_{self.smallest_id}.pkl'))
+        if mng.type == "single":
+            self.CODs[est['CB'].feature_groups[0]] = {'COD':evt.result['COD'][self.iter], 'F':evt.result['F'][self.iter]}
+            if is_last_iteration:
+                self.sorted_CODs = sorted(self.CODs.items(), key=lambda x: x[1]['COD'],reverse=True)
+        elif mng.type == "multiple":
+            #この中でfeatureを入れるか入れないかを決める
+            if is_first_iteration:
+                self.best_features = {"best_features": [est['CB'].feature_groups[0]], "best_COD": evt.result['COD'][self.iter]}
+                next_features = self.best_features["best_features"]
+                next_features.append(list(mng.sorted_features.keys())[self.iter+1])
+                mng.get_features(next_features)
+            elif not is_last_iteration:
+                better = evt.result['COD'][self.iter] > self.best_features["best_COD"]
+                if better:
+                    self.best_features = {"best_features": mng.features, "best_COD": evt.result['COD'][self.iter]}
+                    print('better------------------------------------------------')
+                    print(f"best_features{self.best_features}")
+                    for keys in evt.result.keys():
+                        print(f"{keys}: {evt.result[keys][-1]}", end=", ")
+                else:
+                    pass
+                next_features = copy.deepcopy(self.best_features["best_features"])
+                next_features.append(list(mng.sorted_features.keys())[self.iter+1])
+                mng.get_features(next_features)
+            else:
+                pass
         
         self.iter += 1
 
+
+    
+    def reset_count(self):
+        self.id = 1
+        self.iter = 0
 
     def log(self, est, evt, mng):
         #self.policyはtrainer.pyの関数run内で定義
@@ -177,4 +123,6 @@ class Logger():
             self.vote(est, evt, mng)
         elif self.policy == 'vote_by_num':
             self.vote_by_smaller_num_of_criteria(est, evt, mng)
+        elif self.policy == 'compute_COD':
+            self.compute_COD(est, evt, mng)
         self.id += 1
