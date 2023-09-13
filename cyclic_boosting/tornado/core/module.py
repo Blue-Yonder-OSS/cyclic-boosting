@@ -53,6 +53,8 @@ class TornadoModule():
             else:
                 raise ValueError("please type 'cat' or 'con'")
     
+    #FIXME
+    #この関数は入力の手間をなくすためだけのものであり本質的に自動化を行っているわけではない.修正の必要あり
     def int_or_float_feature_property(self) -> None:
         cols = self.X.select_dtypes(include=['int', 'float', 'object'])
         for col in cols:
@@ -156,18 +158,12 @@ class TornadoModule():
 
     def init(self, dataset, target) -> None:
         self.target = target.lower()
-        self.y = copy.deepcopy(np.asarray(dataset[self.target]))
-        self.X = copy.deepcopy(dataset.drop(self.target, axis=1))
+        self.y = np.asarray(dataset[self.target])
+        self.X = dataset.drop(self.target, axis=1)
         if not self.is_ts:
             self.X = self.X.drop('date', axis=1)
         self.set_feature_property()
         self.create_interaction_term()
-
-    def reset(self, dataset, target) -> None:
-        self.y = copy.deepcopy(np.asarray(dataset[self.target]))
-        self.X = copy.deepcopy(dataset.drop(self.target, axis=1))
-        if not self.is_ts:
-            self.X = self.X.drop('date', axis=1)
 
     def update(self) -> None:
         self.set_feature()
