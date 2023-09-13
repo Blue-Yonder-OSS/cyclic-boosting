@@ -132,25 +132,24 @@ class Logger():
         is_first_iteration = self.iter <= 0
         if is_first_iteration:
             for metrics, value in evt.result.items():
-                self.log_data[metrics] = copy.copy(value)
                 self.smallest_data[metrics] = copy.copy(value)
-            self.smallest_est = copy.copy(est)
-            self.smallest_mng = copy.copy(mng)
+            self.smallest_est = est
+            self.smallest_mng = mng
             self.smallest_id = self.id
         else:
             cnt = 0
             for metrics, value in evt.result.items():
-                self.log_data[metrics] = copy.copy(value)
-                if value[-1] < self .smallest_data[metrics]:
+                if value[-1] < self.smallest_data[metrics]:
                     #ここのif文の中で重みづけをしたい
                     #モード切替で重みづけの切替ができたらいいかも
                     cnt += 1
-            if cnt > len(evt.result.items().mapping) / 2:
+            is_over_half_number_of_metrics = cnt > len(evt.result.items().mapping) / 2
+            if is_over_half_number_of_metrics:
                 self.smallest_data = {}
                 for metrics, value in evt.result.items():
                     self.smallest_data[metrics] = copy.copy(value[-1])
-                self.smallest_est = copy.copy(est)
-                self.smallest_mng = copy.copy(mng)
+                self.smallest_est = est
+                self.smallest_mng = mng
                 self.smallest_id = self.id
                 print(f"smallestが入れ替わった:{self.smallest_data}")
 
