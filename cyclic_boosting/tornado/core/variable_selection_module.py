@@ -101,7 +101,6 @@ class TornadoModuleForVariableSelection():
                 self.features = [list(self.sorted_features.keys())[0]]
             else:
                 self.features = self.next_features
-                print(f"features: {self.features}")
             pass
 
     def get_features(self, features):

@@ -90,7 +90,7 @@ class Logger():
             #この中でfeatureを入れるか入れないかを決める
             if is_first_iteration:
                 self.best_features = {"best_features": [est['CB'].feature_groups[0]], "best_COD": evt.result['COD'][self.iter]}
-                next_features = self.best_features["best_features"]
+                next_features = copy.deepcopy(self.best_features["best_features"])
                 next_features.append(list(mng.sorted_features.keys())[self.iter+1])
                 mng.get_features(next_features)
             elif not is_last_iteration:
