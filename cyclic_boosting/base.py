@@ -733,7 +733,7 @@ class CyclicBoostingBase(
         _logger.info("Cyclic Boosting, final global scale {}".format(self.global_scale_))
 
         for feature in self.features:
-            feature.get_final_feature(observers=self.observers)
+            feature.clear_feature_reference(observers=self.observers)
 
         return prediction
 

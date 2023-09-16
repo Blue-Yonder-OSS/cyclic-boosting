@@ -264,10 +264,9 @@ class Feature(object):
         if self.smoother is not None:
             self.smoother.smoothed_y_ = self.factors_link[:-1].copy()
 
-    def get_final_feature(self, observers: List) -> None:
+    def clear_feature_reference(self, observers: List) -> None:
         if len(observers) == 0:
             self.bin_weightsums = None
-        self.factors_link = self.fitted_aggregated
         self.unbind_data()
         self.unbind_factor_data()
 
