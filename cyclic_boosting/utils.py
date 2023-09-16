@@ -9,6 +9,8 @@ import pandas as pd
 import six
 import bisect
 
+from dataclasses import dataclass
+
 _logger = logging.getLogger(__name__)
 
 
@@ -1001,3 +1003,17 @@ def continuous_quantile_from_discrete(y, quantile):
     if index_high > index_low:
         quantile_y += (quantile_index - index_low) / (index_high - index_low)
     return quantile_y
+
+
+@dataclass
+class ConvergenceParameters:
+    """Class for registering the convergence parameters"""
+
+    loss_change: float = 1e20
+    delta: float = 100.0
+
+    def set_loss_change(self, updated_loss_change: float) -> None:
+        self.loss_change = updated_loss_change
+
+    def set_delta(self, updated_delta: float) -> None:
+        self.delta = updated_delta

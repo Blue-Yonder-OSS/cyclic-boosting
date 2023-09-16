@@ -145,9 +145,7 @@ class Feature(object):
     def nan_bin_weightsum(self) -> np.ndarray:
         return self.bin_weightsums[-1]
 
-    def bind_data(
-        self, X: Union[pd.DataFrame, np.ndarray], weights: np.ndarray, first
-    ) -> None:  # TODO: Remove "first" argument if not used
+    def bind_data(self, X: Union[pd.DataFrame, np.ndarray], weights: np.ndarray) -> None:
         """
         Binds data from X belonging to the feature and calculates the
         following features:
@@ -265,6 +263,12 @@ class Feature(object):
 
         if self.smoother is not None:
             self.smoother.smoothed_y_ = self.factors_link[:-1].copy()
+
+    def clear_feature_reference(self, observers: List) -> None:
+        if len(observers) == 0:
+            self.bin_weightsums = None
+        self.unbind_data()
+        self.unbind_factor_data()
 
 
 def create_feature_id(feature_group_or_id: Union[FeatureID, Any], default_type: Optional[str] = None) -> FeatureID:
