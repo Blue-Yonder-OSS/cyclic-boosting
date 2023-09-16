@@ -8,9 +8,7 @@ import logging
 from math import lgamma
 
 import numba as nb
-import numba_scipy.special  # noqa
 import numpy as np
-import scipy.special as sc
 import sklearn.base
 
 from cyclic_boosting.base import CyclicBoostingBase
