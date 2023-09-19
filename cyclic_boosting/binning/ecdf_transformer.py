@@ -204,7 +204,7 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
         else:
             return n_bins
 
-    def fit(self, X, y=None, fit_mode=0):
+    def fit(self, X, y=None):
         self._nbins_per_feature = self._normalize_bins(self.n_bins)
         self.bins_and_cdfs_ = []
 
@@ -266,7 +266,7 @@ class ECdfTransformer(sklearnb.BaseEstimator, sklearnb.TransformerMixin):
                 "the matrix in the fit (%s)." % (n_cols, len(self.bins_and_cdfs_))
             )
 
-    def transform(self, X, y=None, fit_mode=0):
+    def transform(self, X, y=None):
         self._check_input_for_transform(X)
 
         if check_frame_empty(X):

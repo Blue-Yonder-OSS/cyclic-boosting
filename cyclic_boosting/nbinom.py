@@ -133,9 +133,9 @@ class CBNBinomC(CyclicBoostingBase, sklearn.base.RegressorMixin, LogitLinkMixin)
         # TODO: use weights
         return loss_nbinom_c(y.astype(np.float64), self.mu, c, self.gamma)
 
-    def fit(self, X, y=None, fit_mode=0):
+    def fit(self, X, y=None):
         self.mu = X[self.mean_prediction_column].values
-        _ = self._fit_predict(X, y, fit_mode)
+        _ = self._fit_predict(X, y)
         del self.mu
         return self
 

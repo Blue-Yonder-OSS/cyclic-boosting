@@ -137,16 +137,12 @@ class CBClassifier(sklearn.base.ClassifierMixin, CyclicBoostingBase, LogitLinkMi
 
         return factors_link, uncertainties_l
 
-    def predict_proba(
-        self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None, fit_mode=0
-    ) -> np.ndarray:
-        probability_signal = super(CBClassifier, self).predict(X, y=y, fit_mode=fit_mode, actions=None)
+    def predict_proba(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None) -> np.ndarray:
+        probability_signal = super(CBClassifier, self).predict(X, y=y)
         return np.c_[1 - probability_signal, probability_signal]
 
-    def predict(
-        self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None, fit_mode=0, actions=None
-    ) -> np.ndarray:
-        probability_signal = super(CBClassifier, self).predict(X, y=y, fit_mode=fit_mode, actions=None)
+    def predict(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None) -> np.ndarray:
+        probability_signal = super(CBClassifier, self).predict(X, y=y)
         return np.asarray(probability_signal > 0.5, dtype=np.float64)
 
 
