@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from cyclic_boosting import utils
 
@@ -53,3 +54,22 @@ def test_convergence_parameters():
     cp = utils.ConvergenceParameters()
     assert cp.loss_change == 1e20
     assert cp.delta == 100.0
+
+
+@pytest.mark.parametrize(
+    "values, expected_result",
+    [
+        ([1, 2, 3], [0.16666666666666666, 0.3333333333333333, 0.5]),
+        ([0.0001, 0.000005, 0.000001], [0.9433962264150944, 0.04716981132075472, 0.009433962264150943]),
+        ([0.00, 0.00, 0.00], [0.00, 0.00, 0.00]),
+    ],
+)
+def test_get_normalized_values(values, expected_result):
+    normalized_values = utils.get_normalized_values(values)
+
+    assert normalized_values == expected_result
+
+    if int(sum(normalized_values)):
+        np.testing.assert_almost_equal(sum(normalized_values), 1.0, 6)
+    else:
+        np.testing.assert_almost_equal(sum(normalized_values), 0.0, 6)

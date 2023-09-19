@@ -96,6 +96,9 @@ class Feature(object):
         self.prediction = None
         self.prediction_finite = None
 
+        # set by set_feature_bin_deviations_from_neutral
+        self.bin_weighted_average = None
+
     @property
     def dim(self) -> int:
         """Dimension of the feature group, i.e. the number of its features"""
@@ -269,6 +272,11 @@ class Feature(object):
             self.bin_weightsums = None
         self.unbind_data()
         self.unbind_factor_data()
+
+    def set_feature_bin_deviations_from_neutral(self, neutral_factor_link: float) -> None:
+        weights = np.bincount(self.lex_binned_data, minlength=self.n_bins)
+        weighted_average = np.sum(weights * np.abs(self.factors_link - neutral_factor_link) / np.sum(weights))
+        self.bin_weighted_average = weighted_average
 
 
 def create_feature_id(feature_group_or_id: Union[FeatureID, Any], default_type: Optional[str] = None) -> FeatureID:
