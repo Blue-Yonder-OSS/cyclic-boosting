@@ -662,7 +662,7 @@ class CyclicBoostingBase(
             yield i, feature, prefit_data[i]
 
     def fit(
-        self, X: np.ndarray, y: Optional[np.ndarray] = None, fit_mode: int = 0
+        self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None, fit_mode: int = 0
     ) -> Union[link.LinkFunction, sklearnb.BaseEstimator]:
         _ = self._fit_predict(X, y, fit_mode)
         return self
