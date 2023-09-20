@@ -25,6 +25,7 @@ from cyclic_boosting.utils import (
     ConvergenceParameters,
 )
 
+from cyclic_boosting.utils import get_normalized_values
 
 from typing import Any, Dict, Optional, Union, Tuple, List, Set
 
@@ -278,6 +279,7 @@ class CyclicBoostingBase(
         self.feature_properties = feature_properties
 
         self.features = None
+        self.feature_importances = {}
         self.aggregate = aggregate
 
         self.weight_column = weight_column
@@ -658,10 +660,11 @@ class CyclicBoostingBase(
             else:
                 feature.bind_data(X, weights)
             yield i, feature, prefit_data[i]
-            feature.unbind_data()
 
-    def fit(self, X: np.ndarray, y: Optional[np.ndarray] = None) -> Union[link.LinkFunction, sklearnb.BaseEstimator]:
-        _ = self._fit_predict(X, y)
+    def fit(
+        self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None
+    ) -> Union[link.LinkFunction, sklearnb.BaseEstimator]:
+        _ = self._fit_predict(X, y, fit_mode)
         return self
 
     def _init_fit(self, X: pd.DataFrame, y: np.ndarray) -> None:
@@ -721,6 +724,8 @@ class CyclicBoostingBase(
 
         for feature in self.features:
             feature.prepare_feature()
+            feature.set_feature_bin_deviations_from_neutral(self.neutral_factor_link)
+            self.feature_importances[feature.feature_id] = feature.bin_weighted_average
 
         if len(self.observers) > 0:
             self.prepare_plots(X, y, prediction)
@@ -919,6 +924,43 @@ class CyclicBoostingBase(
         else:
             self._check_fitted()
             return [(feature.feature_id, feature.smoother) for feature in self.features]
+
+    def get_feature_importances(self) -> Dict[tuple, float]:
+        if not self.feature_importances:
+            raise ValueError("_fit_main has to be called first to compute the feature importance.")
+        else:
+            normalized_values = get_normalized_values(self.feature_importances.values())
+            norm_feature_importances = {
+                feature: normalized_values[i] for i, feature in enumerate(self.feature_importances.items())
+            }
+            return norm_feature_importances
+
+    def get_feature_contributions(self, X: Union[pd.DataFrame, np.ndarray]) -> Dict[str, np.ndarray]:
+        """Returns the contributions of each feature for each individual
+        prediction on a given data set, offering individual explainability of
+        the model. That means the learned parameter, e.g., factor for
+        multiplicative modes, of the corresponding feature bin is accessed.
+        These contributions should be interpreted in respect to the neutral
+        element of the mode, i.e., 1 for multiplicative and 0 for additive
+        modes.
+
+        Parameters
+        ----------
+        X: np.ndarray
+            data set to be predicted, needs to include the features of the
+            model
+
+        Returns
+        -------
+        dict
+            contributions from each feature for each sample of X
+        """
+        contribution = {}
+        for feature in self.features:
+            ft = "" if feature.feature_type is None else "_{}".format(feature.feature_type)
+            fg = " ".join(feature.feature_group)
+            contribution[fg + ft] = self.unlink_func(self._pred_feature(X, feature, is_fit=False))
+        return contribution
 
     @abc.abstractmethod
     def calc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors, prefit_data):

@@ -9,6 +9,8 @@ import pandas as pd
 import six
 import bisect
 
+from typing import Iterable, List
+
 from dataclasses import dataclass
 
 _logger = logging.getLogger(__name__)
@@ -1017,3 +1019,10 @@ class ConvergenceParameters:
 
     def set_delta(self, updated_delta: float) -> None:
         self.delta = updated_delta
+
+
+def get_normalized_values(values: Iterable) -> List[float]:
+    values_total = sum(values)
+    if round(values_total, 6) != 0.0:
+        return [value / values_total for value in values]
+    return [value for value in values]

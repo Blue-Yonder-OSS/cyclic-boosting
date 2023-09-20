@@ -5,10 +5,10 @@ from __future__ import absolute_import, division, print_function
 
 import logging
 
+from math import lgamma
+
 import numba as nb
-import numba_scipy.special  # noqa
 import numpy as np
-import scipy.special as sc
 import sklearn.base
 
 from cyclic_boosting.base import CyclicBoostingBase
@@ -172,7 +172,7 @@ def nbinom_log_pmf(x: nb.float64, n: nb.float64, p: nb.float64) -> nb.float64:
     """
     Negative binomial log PMF.
     """
-    coeff = sc.gammaln(n + x) - sc.gammaln(x + 1) - sc.gammaln(n)
+    coeff = lgamma(n + x) - lgamma(x + 1) - lgamma(n)
     return coeff + n * np.log(p) + x * np.log(1 - p)
 
 

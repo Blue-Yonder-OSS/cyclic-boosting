@@ -64,46 +64,8 @@ def temp_dirname_created_and_removed(suffix="", prefix="tmp", base_dir=None):
             shutil.rmtree(dirname)
 
 
-def generate_binned_data(n_samples, n_features=10, seed=123):
-    """
-    Generate uncorrelated binned data for a sales problem.
-
-    :param n_samples: number of samples that ought to be created.
-    :type n_samples: int
-
-    :param seed: random seed used in data creation
-    :type seed: int
-
-    :returns: Randomly generated binned feature matrix and binned target array.
-    :rtype: :obj:`tuple` of :class:`pandas.DataFrame` and
-        :class:`numpy.ndarray`
-
-    """
-    np.random.seed(seed)
-    X = pd.DataFrame()
-    y = np.random.randint(0, 10, n_samples)
-    for i in range(0, n_features):
-        n_bins = np.random.randint(1, 100)
-        X[str(i)] = np.random.randint(0, n_bins, n_samples)
-    return X, y
-
-
-def get_inputs():
-    n = 10000
-    d = 10
-    X, y = generate_binned_data(n, d)
-    feature_prop = dict(
-        [(str(i), flags.IS_CONTINUOUS) for i in range(5)]
-        + [(str(i), flags.IS_UNORDERED) for i in range(5, 8)]
-        + [("8", flags.IS_CONTINUOUS | flags.IS_LINEAR)]
-        + [("9", flags.IS_CONTINUOUS | flags.IS_SEASONAL)]
-    )
-    feature_groups = [str(i) for i in range(d)] + [("1", "7"), ("2", "4", "8")]
-    return X, y, feature_prop, feature_groups
-
-
-def test_analysis_core_regressor():
-    X, y, feature_prop, feature_groups = get_inputs()
+def test_analysis_core_regressor(get_inputs):
+    X, y, feature_prop, feature_groups = get_inputs
     plobs = observers.PlottingObserver()
     est = CBNBinomRegressor(
         feature_groups=feature_groups,
@@ -117,8 +79,8 @@ def test_analysis_core_regressor():
         plots.plot_analysis(plobs, filepath)
 
 
-def test_analysis_poisson_regressor():
-    X, y, feature_prop, feature_groups = get_inputs()
+def test_analysis_poisson_regressor(get_inputs):
+    X, y, feature_prop, feature_groups = get_inputs
     plobs = observers.PlottingObserver()
     est = CBPoissonRegressor(
         feature_groups=feature_groups,
@@ -132,8 +94,8 @@ def test_analysis_poisson_regressor():
         plots.plot_analysis(plobs, filepath)
 
 
-def test_analysis_exponential_regressor():
-    X, y, feature_prop, _fg = get_inputs()
+def test_analysis_exponential_regressor(get_inputs):
+    X, y, feature_prop, _fg = get_inputs
     X["10"] = np.random.uniform(low=0.6, high=1.25, size=len(X))
 
     feature_groups = [str(i) for i in range(9)] + [("1", "7"), ("2", "4", "8")]
@@ -154,8 +116,8 @@ def test_analysis_exponential_regressor():
         plots.plot_analysis(plobs, filepath)
 
 
-def test_analysis_regressor_with_file_handle():
-    X, y, feature_prop, feature_groups = get_inputs()
+def test_analysis_regressor_with_file_handle(get_inputs):
+    X, y, feature_prop, feature_groups = get_inputs
     plobs = observers.PlottingObserver()
     est = CBNBinomRegressor(
         feature_groups=feature_groups,
@@ -172,8 +134,8 @@ def test_analysis_regressor_with_file_handle():
         assert os.path.exists(filepath)
 
 
-def test_analysis_location():
-    X, y, feature_prop, feature_groups = get_inputs()
+def test_analysis_location(get_inputs):
+    X, y, feature_prop, feature_groups = get_inputs
     y = np.sin(y) * 5.3
     plobs = observers.PlottingObserver()
     est = CBLocationRegressor(
@@ -188,8 +150,8 @@ def test_analysis_location():
         plots.plot_analysis(plobs, filepath)
 
 
-def test_analysis_classification():
-    X, y, feature_prop, feature_groups = get_inputs()
+def test_analysis_classification(get_inputs):
+    X, y, feature_prop, feature_groups = get_inputs
     y = y > 5
     plobs = observers.PlottingObserver()
     est = CBClassifier(
