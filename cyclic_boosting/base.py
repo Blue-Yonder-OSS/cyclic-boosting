@@ -942,7 +942,7 @@ class CyclicBoostingBase(
             }
             return norm_feature_importances
 
-    def get_feature_contributions(self, X: Union[pd.DataFrame, np.ndarray]) -> Dict[tuple, np.ndarray]:
+    def get_feature_contributions(self, X: Union[pd.DataFrame, np.ndarray]) -> Dict[str, np.ndarray]:
         """Returns the contributions of each feature for each individual
         prediction on a given data set, offering individual explainability of
         the model. That means the learned parameter, e.g., factor for
