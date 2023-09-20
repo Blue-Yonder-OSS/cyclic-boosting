@@ -41,3 +41,27 @@ def test_poisson_regressor_feature_importance(prepare_data, features, feature_pr
     for ind, f_imp in enumerate(norm_feature_importances.values()):
         np.testing.assert_almost_equal(f_imp, expected_feature_importances[ind], 4)
     np.testing.assert_almost_equal(sum(norm_feature_importances.values()), 1.0, 3)
+
+
+def test_poisson_regressor_feature_contributions(prepare_data, features, feature_properties):
+    X, y = prepare_data
+    est = CBPoissonRegressor(
+        feature_groups=features,
+        feature_properties=feature_properties,
+    )
+    est.fit(X, y)
+    feature_contributions = est.get_feature_contributions(X)
+
+    assert [ele for ele in feature_contributions.keys()] == [
+        "dayofweek",
+        "L_ID",
+        "PG_ID_3",
+        "P_ID",
+        "PROMOTION_TYPE",
+        "price_ratio",
+        "dayofyear",
+        "P_ID L_ID",
+    ]
+
+    np.testing.assert_almost_equal(feature_contributions["dayofweek"].mean(), 1.003, 3)
+    np.testing.assert_almost_equal(feature_contributions["P_ID"].mean(), 0.958, 3)

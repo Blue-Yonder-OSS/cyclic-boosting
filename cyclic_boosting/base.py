@@ -942,6 +942,33 @@ class CyclicBoostingBase(
             }
             return norm_feature_importances
 
+    def get_feature_contributions(self, X: Union[pd.DataFrame, np.ndarray]) -> Dict[tuple, np.ndarray]:
+        """Returns the contributions of each feature for each individual
+        prediction on a given data set, offering individual explainability of
+        the model. That means the learned parameter, e.g., factor for
+        multiplicative modes, of the corresponding feature bin is accessed.
+        These contributions should be interpreted in respect to the neutral
+        element of the mode, i.e., 1 for multiplicative and 0 for additive
+        modes.
+
+        Parameters
+        ----------
+        X: np.ndarray
+            data set to be predicted, needs to include the features of the
+            model
+
+        Returns
+        -------
+        dict
+            contributions from each feature for each sample of X
+        """
+        contribution = {}
+        for feature in self.features:
+            ft = "" if feature.feature_type is None else "_{}".format(feature.feature_type)
+            fg = " ".join(feature.feature_group)
+            contribution[fg + ft] = self.unlink_func(self._pred_feature(X, feature, is_fit=False))
+        return contribution
+
     @abc.abstractmethod
     def calc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors, prefit_data):
         """Calculates factors and uncertainties of the bins of a feature group
