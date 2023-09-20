@@ -662,9 +662,9 @@ class CyclicBoostingBase(
             yield i, feature, prefit_data[i]
 
     def fit(
-        self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None, fit_mode: int = 0
+        self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None
     ) -> Union[link.LinkFunction, sklearnb.BaseEstimator]:
-        _ = self._fit_predict(X, y, fit_mode)
+        _ = self._fit_predict(X, y)
         return self
 
     def _init_fit(self, X: pd.DataFrame, y: np.ndarray) -> None:
@@ -780,9 +780,7 @@ class CyclicBoostingBase(
 
             feature.learn_rate = 1.0
 
-    def _fit_predict(
-        self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None, fit_mode: int = 0
-    ) -> np.ndarray:
+    def _fit_predict(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None) -> np.ndarray:
         """Fit the estimator to the training samples.
 
         Iterate to calculate the factors and the global scale.
@@ -803,9 +801,7 @@ class CyclicBoostingBase(
             pred = _predict_factors(feature, X_for_predict, self.neutral_factor_link)
             return pred
 
-    def predict(
-        self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None, fit_mode: int = 0, actions=None
-    ) -> np.ndarray:
+    def predict(self, X: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None) -> np.ndarray:
         pred = self.predict_extended(X, None)
         return self.unlink_func(pred.predict_link())
 
@@ -824,7 +820,7 @@ class CyclicBoostingBase(
 
         return pred
 
-    def fit_transform(self, X: pd.DataFrame, y: Optional[np.ndarray] = None, fit_mode: int = 0) -> pd.DataFrame:
+    def fit_transform(self, X: pd.DataFrame, y: Optional[np.ndarray] = None) -> pd.DataFrame:
         if not self.output_column:
             raise KeyError("output_column not defined")
         try:
@@ -832,13 +828,10 @@ class CyclicBoostingBase(
                 raise KeyError("""output_column "{}" exists already""".format(self.output_column))
         except AttributeError:
             raise TypeError("data needs to be a dataframe for the usage as a fit_transformer")
-        if fit_mode != 1:
-            X[self.output_column] = self._fit_predict(X, y, fit_mode)
-        else:
-            X[self.output_column] = self.predict(X=X, y=y, fit_mode=fit_mode)
+        X[self.output_column] = self._fit_predict(X, y)
         return X
 
-    def transform(self, X: pd.DataFrame, y: Optional[np.ndarray] = None, fit_mode: int = 0) -> pd.DataFrame:
+    def transform(self, X: pd.DataFrame, y: Optional[np.ndarray] = None) -> pd.DataFrame:
         if not self.output_column:
             raise KeyError("output_column not defined")
         try:
@@ -846,7 +839,7 @@ class CyclicBoostingBase(
                 raise KeyError("""output_column "{}" exists already""".format(self.output_column))
         except AttributeError:
             raise TypeError("data needs to be a dataframe for the usage as a transformer")
-        X[self.output_column] = self.predict(X=X, y=y, fit_mode=fit_mode)
+        X[self.output_column] = self.predict(X=X, y=y)
         return X
 
     def _check_stop_criteria(self, iterations: int, convergence_parameters: ConvergenceParameters) -> bool:

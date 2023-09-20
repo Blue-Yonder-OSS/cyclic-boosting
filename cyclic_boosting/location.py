@@ -74,8 +74,8 @@ class CBLocPoissonRegressor(CyclicBoostingBase, sklearn.base.RegressorMixin, Ide
         summands = self._regularize_summands(bincount, summands, uncertainties, global_std)
         return summands, uncertainties
 
-    def predict(self, X, y=None, fit_mode=0, actions=None):
-        result = super(CBLocPoissonRegressor, self).predict(X, y=y, fit_mode=fit_mode, actions=actions)
+    def predict(self, X, y=None):
+        result = super(CBLocPoissonRegressor, self).predict(X, y=y)
         return np.where(result > 0, result, 0)
 
 
