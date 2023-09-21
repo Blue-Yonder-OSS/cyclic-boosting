@@ -722,10 +722,8 @@ class CyclicBoostingBase(
 
             self.iteration_ += 1
 
-        for feature in self.features:
-            feature.prepare_feature()
-            feature.set_feature_bin_deviations_from_neutral(self.neutral_factor_link)
-            self.feature_importances[feature.feature_id] = feature.bin_weighted_average
+        # compute feature importances
+        self.set_feature_importances()
 
         if len(self.observers) > 0:
             self.prepare_plots(X, y, prediction)
@@ -925,13 +923,23 @@ class CyclicBoostingBase(
             self._check_fitted()
             return [(feature.feature_id, feature.smoother) for feature in self.features]
 
-    def get_feature_importances(self) -> Dict[tuple, float]:
+    def set_feature_importances(self) -> None:
+        for feature in self.features:
+            feature.prepare_feature()
+            feature.set_feature_bin_deviations_from_neutral(self.neutral_factor_link)
+            self.feature_importances[feature] = feature.bin_weighted_average
+
+    def get_feature_importances(self) -> Dict[str, float]:
+        """
+        Returns the relative importance of each input feature.
+        """
         if not self.feature_importances:
             raise ValueError("_fit_main has to be called first to compute the feature importance.")
         else:
             normalized_values = get_normalized_values(self.feature_importances.values())
             norm_feature_importances = {
-                feature: normalized_values[i] for i, feature in enumerate(self.feature_importances.items())
+                "_".join(feature.feature_id.feature_group): normalized_values[i]
+                for i, feature in enumerate(self.feature_importances.keys())
             }
             return norm_feature_importances
 
