@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 from sklearn.model_selection import train_test_split
 
 from .evaluator import EvaluatorBase
@@ -16,7 +17,7 @@ class Trainer():
             test_size=0.2,
             seed=0,
             save_dir='./models',
-            log_policy='vote',
+            log_policy='vote_by_num',
             metrix=None,
             verbose=True):
         dataset = self.data_deliveler.generate()
@@ -32,7 +33,9 @@ class Trainer():
         while self.manager.manage():
             estimater = self.manager.build()
             # train
-            _ = estimater.fit(self.manager.X, self.manager.y)
+            X = copy.deepcopy(self.manager.X)
+            y = copy.deepcopy(self.manager.y)
+            _ = estimater.fit(X, y)
 
             # validation
             y_valid = np.asarray(validation[target])
@@ -42,3 +45,4 @@ class Trainer():
 
             # log
             logger.log(estimater, evaluator, self.manager)
+
