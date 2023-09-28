@@ -18,13 +18,10 @@ from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
 from .analysis import TornadoAnalysisModule
 
 
-# @six.add_metaclass(abc.ABCMeta)
-class TornadoModule():
-    # some comments
-
+@six.add_metaclass(abc.ABCMeta)
+class TornadoModuleBase():
     def __init__(self, manual_feature_property=None,
                  is_time_series=True) -> None:
-        # super().__init__()
         self.X = None
         self.y = None
         self.target = None
@@ -52,7 +49,9 @@ class TornadoModule():
                 self.feature_properties[col] = flags.IS_CONTINUOUS
             else:
                 raise ValueError("please type 'cat' or 'con'")
-    
+            
+    #FIXME
+    #この関数は入力の手間をなくすためだけのものであり本質的に自動化を行っているわけではない.修正の必要あり
     def int_or_float_feature_property(self) -> None:
         cols = self.X.select_dtypes(include=['int', 'float', 'object'])
         for col in cols:
@@ -62,13 +61,8 @@ class TornadoModule():
                 self.feature_properties[col] = flags.IS_CONTINUOUS
             else:
                 raise ValueError("整数または小数ではない")
-
+            
     def set_feature_property(self) -> None:
-
-        # カテゴリ変数の尺度の違い、質的変数が季節性をもつかなどを自動で抽出するのが難しい
-        # 質的変数、量的変数、欠損値の有無などは自動で抽出して、他は間違いを許容する
-        # datetimeなど、モデルが処理できない変数はおとす
-
         if self.mfp is None:
             # self.gen_base_feature_property()
             self.int_or_float_feature_property()
@@ -90,14 +84,89 @@ class TornadoModule():
 
                 for col in cols:
                     self.feature_properties[col] |= flag
-
         else:
             self.feature_properties = self.mfp
 
         print(self.report)
 
+    @abc.abstractmethod
     def set_feature(self) -> None:
+        pass
 
+    @abc.abstractmethod
+    def create_interaction_term(self) -> None:
+        pass
+
+    def init(self, dataset, target) -> None:
+        self.target = target.lower()
+        self.y = np.asarray(dataset[self.target])
+        self.X = dataset.drop(self.target, axis=1)
+        if not self.is_ts:
+            self.X = self.X.drop('date', axis=1)
+        self.set_feature_property()
+        self.create_interaction_term()
+
+    def set_smoother(self) -> None:
+        smoothers = {}
+        for key, cols in self.report.items():
+            if len(cols) > 0:
+                if key == 'has_seasonality':
+                    for col in cols:
+                        smoothers[(col,)] = SeasonalSmoother(order=3)
+                elif key == 'has_up_monotonicity':
+                    for col in cols:
+                        smoothers[(col,)] = IsotonicRegressor(increasing=True)
+                elif key == 'has_down_monotonicity':
+                    for col in cols:
+                        smoothers[(col,)] = IsotonicRegressor(increasing=False)
+        self.smoothers = smoothers
+
+    def set_observer(self) -> None:
+        self.observers = [
+            observers.PlottingObserver(iteration=1),
+            observers.PlottingObserver(iteration=-1),
+        ]
+
+    def update(self) -> None:
+        self.set_feature()
+        self.set_smoother()
+        self.set_observer()
+
+    def clear(self) -> None:
+        self.features = []
+        self.smoothers = {}
+        self.observers = {}
+
+    def build(self) -> pipeline_CBPoissonRegressor:
+
+        # タスクによってbuildするモデルを切り変える
+        self.CB_pipeline = pipeline_CBPoissonRegressor(
+            feature_properties=self.feature_properties,
+            feature_groups=self.features,
+            observers=self.observers,
+            maximal_iterations=50,
+            smoother_choice=common_smoothers.SmootherChoiceGroupBy(
+                use_regression_type=True,
+                use_normalization=False,
+                explicit_smoothers=self.smoothers,
+            ),
+        )
+
+        return self.CB_pipeline
+    
+    @abc.abstractmethod
+    def manage(self) -> bool:
+        pass
+
+
+# @six.add_metaclass(abc.ABCMeta)
+class TornadoModule(TornadoModuleBase):
+    def __init__(self, manual_feature_property=None,
+                 is_time_series=True) -> None:
+        super().__init__(manual_feature_property, is_time_series)
+
+    # some comments
+    def set_feature(self) -> None:
         # set single feature
         for feature in self.feature_properties.keys():
             self.features.append(feature)
@@ -105,7 +174,6 @@ class TornadoModule():
         # set interaction term
         point = self.experiment - 1
         self.features.append(self.interaction_term[point])
-
 
     def create_interaction_term(self, size=2) -> None:
         if size <= 1:
@@ -133,72 +201,7 @@ class TornadoModule():
         self.max_interaction = len(self.interaction_term)
         print(self.interaction_term)
 
-    def set_smoother(self) -> None:
-        smoothers = {}
-        for key, cols in self.report.items():
-            if len(cols) > 0:
-                if key == 'has_seasonality':
-                    for col in cols:
-                        smoothers[(col,)] = SeasonalSmoother(order=3)
-                elif key == 'has_up_monotonicity':
-                    for col in cols:
-                        smoothers[(col,)] = IsotonicRegressor(increasing=True)
-                elif key == 'has_down_monotonicity':
-                    for col in cols:
-                        smoothers[(col,)] = IsotonicRegressor(increasing=False)
-        self.smoothers = smoothers
-
-    def set_observer(self) -> None:
-        self.observers = [
-            observers.PlottingObserver(iteration=1),
-            observers.PlottingObserver(iteration=-1),
-        ]
-
-    def init(self, dataset, target) -> None:
-        self.target = target.lower()
-        self.y = copy.deepcopy(np.asarray(dataset[self.target]))
-        self.X = copy.deepcopy(dataset.drop(self.target, axis=1))
-        if not self.is_ts:
-            self.X = self.X.drop('date', axis=1)
-        self.set_feature_property()
-        self.create_interaction_term()
-
-    def reset(self, dataset, target) -> None:
-        self.y = copy.deepcopy(np.asarray(dataset[self.target]))
-        self.X = copy.deepcopy(dataset.drop(self.target, axis=1))
-        if not self.is_ts:
-            self.X = self.X.drop('date', axis=1)
-
-    def update(self) -> None:
-        self.set_feature()
-        self.set_smoother()
-        self.set_observer()
-
-    def clear(self) -> None:
-        self.features = []
-        self.smoothers = {}
-        self.observers = {}
-
-    # @abc.abstractmethod
-    def build(self) -> pipeline_CBPoissonRegressor:
-
-        # タスクによってbuildするモデルを切り変える
-        self.CB_pipeline = pipeline_CBPoissonRegressor(
-            feature_properties=self.feature_properties,
-            feature_groups=self.features,
-            observers=self.observers,
-            maximal_iterations=50,
-            smoother_choice=common_smoothers.SmootherChoiceGroupBy(
-                use_regression_type=True,
-                use_normalization=False,
-                explicit_smoothers=self.smoothers,
-            ),
-        )
-
-        return self.CB_pipeline
-
     def manage(self) -> bool:
-
         # 交互作用項の設定、平滑化関数の設定の変更を反映
         if self.experiment != self.max_interaction:
             # 設定変更するコードを起動する
@@ -209,6 +212,67 @@ class TornadoModule():
         else:
             return False
 
-# NOTE: datasetをsubsetに分割する関数をつくる
 
-# class TornadoRegressor(TornadoModule):
+class TornadoVariableSelectionModule(TornadoModuleBase):
+    def __init__(self, manual_feature_property=None,
+                 is_time_series=True) -> None:
+        super().__init__(manual_feature_property, is_time_series)
+        self.next_features = []
+        self.sorted_features = []
+        self.type = "single"
+
+    def set_feature(self) -> None:
+        if self.type == "single":
+            #TODO
+            #ここで毎回all_featuresを作っているところは修正したい
+            all_features = []
+            for feature in self.feature_properties.keys():
+                all_features.append(feature)
+            for term in self.interaction_term:
+                all_features.append(term)
+            self.features = [all_features[self.experiment - 1]]
+
+        if self.type == "multiple":
+            if self.experiment == 1:
+                self.features.append(self.sorted_features[0])
+            else:
+                self.features = self.next_features
+            print(self.features)
+
+    def get_features(self, features):
+        #ここで次に動かすfeatureを書きたい。もしかしたら最初とそれ以降で場合分けがいるかも
+        self.next_features = features
+
+    def create_interaction_term(self, size=3) -> None:
+        if size <= 1:
+            raise ValueError("interaction size must be more than 2")
+        elif size >= 3:
+            print("WARNING: many interaction terms might cause long training")
+
+        # interaction term
+        # combination = []
+        for s in range(2, size+1):
+            comb = itertools.combinations(self.feature_properties.keys(), s)
+            # combination += [c for c in comb]
+            self.interaction_term += [c for c in comb]
+
+        self.max_interaction = len(self.feature_properties.keys()) + len(self.interaction_term)
+
+    def manage(self) -> bool:
+        #TODO
+        #基本的にmanageと同じ機能を実装するが、sorted_CODsを受け取らないといけなさそう
+        if self.experiment <= self.max_interaction - 1:
+            # 設定変更するコードを起動する
+            self.experiment += 1
+            self.clear()
+            self.update()
+            return True
+        else:
+            return False
+    
+    def set_to_multiple(self, features):
+        self.sorted_features = features
+        self.max_interaction = len(features)
+        self.type = "multiple"
+        self.experiment = 0
+        self.features = features[0]

@@ -19,7 +19,6 @@ class Logger():
         self.sorted_CODs = {}
         self.best_features = {}
 
-
         # for vote
         self.counter = 0
 
@@ -78,20 +77,67 @@ class Logger():
             if self.policy == "vote_by_num":
                 f.write(f"{mng.interaction_term[self.smallest_id-1]}\n")
 
+    def vote(self, est, evt, mng):
+        is_first_iteration = len(self.log_data) <= 0
+        if is_first_iteration:
+            for metrics, value in evt.result.items():
+                self.log_data[metrics] = np.nanmean(value)
+
+            self.make_model_dir()
+            self.save_metrics(self.log_data,
+                              os.path.join(self.model_dir,
+                                           f'metrics_{self.id}.txt'))
+            self.save_setting(mng,
+                              os.path.join(self.model_dir,
+                                           f'setting_{self.id}.txt'))
+            self.save_model(est,
+                            os.path.join(self.model_dir,
+                                         f'model_{self.id}.pkl'))
+        else:
+            # NOTE: 小さい値を持つほうがよい指標ばかりであるのが前提
+            # 修正の必要の可能性あり
+            cnt = 0
+            report = {}
+            for metrics, value in evt.result.items():
+                before = self.log_data[metrics]
+                after = np.nanmean(value)
+                if abs(before) > abs(after):
+                    cnt += 1
+                report[metrics] = after
+
+            print(self.counter, cnt)
+            if self.counter < cnt:
+                print(self.log_data)
+                print(report)
+                print(self.counter, cnt)
+                # NOTE: 投票ロジックを賢くする
+                self.make_model_dir()
+                self.save_metrics(self.log_data,
+                                  os.path.join(self.model_dir,
+                                               f'metrics_{self.id}.txt'))
+                self.save_setting(mng,
+                                  os.path.join(self.model_dir,
+                                               f'setting_{self.id}.txt'))
+                self.save_model(est,
+                                os.path.join(self.model_dir,
+                                             f'model_{self.id}.pkl'))
+                self.counter = cnt
+                self.log_data = report
+
     def compute_COD(self, est, evt, mng):
-        print(f"iter: {self.iter+1} / {mng.max_interaction}")
+        print(f"iter: {self.iter} / {mng.max_interaction-1}")
         is_first_iteration = self.iter == 0
-        is_last_iteration = mng.max_interaction <= self.iter + 1
+        is_last_iteration = mng.max_interaction-1 <= self.iter
         if mng.type == "single":
             self.CODs[est['CB'].feature_groups[0]] = {'COD':evt.result['COD'][self.iter], 'F':evt.result['F'][self.iter]}
             if is_last_iteration:
-                self.sorted_CODs = sorted(self.CODs.items(), key=lambda x: x[1]['COD'],reverse=True)
+                self.sorted_CODs = sorted(self.CODs.items(), key=lambda x: x[1]['COD'], reverse=True)
         elif mng.type == "multiple":
             #この中でfeatureを入れるか入れないかを決める
             if is_first_iteration:
                 self.best_features = {"best_features": [est['CB'].feature_groups[0]], "best_COD": evt.result['COD'][self.iter]}
                 next_features = copy.deepcopy(self.best_features["best_features"])
-                next_features.append(list(mng.sorted_features.keys())[self.iter+1])
+                next_features.append(mng.sorted_features[self.iter])
                 mng.get_features(next_features)
             elif not is_last_iteration:
                 better = evt.result['COD'][self.iter] > self.best_features["best_COD"]
@@ -104,15 +150,13 @@ class Logger():
                 else:
                     pass
                 next_features = copy.deepcopy(self.best_features["best_features"])
-                next_features.append(list(mng.sorted_features.keys())[self.iter+1])
+                next_features.append(mng.sorted_features[self.iter])
                 mng.get_features(next_features)
             else:
                 pass
         
         self.iter += 1
 
-
-    
     def reset_count(self):
         self.id = 1
         self.iter = 0

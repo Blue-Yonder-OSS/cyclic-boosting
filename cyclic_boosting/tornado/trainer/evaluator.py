@@ -41,8 +41,7 @@ class EvaluatorBase():
         regression_variance = np.nansum((yhat - np.nanmean(y))**2) / k
         return regression_variance / residual_variance
 
-
-    def eval_all(self, y, yhat, est,verbose=True, digit=5):
+    def eval_all(self, y, yhat, est, verbose=True, digit=5):
 
         funcs = {
             "MD": self.mean_deviation,
