@@ -169,4 +169,5 @@ class Logger():
             self.vote_by_smaller_num_of_criteria(est, evt, mng)
         elif self.policy == 'compute_COD':
             self.compute_COD(est, evt, mng)
+
         self.id += 1
