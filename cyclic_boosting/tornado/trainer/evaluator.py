@@ -29,8 +29,19 @@ class EvaluatorBase():
 
     def mean_y(self, y, _) -> float:
         return np.nanmean(y)
+    
+    def coefficient_of_determination(self, y, yhat) -> float:
+        #決定係数
+        return 1 - (np.nansum((y - yhat)**2) / np.nansum((y - np.nanmean(y))**2))
+    
+    def F(self, y, yhat, est):
+        n = len(y)
+        k = len(est['CB'].feature_groups)
+        residual_variance = np.nansum((y - yhat)**2) / (n - k - 1)
+        regression_variance = np.nansum((yhat - np.nanmean(y))**2) / k
+        return regression_variance / residual_variance
 
-    def eval_all(self, y, yhat, verbose=True, digit=5):
+    def eval_all(self, y, yhat, est, verbose=True, digit=5):
 
         funcs = {
             "MD": self.mean_deviation,
@@ -40,6 +51,8 @@ class EvaluatorBase():
             "MedAE": self.median_absolute_error,
             "WMAPE": self.weighted_absolute_percentage_error,
             "SMAPE": self.symmetric_mean_absolute_percentage_error,
+            "COD": self.coefficient_of_determination,
+            "F": self.F,
             # "MEAN-Y": self.mean_y,
         }
 
@@ -48,7 +61,10 @@ class EvaluatorBase():
             if metrics not in self.result.keys():
                 self.result[metrics] = []
 
-            result = func(y, yhat)
+            if not metrics == 'F':
+                result = func(y, yhat)
+            else:
+                result = func(y, yhat, est)
             self.result[metrics].append(result)
 
             if verbose:

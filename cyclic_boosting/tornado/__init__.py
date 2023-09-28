@@ -5,8 +5,8 @@ from cyclic_boosting.tornado.trainer import trainer as Trainer
 
 
 __all__ = [
-    'TornadoModule',
-    'TornadoDataModule',
+    'Manager'
+    'Generator',
     'Analyzer'
     'Trainer'
 ]
