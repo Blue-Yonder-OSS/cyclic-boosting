@@ -981,9 +981,10 @@ def get_feature_column_names(X, exclude_columns=[]):
     return features
 
 
-def continuous_quantile_from_discrete(y, quantile):
+def continuous_cdf_from_discrete_pdf(y, quantile):
     """
-    Calculates a continous approximation of a given quantile from an array of potentially discrete values.
+    Calculates a continous CDF value approximation for a given quantile from an
+    array of potentially discrete values.
 
     Parameters
     ----------
@@ -995,7 +996,7 @@ def continuous_quantile_from_discrete(y, quantile):
     Returns
     -------
     float
-        calcualted quantile value
+        calculated CDF value
     """
     sorted_y = np.sort(y)
     quantile_index = int(quantile * (len(y) - 1))
@@ -1026,3 +1027,30 @@ def get_normalized_values(values: Iterable) -> List[float]:
     if round(values_total, 6) != 0.0:
         return [value / values_total for value in values]
     return [value for value in values]
+
+
+def smear_discrete_cdftruth(cdf_func: callable, y: int) -> float:
+    """
+    Smearing of the CDF value of a sample from a discrete random variable. Main
+    usage is for a histogram of CDF values to check estimated individual
+    probability distribution (should be flat).
+
+    Parameters
+    ----------
+    y : int
+        value from discrete random variable
+    cdf_func : callable
+        cumulative distribution function
+
+    Returns
+    -------
+    float
+        smeared CDF value for y
+    """
+    cdf_high = cdf_func(y)
+    if y >= 1:
+        cdf_low = cdf_func(y - 1)
+    else:
+        cdf_low = 0.0
+    cdf_truth = cdf_low + np.random.uniform(0, 1) * (cdf_high - cdf_low)
+    return cdf_truth

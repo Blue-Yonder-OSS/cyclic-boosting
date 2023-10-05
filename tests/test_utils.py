@@ -39,7 +39,7 @@ def test_get_feature_column_names():
     np.testing.assert_equal(features, ["b", "c"])
 
 
-def test_continuous_quantile_from_discrete():
+def continuous_cdf_from_discrete_pdf():
     y = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
     quantile_value = utils.continuous_quantile_from_discrete(y, 0.8)
     assert quantile_value == 8.0
