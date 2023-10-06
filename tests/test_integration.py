@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-
+import matplotlib.pyplot as plt
 
 from scipy.special import factorial
 
@@ -20,6 +20,8 @@ from cyclic_boosting.pipelines import (
     pipeline_CBAdditiveGenericCRegressor,
     pipeline_CBGenericClassifier,
 )
+from cyclic_boosting.quantile_matching import cdf_fit_gamma, cdf_fit_nbinom, cdf_fit_spline
+from cyclic_boosting.utils import smear_discrete_cdftruth
 from tests.utils import plot_CB, costs_mad, costs_mse
 
 np.random.seed(42)
@@ -291,9 +293,6 @@ def test_location_regression_default_features(is_plot, feature_properties, defau
     CB_est = pipeline_CBLocationRegressor(feature_properties=fp)
     CB_est.fit(X.copy(), y)
 
-    if is_plot:
-        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
-
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
@@ -342,17 +341,15 @@ def test_GBS_regression_default_features(is_plot, feature_properties, default_fe
     X, y = prepare_data
     X = X[default_features]
 
-    y[1000:10000] = -y[1000:10000]
+    y_GBS = y.copy()
+    y_GBS[1000:10000] = -y_GBS[1000:10000]
 
     CB_est = pipeline_CBGBSRegressor(feature_properties=feature_properties)
-    CB_est.fit(X.copy(), y)
-
-    if is_plot:
-        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
+    CB_est.fit(X.copy(), y_GBS)
 
     yhat = CB_est.predict(X.copy())
 
-    mad = np.nanmean(np.abs(y - yhat))
+    mad = np.nanmean(np.abs(y_GBS - yhat))
     np.testing.assert_almost_equal(mad, 2.5755, 3)
 
 
@@ -388,7 +385,6 @@ def cb_multiplicative_quantile_regressor_model(quantile, features, feature_prope
 
 def test_multiplicative_quantile_regression_median(is_plot, prepare_data, features, feature_properties):
     X, y = prepare_data
-    y = abs(y)
 
     quantile = 0.5
     CB_est = cb_multiplicative_quantile_regressor_model(
@@ -411,7 +407,6 @@ def test_multiplicative_quantile_regression_median(is_plot, prepare_data, featur
 
 def test_multiplicative_quantile_regression_90(is_plot, prepare_data, features, feature_properties):
     X, y = prepare_data
-    y = abs(y)
 
     quantile = 0.9
     CB_est = cb_multiplicative_quantile_regressor_model(
@@ -429,6 +424,131 @@ def test_multiplicative_quantile_regression_90(is_plot, prepare_data, features, 
     np.testing.assert_almost_equal(quantile_acc, 0.9015, 3)
 
 
+@pytest.mark.skip(reason="Long running time")
+def test_multiplicative_quantile_regression_spline(is_plot, prepare_data, features, feature_properties):
+    X, y = prepare_data
+
+    quantiles = []
+    cdf_values = []
+    for quantile in [0.1, 0.3, 0.5, 0.7, 0.9]:
+        CB_est = cb_multiplicative_quantile_regressor_model(
+            quantile=quantile, features=features, feature_properties=feature_properties
+        )
+        CB_est.fit(X.copy(), y)
+        yhat = CB_est.predict(X.copy())
+        cdf_values.append(yhat)
+        quantiles.append(quantile)
+
+    quantiles = np.asarray(quantiles)
+    cdf_values = np.asarray(cdf_values)
+
+    i = 24
+    spl_fit = cdf_fit_spline(quantiles, cdf_values[:, i])
+
+    np.testing.assert_almost_equal(spl_fit(0.2), 0.679, 3)
+    np.testing.assert_almost_equal(spl_fit(0.5), 2.202, 3)
+    np.testing.assert_almost_equal(spl_fit(0.8), 4.297, 3)
+
+    if is_plot:
+        plt.plot(quantiles, cdf_values[:, i], "ro")
+        xs = np.linspace(0, 1, 100)
+        plt.plot(xs, spl_fit(xs))
+        plt.savefig("spline_integration" + str(i) + ".png")
+        plt.clf()
+
+
+@pytest.mark.skip(reason="Long running time")
+def test_multiplicative_quantile_regression_pdf_gamma(is_plot, prepare_data, features, feature_properties):
+    X, y = prepare_data
+
+    quantiles = []
+    cdf_values = []
+    for quantile in [0.1, 0.3, 0.5, 0.7, 0.9]:
+        CB_est = cb_multiplicative_quantile_regressor_model(
+            quantile=quantile, features=features, feature_properties=feature_properties
+        )
+        CB_est.fit(X.copy(), y)
+        yhat = CB_est.predict(X.copy())
+        cdf_values.append(yhat)
+        quantiles.append(quantile)
+
+    quantiles = np.asarray(quantiles)
+    cdf_values = np.asarray(cdf_values)
+
+    cdf_truth_list = []
+    n_samples = len(X)
+    for i in range(n_samples):
+        gamma_fit_cdf = cdf_fit_gamma(quantiles, cdf_values[:, i], mode="cdf")
+        if i == 24:
+            gamma_fit = cdf_fit_gamma(quantiles, cdf_values[:, i])
+            np.testing.assert_almost_equal(gamma_fit(0.2), 0.877, 3)
+            np.testing.assert_almost_equal(gamma_fit(0.5), 2.14, 3)
+            np.testing.assert_almost_equal(gamma_fit(0.8), 4.296, 3)
+
+        if is_plot:
+            cdf_truth = smear_discrete_cdftruth(gamma_fit_cdf, y[i])
+            cdf_truth_list.append(cdf_truth)
+
+            if i == 24:
+                plt.plot(cdf_values[:, i], quantiles, "ro")
+                xs = np.linspace(0, cdf_values[:, i].max(), 100)
+                plt.plot(xs, gamma_fit_cdf(xs))
+                plt.savefig("gamma_integration_" + str(i) + ".png")
+                plt.clf()
+
+    cdf_truth = np.asarray(cdf_truth_list)
+    if is_plot:
+        plt.hist(cdf_truth[cdf_truth > 0], bins=30)
+        plt.savefig("gamma_cdf_truth_histo.png")
+        plt.clf()
+
+
+@pytest.mark.skip(reason="Long running time")
+def test_multiplicative_quantile_regression_pdf_nbinom(is_plot, prepare_data, features, feature_properties):
+    X, y = prepare_data
+
+    quantiles = []
+    cdf_values = []
+    for quantile in [0.1, 0.3, 0.5, 0.7, 0.9]:
+        CB_est = cb_multiplicative_quantile_regressor_model(
+            quantile=quantile, features=features, feature_properties=feature_properties
+        )
+        CB_est.fit(X.copy(), y)
+        yhat = CB_est.predict(X.copy())
+        cdf_values.append(yhat)
+        quantiles.append(quantile)
+
+    quantiles = np.asarray(quantiles)
+    cdf_values = np.asarray(cdf_values)
+
+    cdf_truth_list = []
+    n_samples = len(X)
+    for i in range(n_samples):
+        nbinom_fit_cdf = cdf_fit_nbinom(quantiles, cdf_values[:, i], mode="cdf")
+        if i == 24:
+            nbinom_fit = cdf_fit_nbinom(quantiles, cdf_values[:, i])
+            np.testing.assert_equal(nbinom_fit(0.2), 1)
+            np.testing.assert_equal(nbinom_fit(0.5), 2)
+            np.testing.assert_equal(nbinom_fit(0.8), 4)
+
+        if is_plot:
+            cdf_truth = smear_discrete_cdftruth(nbinom_fit_cdf, y[i])
+            cdf_truth_list.append(cdf_truth)
+
+            if i == 24:
+                plt.plot(cdf_values[:, i], quantiles, "ro")
+                xs = np.linspace(0, cdf_values[:, i].max(), 100)
+                plt.plot(xs, nbinom_fit_cdf(xs))
+                plt.savefig("nbinom_integration_" + str(i) + ".png")
+                plt.clf()
+
+    cdf_truth = np.asarray(cdf_truth_list)
+    if is_plot:
+        plt.hist(cdf_truth, bins=30)
+        plt.savefig("nbinom_cdf_truth_histo.png")
+        plt.clf()
+
+
 def test_additive_quantile_regression_median(is_plot, prepare_data, default_features, feature_properties):
     X, y = prepare_data
     X = X[default_features]
@@ -439,16 +559,13 @@ def test_additive_quantile_regression_median(is_plot, prepare_data, default_feat
     )
     CB_est.fit(X.copy(), y)
 
-    if is_plot:
-        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
-
     yhat = CB_est.predict(X.copy())
 
     quantile_acc = evaluate_quantile(y, yhat)
-    np.testing.assert_almost_equal(quantile_acc, 0.5007, 3)
+    np.testing.assert_almost_equal(quantile_acc, 0.4973, 3)
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 2.5565, 3)
+    np.testing.assert_almost_equal(mad, 1.6991, 3)
 
 
 def test_additive_quantile_regression_90(is_plot, prepare_data, default_features, feature_properties):
@@ -460,9 +577,6 @@ def test_additive_quantile_regression_90(is_plot, prepare_data, default_features
         quantile=0.9,
     )
     CB_est.fit(X.copy(), y)
-
-    if is_plot:
-        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
 
     yhat = CB_est.predict(X.copy())
 
@@ -480,13 +594,10 @@ def test_additive_regression_mad(is_plot, prepare_data, default_features, featur
     )
     CB_est.fit(X.copy(), y)
 
-    if is_plot:
-        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
-
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 2.5565, 3)
+    np.testing.assert_almost_equal(mad, 1.6991, 3)
 
 
 def test_additive_regression_mse(is_plot, prepare_data, default_features, feature_properties):
@@ -499,18 +610,14 @@ def test_additive_regression_mse(is_plot, prepare_data, default_features, featur
     )
     CB_est.fit(X.copy(), y)
 
-    if is_plot:
-        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
-
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 2.5735, 3)
+    np.testing.assert_almost_equal(mad, 1.748, 3)
 
 
 def test_multiplicative_regression_mad(is_plot, prepare_data, default_features, feature_properties):
     X, y = prepare_data
-    y = abs(y)
 
     X = X[default_features]
 
@@ -520,9 +627,6 @@ def test_multiplicative_regression_mad(is_plot, prepare_data, default_features, 
     )
     CB_est.fit(X.copy(), y)
 
-    if is_plot:
-        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
-
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
@@ -531,7 +635,6 @@ def test_multiplicative_regression_mad(is_plot, prepare_data, default_features, 
 
 def test_multiplicative_regression_mse(is_plot, prepare_data, default_features, feature_properties):
     X, y = prepare_data
-    y = abs(y)
 
     X = X[default_features]
 
@@ -540,9 +643,6 @@ def test_multiplicative_regression_mse(is_plot, prepare_data, default_features, 
         costs=costs_mse,
     )
     CB_est.fit(X.copy(), y)
-
-    if is_plot:
-        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
 
     yhat = CB_est.predict(X.copy())
 
@@ -617,4 +717,4 @@ def test_classification_logloss(is_plot, prepare_data, cb_classifier_logloss_mod
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 0.3811, 3)
+    np.testing.assert_almost_equal(mad, 0.408, 3)

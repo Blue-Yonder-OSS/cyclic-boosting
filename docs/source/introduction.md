@@ -42,6 +42,8 @@ feature bin (as it is the case for the modes mentioned above), it is also
 possible to use another loss function (also possible for classification tasks).
 An important example for this is optimizing for an arbitrary quantile (e.g.,
 the median), aka [quantile regression](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.generic_loss).
+By means of several estimated quantiles, one can also approximate full
+individual probability distributions via [quantile matching](https://cyclic-boosting.readthedocs.io/en/latest/cyclic_boosting.html#module-cyclic_boosting.quantile_matching).
 
 Classification
 --------------

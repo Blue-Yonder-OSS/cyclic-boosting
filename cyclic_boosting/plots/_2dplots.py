@@ -103,10 +103,7 @@ def plot_factor_2d(n_bins_finite, feature, grid_item=None):
     from cyclic_boosting.plots import _format_groupname_with_type
 
     plot_yp = True
-    try:
-        _ = feature.y
-        _ = feature.prediction
-    except AttributeError:
+    if feature.y is None:
         plot_yp = False
     if plot_yp:
         y2d = feature.y
