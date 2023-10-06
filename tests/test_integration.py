@@ -443,12 +443,16 @@ def test_multiplicative_quantile_regression_spline(is_plot, prepare_data, featur
     cdf_values = np.asarray(cdf_values)
 
     i = 24
-    spl_fit_cdf = cdf_fit_spline(quantiles, cdf_values[:, i])
+    spl_fit = cdf_fit_spline(quantiles, cdf_values[:, i])
+
+    np.testing.assert_almost_equal(spl_fit(0.2), 0.679, 3)
+    np.testing.assert_almost_equal(spl_fit(0.5), 2.202, 3)
+    np.testing.assert_almost_equal(spl_fit(0.8), 4.297, 3)
 
     if is_plot:
         plt.plot(quantiles, cdf_values[:, i], "ro")
         xs = np.linspace(0, 1, 100)
-        plt.plot(xs, spl_fit_cdf(xs))
+        plt.plot(xs, spl_fit(xs))
         plt.savefig("spline_integration" + str(i) + ".png")
         plt.clf()
 
@@ -475,6 +479,11 @@ def test_multiplicative_quantile_regression_pdf_gamma(is_plot, prepare_data, fea
     n_samples = len(X)
     for i in range(n_samples):
         gamma_fit_cdf = cdf_fit_gamma(quantiles, cdf_values[:, i], mode="cdf")
+        if i == 24:
+            gamma_fit = cdf_fit_gamma(quantiles, cdf_values[:, i])
+            np.testing.assert_almost_equal(gamma_fit(0.2), 0.877, 3)
+            np.testing.assert_almost_equal(gamma_fit(0.5), 2.14, 3)
+            np.testing.assert_almost_equal(gamma_fit(0.8), 4.296, 3)
 
         if is_plot:
             cdf_truth = smear_discrete_cdftruth(gamma_fit_cdf, y[i])
@@ -516,6 +525,11 @@ def test_multiplicative_quantile_regression_pdf_nbinom(is_plot, prepare_data, fe
     n_samples = len(X)
     for i in range(n_samples):
         nbinom_fit_cdf = cdf_fit_nbinom(quantiles, cdf_values[:, i], mode="cdf")
+        if i == 24:
+            nbinom_fit = cdf_fit_nbinom(quantiles, cdf_values[:, i])
+            np.testing.assert_equal(nbinom_fit(0.2), 1)
+            np.testing.assert_equal(nbinom_fit(0.5), 2)
+            np.testing.assert_equal(nbinom_fit(0.8), 4)
 
         if is_plot:
             cdf_truth = smear_discrete_cdftruth(nbinom_fit_cdf, y[i])
