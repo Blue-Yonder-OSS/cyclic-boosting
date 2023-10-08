@@ -13,7 +13,7 @@ from scipy.stats import beta
 
 from cyclic_boosting.base import CyclicBoostingBase, gaussian_matching_by_quantiles, Feature, CBLinkPredictionsFactors
 from cyclic_boosting.link import LogLinkMixin, IdentityLinkMixin, LogitLinkMixin
-from cyclic_boosting.utils import continuous_cdf_from_discrete_pdf, get_X_column
+from cyclic_boosting.utils import continuous_quantile_from_discrete_pdf, get_X_column
 from cyclic_boosting.classification import get_beta_priors
 
 from typing import Tuple, Union
@@ -408,7 +408,7 @@ def quantile_global_scale(
     if weights is None:
         raise RuntimeError("The weights have to be initialized.")
 
-    global_scale_link_ = link_func(continuous_cdf_from_discrete_pdf(y, quantile))
+    global_scale_link_ = link_func(continuous_quantile_from_discrete_pdf(y, quantile))
 
     prior_pred_link_offset_ = None
     if prior_prediction_column is not None:

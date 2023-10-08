@@ -6,24 +6,24 @@ from scipy.interpolate import InterpolatedUnivariateSpline
 from typing import Optional
 
 
-def cdf_fit_gaussian(quantiles: np.ndarray, cdf_values: np.ndarray, mode: Optional[str] = "ppf") -> callable:
+def quantile_fit_gaussian(quantiles: np.ndarray, quantile_values: np.ndarray, mode: Optional[str] = "ppf") -> callable:
     """
-    Interpolation between pairs of CDF values (potentially estimated by means
-    of quantile regression) and corresponding quantiles according to a
-    Gaussian distribution as assumed PDF.
+    Interpolation of a quantile function (with quantiles estimated, e.g., by
+    means of quantile regression) according to a Gaussian distribution as
+    assumed PDF.
 
     Parameters
     ----------
     quantiles : np.ndarray
-        quantile values
-    cdf_values : np.ndarray
-        CDF values corresponding to quantile values
+        quantiles (x values of quantile function)
+    quantile_values : np.ndarray
+        quantile values (y values of quantile function)
     mode : str
         decides about kind of returned callable, possible values are:
 
-            - ``ppf``: input quantile, output CDF value (default)
-            - ``dist``: fitted Gaussian (scipy function)
-            - ``cdf``: input CDF value, output quantile
+            - ``ppf``: quantile (default)
+            - ``dist``: fitted negative binomial (scipy function)
+            - ``cdf``: CDF function
 
     Returns
     -------
@@ -32,9 +32,9 @@ def cdf_fit_gaussian(quantiles: np.ndarray, cdf_values: np.ndarray, mode: Option
     """
 
     def f(x, mu, sigma):
-        return norm(loc=mu, scale=sigma).cdf(x)
+        return norm(loc=mu, scale=sigma).ppf(x)
 
-    mu, sigma = curve_fit(f, cdf_values, quantiles)[0]
+    mu, sigma = curve_fit(f, quantiles, quantile_values)[0]
     if mode == "ppf":
         return norm(mu, sigma).ppf
     elif mode == "dist":
@@ -45,25 +45,24 @@ def cdf_fit_gaussian(quantiles: np.ndarray, cdf_values: np.ndarray, mode: Option
         raise Exception("Invalid mode.")
 
 
-def cdf_fit_gamma(quantiles: np.ndarray, cdf_values: np.ndarray, mode: Optional[str] = "ppf") -> callable:
+def quantile_fit_gamma(quantiles: np.ndarray, quantile_values: np.ndarray, mode: Optional[str] = "ppf") -> callable:
     """
-    Interpolation between pairs of CDF values (potentially estimated by means
-    of quantile regression) and corresponding quantiles according to a
-    Gamma distribution as assumed PDF (i.e., continuous, non-negative target
-    values).
+    Interpolation of a quantile function (with quantiles estimated, e.g., by
+    means of quantile regression) according to a Gamma distribution as assumed
+    PDF (i.e., continuous, non-negative target values).
 
     Parameters
     ----------
     quantiles : np.ndarray
-        quantile values
-    cdf_values : np.ndarray
-        CDF values corresponding to quantile values
+        quantiles (x values of quantile function)
+    quantile_values : np.ndarray
+        quantile values (y values of quantile function)
     mode : str
         decides about kind of returned callable, possible values are:
 
-            - ``ppf``: input quantile, output CDF value (default)
-            - ``dist``: fitted Gamma (scipy function)
-            - ``cdf``: input CDF value, output quantile
+            - ``ppf``: quantile (default)
+            - ``dist``: fitted negative binomial (scipy function)
+            - ``cdf``: CDF function
 
     Returns
     -------
@@ -72,9 +71,9 @@ def cdf_fit_gamma(quantiles: np.ndarray, cdf_values: np.ndarray, mode: Optional[
     """
 
     def f(x, alpha, beta):
-        return gamma(alpha, scale=1 / beta).cdf(x)
+        return gamma(alpha, scale=1 / beta).ppf(x)
 
-    alpha, beta = curve_fit(f, cdf_values, quantiles, p0=[2.0, 0.9])[0]
+    alpha, beta = curve_fit(f, quantiles, quantile_values, p0=[2.0, 0.9])[0]
     if mode == "ppf":
         return gamma(alpha, scale=1 / beta).ppf
     elif mode == "dist":
@@ -88,47 +87,52 @@ def cdf_fit_gamma(quantiles: np.ndarray, cdf_values: np.ndarray, mode: Optional[
 def _nbinom_cdf_mu_var(x: float, mu: float, var: float) -> callable:
     """
     Calculation of negative binomial parameters n and p from given mean and
-    variance, and subsequent call of cumulative distribution function.
+    variance, and subsequent call of its cumulative distribution function.
+
     Parameters
     ----------
     x : float
-        value of random variable following a negative binomial distribution
+        value of random variable following negative binomial distribution
     mu : float
         mean of negative binomial distribution
     var : float
         variance of negative binomial distribution
+
+    Returns
+    -------
+    callable
+        negative binomial cumulative distribution function
     """
     n = mu * mu / (var - mu)
     p = mu / var
     return nbinom(n, p).cdf(x)
 
 
-def cdf_fit_nbinom(quantiles: np.ndarray, cdf_values: np.ndarray, mode: Optional[str] = "ppf") -> callable:
+def quantile_fit_nbinom(quantiles: np.ndarray, quantile_values: np.ndarray, mode: Optional[str] = "ppf") -> callable:
     """
-    Interpolation between pairs of CDF values (potentially estimated by means
-    of quantile regression) and corresponding quantiles according to a
-    negative binomial distribution as assumed PDF (i.e., discrete, non-negative
-    target values).
+    Interpolation of a quantile function (with quantiles estimated, e.g., by
+    means of quantile regression) according to a negative binomial distribution
+    as assumed PDF (i.e., discrete, non-negative target values).
 
     Parameters
     ----------
     quantiles : np.ndarray
-        quantile values
-    cdf_values : np.ndarray
-        CDF values corresponding to quantile values
+        quantiles (x values of quantile function)
+    quantile_values : np.ndarray
+        quantile values (y values of quantile function)
     mode : str
         decides about kind of returned callable, possible values are:
 
-            - ``ppf``: input quantile, output CDF value (default)
+            - ``ppf``: quantile (default)
             - ``dist``: fitted negative binomial (scipy function)
-            - ``cdf``: input CDF value, output quantile
+            - ``cdf``: CDF function
 
     Returns
     -------
     callable
         fitted negative binomial function (see mode)
     """
-    mu, var = curve_fit(_nbinom_cdf_mu_var, cdf_values, quantiles, p0=[1.2, 1.4])[0]
+    mu, var = curve_fit(_nbinom_cdf_mu_var, quantile_values, quantiles, p0=[2.2, 2.4])[0]
     n = mu * mu / (var - mu)
     p = mu / var
     if mode == "ppf":
@@ -141,23 +145,23 @@ def cdf_fit_nbinom(quantiles: np.ndarray, cdf_values: np.ndarray, mode: Optional
         raise Exception("Invalid mode.")
 
 
-def cdf_fit_spline(quantiles: np.ndarray, cdf_values: np.ndarray) -> callable:
+def quantile_fit_spline(quantiles: np.ndarray, quantile_values: np.ndarray) -> callable:
     """
-    Interpolation between pairs of CDF values (potentially estimated by means
-    of quantile regression) and corresponding quantiles according to a
-    smoothing spline (i.e., arbitrary target distribution).
+    Interpolation of a quantile function (with quantiles estimated, e.g., by
+    means of quantile regression) according to a smoothing spline (i.e.,
+    arbitrary target distribution).
 
     Parameters
     ----------
     quantiles : np.ndarray
-        quantile values
-    cdf_values : np.ndarray
-        CDF values corresponding to quantile values
+        quantiles (x values of quantile function)
+    quantile_values : np.ndarray
+        quantile values (y values of quantile function)
 
     Returns
     -------
     callable
-        fitted spline function (input quantile, output CDF value)
+        spline fitted to quantile function
     """
-    spl = InterpolatedUnivariateSpline(quantiles, cdf_values, k=3, bbox=[0, 1], ext=3)
+    spl = InterpolatedUnivariateSpline(quantiles, quantile_values, k=3, bbox=[0, 1], ext=3)
     return spl
