@@ -15,7 +15,7 @@ from sklearn import base as sklearnb
 from cyclic_boosting import common_smoothers, learning_rate, link
 from cyclic_boosting.binning import get_feature_column_names_or_indices
 from cyclic_boosting.common_smoothers import SmootherChoice
-from cyclic_boosting.features import create_features, Feature, FeatureList, FeatureTypes
+from cyclic_boosting.features import create_features, Feature, FeatureList, FeatureTypes, create_feature_id
 from cyclic_boosting.link import IdentityLinkMixin, LogLinkMixin
 from cyclic_boosting.utils import (
     slice_finite_semi_positive,
@@ -170,6 +170,17 @@ class CyclicBoostingBase(
         If this argument is omitted, all columns except a possible
         ``weight_column`` are considered as one-dimensional feature_groups.
 
+    hierarchical_feature_groups: sequence of column labels
+        (:obj:`str` or :obj:`int`) or tuples of such labels or
+        :class:`cyclic_boosting.base.FeatureID`.
+        In the first three iterations of the training, only the feature groups
+        defined here are used, i.e., all other feature groups are excluded.
+        From the fourth iteration onwards, all feature groups are used. The
+        idea of such hierarchical iterations is to support the modeling of
+        hierarchical or causal effects (e.g., mitigate confounding).
+
+        If this argument is omitted, such no hierarchical iterations are run.
+
     feature_properties: :obj:`dict` of :obj:`int`
         Dictionary listing the names of all features for the training as keys
         and their pre-processing flags as values. When using a numpy feature
@@ -256,6 +267,7 @@ class CyclicBoostingBase(
     def __init__(
         self,
         feature_groups=None,
+        hierarchical_feature_groups=None,
         feature_properties: Optional[Dict[int, int]] = None,
         weight_column: Optional[Union[str, int, None]] = None,
         prior_prediction_column: Optional[Union[str, int, None]] = None,
@@ -276,9 +288,15 @@ class CyclicBoostingBase(
                 raise ValueError("smoother_choice needs to be of type SmootherChoice")
 
         self.feature_groups = feature_groups
+        self.hierarchical_feature_groups = hierarchical_feature_groups
         self.feature_properties = feature_properties
 
         self.features = None
+        self.hierarchical_features = []
+        if self.hierarchical_feature_groups is not None:
+            for fg in self.hierarchical_feature_groups:
+                hierarchical_feature = create_feature_id(fg)
+                self.hierarchical_features.append(hierarchical_feature.feature_group)
         self.feature_importances = {}
         self.aggregate = aggregate
 
@@ -305,6 +323,8 @@ class CyclicBoostingBase(
             self.learn_rate = learning_rate.half_linear_learn_rate
         else:
             self.learn_rate = learn_rate
+        if hierarchical_feature_groups is not None:
+            self.learn_rate = learning_rate.constant_learn_rate_one
         self._init_features()
 
     def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> np.ndarray:
@@ -517,12 +537,17 @@ class CyclicBoostingBase(
             observer.observe_iterations(iteration, X, y, prediction, self.weights, self.get_state(), delta)
 
     def get_state(self) -> Dict[str, Any]:
-        return {
+        est_state = {
             "link_function": self,
             "features": self.features,
             "globale_scale": self.global_scale_,
             "insample_loss": self.insample_loss_,
         }
+        if self.hierarchical_feature_groups is not None and self.iteration_ < 3:
+            est_state["features"] = [
+                feature for feature in self.features if feature.feature_group in self.hierarchical_features
+            ]
+        return est_state
 
     def remove_preds(self, pred: CBLinkPredictionsFactors, X: np.ndarray) -> None:
         for feature in self.features:
@@ -701,6 +726,13 @@ class CyclicBoostingBase(
 
             self._log_iteration_info(convergence_parameters)
             for i, feature, pf_data in self.cb_features(X, y, pred, prefit_data):
+                if (
+                    self.hierarchical_feature_groups is not None
+                    and self.iteration_ < 3
+                    and feature.feature_group not in self.hierarchical_features
+                ):
+                    feature.factors_link_old = feature.factors_link.copy()
+                    continue
                 pred = self.feature_iteration(X, y, feature, pred, pf_data)
                 self._call_observe_feature_iterations(self.iteration_, i, X, y, prediction)
 
@@ -852,6 +884,7 @@ class CyclicBoostingBase(
         stop_iterations = False
         stop_factor_change = False
         stop_loss_change = False
+        veto_hierarchical = False
 
         delta = convergence_parameters.delta
         loss_change = convergence_parameters.loss_change
@@ -887,8 +920,11 @@ class CyclicBoostingBase(
                 "analysis plots."
             )
 
+        if iterations <= 3 and self.hierarchical_feature_groups is not None:
+            veto_hierarchical = True
+
         self.stop_criteria_ = (stop_iterations, stop_factor_change, stop_loss_change)
-        return stop_iterations or stop_factor_change or stop_loss_change
+        return (stop_iterations or stop_factor_change or stop_loss_change) and not veto_hierarchical
 
     def _check_parameters(self) -> None:
         if self.feature_groups is not None and len(self.feature_groups) == 0:

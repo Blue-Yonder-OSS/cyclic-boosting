@@ -106,6 +106,7 @@ class CBNBinomRegressor(CBBaseRegressor):
     def __init__(
         self,
         feature_groups=None,
+        hierarchical_feature_groups=None,
         feature_properties=None,
         weight_column=None,
         prior_prediction_column=None,
@@ -123,6 +124,7 @@ class CBNBinomRegressor(CBBaseRegressor):
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,
