@@ -187,7 +187,6 @@ def plot_analysis(
     dpi = 200
     with contextlib.closing(PdfPages(filepath_or_object)) as pdf_pages:
         plot_observer.check_fitted()
-        means, bin_centers, errors, _ = plot_observer.histograms
 
         # do not show for nbinom width mode
         if plot_observer.link_function.__class__ != CBNBinomC:
@@ -283,13 +282,18 @@ def _format_groupname_with_type(feature_group, feature_type):
 def _plot_one_feature_group(plot_observer, grid_item, feature, binners=None, use_tightlayout=True, plot_yp=True):
     if len(feature.feature_group) == 1:
         # treatment of one-dimensional features
-        plt.subplot(grid_item)
+        gs = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=grid_item, height_ratios=[2.5, 0.4])
+        factor_plot = plt.subplot(gs[0, 0])
         plot_factor_1d(
             feature,
             bin_bounds=get_bin_bounds(binners, feature.feature_group[0]),
             link_function=plot_observer.link_function,
             plot_yp=plot_yp,
         )
+        plt.subplot(gs[1, 0], sharex=factor_plot)
+        bin_occupancies = np.bincount(feature.lex_binned_data)
+        plt.plot(range(len(bin_occupancies)), bin_occupancies)
+        plt.xticks(size="xx-small", rotation="vertical")
         plt.grid(True, which="both")
 
     elif len(feature.feature_group) == 2:
