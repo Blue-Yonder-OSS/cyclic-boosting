@@ -20,7 +20,7 @@ from cyclic_boosting.pipelines import (
     pipeline_CBAdditiveGenericCRegressor,
     pipeline_CBGenericClassifier,
 )
-from cyclic_boosting.quantile_matching import quantile_fit_gamma, quantile_fit_nbinom, quantile_fit_spline
+from cyclic_boosting.quantile_matching import quantile_fit_gamma, quantile_fit_nbinom, quantile_fit_spline, J_QPD_S
 from cyclic_boosting.utils import smear_discrete_cdftruth
 from tests.utils import plot_CB, costs_mad, costs_mse
 
@@ -422,6 +422,53 @@ def test_multiplicative_quantile_regression_90(is_plot, prepare_data, features, 
 
     quantile_acc = evaluate_quantile(y, yhat)
     np.testing.assert_almost_equal(quantile_acc, 0.9015, 3)
+
+
+@pytest.mark.skip(reason="Long running time")
+def test_multiplicative_quantile_regression_pdf_J_QPD_S(is_plot, prepare_data, features, feature_properties):
+    X, y = prepare_data
+
+    quantiles = []
+    quantile_values = []
+    for quantile in [0.2, 0.5, 0.8]:
+        CB_est = cb_multiplicative_quantile_regressor_model(
+            quantile=quantile, features=features, feature_properties=feature_properties
+        )
+        CB_est.fit(X.copy(), y)
+        yhat = CB_est.predict(X.copy())
+        quantile_values.append(yhat)
+        quantiles.append(quantile)
+
+    quantiles = np.asarray(quantiles)
+    quantile_values = np.asarray(quantile_values)
+
+    cdf_truth_list = []
+    n_samples = len(X)
+    for i in range(n_samples):
+        j_qpd_s = J_QPD_S(0.2, quantile_values[0, i], quantile_values[1, i], quantile_values[2, i])
+        np.testing.assert_almost_equal(j_qpd_s.ppf(0.2), quantile_values[0, i], 3)
+        np.testing.assert_almost_equal(j_qpd_s.ppf(0.5), quantile_values[1, i], 3)
+        np.testing.assert_almost_equal(j_qpd_s.ppf(0.8), quantile_values[2, i], 3)
+        if i == 24:
+            np.testing.assert_almost_equal(j_qpd_s.ppf(0.1), 0.592, 3)
+            np.testing.assert_almost_equal(j_qpd_s.ppf(0.9), 5.783, 3)
+
+            if is_plot:
+                plt.plot([0.2, 0.5, 0.8], [quantile_values[0, i], quantile_values[1, i], quantile_values[2, i]], "ro")
+                xs = np.linspace(0.0, 1.0, 100)
+                plt.plot(xs, j_qpd_s.ppf(xs))
+                plt.savefig("J_QPD_S_integration_" + str(i) + ".png")
+                plt.clf()
+
+        if is_plot:
+            cdf_truth = smear_discrete_cdftruth(j_qpd_s.cdf, y[i])
+            cdf_truth_list.append(cdf_truth)
+
+    cdf_truth = np.asarray(cdf_truth_list)
+    if is_plot:
+        plt.hist(cdf_truth[cdf_truth > 0], bins=30)
+        plt.savefig("J_QPD_S_cdf_truth_histo.png")
+        plt.clf()
 
 
 @pytest.mark.skip(reason="Long running time")
