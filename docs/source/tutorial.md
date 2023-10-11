@@ -129,3 +129,17 @@ CB_est.fit(X_train, y)
 
 yhat = CB_est.predict(X_test)
 ```
+
+## Feature Importances
+To get a dictionary with the relative importances of the different model
+features in the training:
+```python
+CB_est.get_feature_importances()
+```
+
+## Individual Explainability
+To get a dictionary with the contributions of the different model features to
+the individual predictions of a given data set:
+```python
+CB_est.get_feature_contributions(X_test)
+```

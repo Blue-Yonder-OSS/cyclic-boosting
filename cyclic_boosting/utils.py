@@ -7,6 +7,11 @@ import numba as nb
 import numpy as np
 import pandas as pd
 import six
+import bisect
+
+from typing import Iterable, List
+
+from dataclasses import dataclass
 
 _logger = logging.getLogger(__name__)
 
@@ -293,7 +298,7 @@ def bin_steps(n_bins: nb.int64[:]):
 
 
 @nb.njit()
-def arange_multi(stops):
+def arange_multi(stops) -> np.ndarray:
     """
     Multidimensional generalization of :func:`numpy.arange`
 
@@ -974,3 +979,78 @@ def get_feature_column_names(X, exclude_columns=[]):
         if col in features:
             features.remove(col)
     return features
+
+
+def continuous_quantile_from_discrete_pdf(y, quantile):
+    """
+    Calculates a continous quantile value approximation for a given quantile
+    from an array of potentially discrete values.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        containing data with `float` type (potentially discrete)
+    quantile : float
+        desired quantile
+
+    Returns
+    -------
+    float
+        calculated quantile value
+    """
+    sorted_y = np.sort(y)
+    quantile_index = int(quantile * (len(y) - 1))
+    quantile_y = sorted_y[quantile_index]
+    index_low = bisect.bisect_left(sorted_y, quantile_y)
+    index_high = bisect.bisect_right(sorted_y, quantile_y)
+    if index_high > index_low:
+        quantile_y += (quantile_index - index_low) / (index_high - index_low)
+    return quantile_y
+
+
+@dataclass
+class ConvergenceParameters:
+    """Class for registering the convergence parameters"""
+
+    loss_change: float = 1e20
+    delta: float = 100.0
+
+    def set_loss_change(self, updated_loss_change: float) -> None:
+        self.loss_change = updated_loss_change
+
+    def set_delta(self, updated_delta: float) -> None:
+        self.delta = updated_delta
+
+
+def get_normalized_values(values: Iterable) -> List[float]:
+    values_total = sum(values)
+    if round(values_total, 6) != 0.0:
+        return [value / values_total for value in values]
+    return [value for value in values]
+
+
+def smear_discrete_cdftruth(cdf_func: callable, y: int) -> float:
+    """
+    Smearing of the CDF value of a sample from a discrete random variable. Main
+    usage is for a histogram of CDF values to check an estimated individual
+    probability distribution (should be flat).
+
+    Parameters
+    ----------
+    y : int
+        value from discrete random variable
+    cdf_func : callable
+        cumulative distribution function
+
+    Returns
+    -------
+    float
+        smeared CDF value for y
+    """
+    cdf_high = cdf_func(y)
+    if y >= 1:
+        cdf_low = cdf_func(y - 1)
+    else:
+        cdf_low = 0.0
+    cdf_truth = cdf_low + np.random.uniform(0, 1) * (cdf_high - cdf_low)
+    return cdf_truth

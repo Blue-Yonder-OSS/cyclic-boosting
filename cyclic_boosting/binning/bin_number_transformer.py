@@ -172,7 +172,7 @@ class BinNumberTransformer(ECdfTransformer):
             xt = MISSING_VALUE_AS_BINNO
         return xt
 
-    def transform(self, X, y=None, fit_mode=0):
+    def transform(self, X, y=None):
         self._check_input_for_transform(X)
 
         if check_frame_empty(X):

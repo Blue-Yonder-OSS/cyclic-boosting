@@ -398,7 +398,7 @@ class CBExponential(CBNBinomRegressor):
         )
         return gamma_momemt_matching(factors, variance_factors, self.link_func)
 
-    def predict(self, X, y=None, fit_mode=0, actions=None):
+    def predict(self, X, y=None):
         pred = self.predict_extended(X, None)
         return self.unlink_func(pred.predict_link())
 
@@ -414,7 +414,7 @@ class CBExponential(CBNBinomRegressor):
             pred.update_predictions(feature_predictions, feature, influence_categories)
         return pred
 
-    def fit(self, X, y=None, fit_mode=0):
+    def fit(self, X, y=None):
         self._init_fit(X, y)
         pred = CBLinkPredictions(
             self._get_prior_predictions(X),
