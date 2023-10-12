@@ -87,7 +87,8 @@ class TornadoModuleBase():
         else:
             self.feature_properties = self.mfp
 
-        print(self.report)
+        for key, value in self.report.items():
+            print(f"    {key}: {value}")
 
     @abc.abstractmethod
     def set_feature(self) -> None:
@@ -243,7 +244,7 @@ class TornadoVariableSelectionModule(TornadoModuleBase):
         #ここで次に動かすfeatureを書きたい。もしかしたら最初とそれ以降で場合分けがいるかも
         self.next_features = features
 
-    def create_interaction_term(self, size=3) -> None:
+    def create_interaction_term(self, size=2) -> None:
         if size <= 1:
             raise ValueError("interaction size must be more than 2")
         elif size >= 3:
