@@ -800,7 +800,6 @@ class CyclicBoostingBase(
                 mean_prediction_finite = np.mean(prediction)
 
             mean_prediction_binned = (sum_pw + 1) / (sum_w + 1)
-            feature.unbind_data()
 
             if isinstance(self, IdentityLinkMixin):
                 feature.mean_dev = mean_prediction_binned - mean_target_binned
