@@ -21,6 +21,7 @@ from sklearn.pipeline import Pipeline
 def pipeline_CB(
     estimator=None,
     feature_groups=None,
+    hierarchical_feature_groups=None,
     feature_properties=None,
     weight_column=None,
     prior_prediction_column=None,
@@ -51,6 +52,7 @@ def pipeline_CB(
     if estimator in [CBPoissonRegressor, CBLocPoissonRegressor, CBLocationRegressor, CBClassifier]:
         estimatorCB = estimator(
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,
@@ -66,6 +68,7 @@ def pipeline_CB(
     elif estimator == CBNBinomRegressor:
         estimatorCB = estimator(
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,
@@ -119,6 +122,7 @@ def pipeline_CB(
     elif estimator == CBGBSRegressor:
         estimatorCB = estimator(
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             minimal_loss_change=minimal_loss_change,
@@ -134,6 +138,7 @@ def pipeline_CB(
     elif estimator in [CBMultiplicativeQuantileRegressor, CBAdditiveQuantileRegressor]:
         estimatorCB = estimator(
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,
@@ -150,6 +155,7 @@ def pipeline_CB(
     elif estimator in [CBMultiplicativeGenericCRegressor, CBAdditiveGenericCRegressor, CBGenericClassifier]:
         estimatorCB = estimator(
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,

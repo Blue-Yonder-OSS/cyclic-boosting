@@ -37,6 +37,7 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
     def __init__(
         self,
         feature_groups=None,
+        hierarchical_feature_groups=None,
         feature_properties=None,
         weight_column=None,
         minimal_loss_change=1e-10,
@@ -52,6 +53,7 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             minimal_loss_change=minimal_loss_change,

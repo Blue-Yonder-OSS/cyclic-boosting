@@ -194,6 +194,7 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
     def __init__(
         self,
         feature_groups=None,
+        hierarchical_feature_groups=None,
         feature_properties=None,
         weight_column=None,
         prior_prediction_column=None,
@@ -210,6 +211,7 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,
@@ -284,6 +286,7 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
     def __init__(
         self,
         feature_groups=None,
+        hierarchical_feature_groups=None,
         feature_properties=None,
         weight_column=None,
         prior_prediction_column=None,
@@ -300,6 +303,7 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,
@@ -509,6 +513,7 @@ class CBMultiplicativeGenericCRegressor(CBGenericLoss, sklearn.base.RegressorMix
     def __init__(
         self,
         feature_groups=None,
+        hierarchical_feature_groups=None,
         feature_properties=None,
         weight_column=None,
         prior_prediction_column=None,
@@ -525,6 +530,7 @@ class CBMultiplicativeGenericCRegressor(CBGenericLoss, sklearn.base.RegressorMix
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,
@@ -572,6 +578,7 @@ class CBAdditiveGenericCRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
     def __init__(
         self,
         feature_groups=None,
+        hierarchical_feature_groups=None,
         feature_properties=None,
         weight_column=None,
         prior_prediction_column=None,
@@ -588,6 +595,7 @@ class CBAdditiveGenericCRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,
@@ -634,6 +642,7 @@ class CBGenericClassifier(CBGenericLoss, sklearn.base.ClassifierMixin, LogitLink
     def __init__(
         self,
         feature_groups=None,
+        hierarchical_feature_groups=None,
         feature_properties=None,
         weight_column=None,
         prior_prediction_column=None,
@@ -650,6 +659,7 @@ class CBGenericClassifier(CBGenericLoss, sklearn.base.ClassifierMixin, LogitLink
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             prior_prediction_column=prior_prediction_column,

@@ -65,7 +65,69 @@ def test_poisson_regression(is_plot, prepare_data, cb_poisson_regressor_model):
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6997, 3)
+    np.testing.assert_almost_equal(mad, 1.70, 3)
+
+
+@pytest.fixture(scope="function")
+def cb_poisson_regressor_model_hierarchical(features, feature_properties):
+    explicit_smoothers = {
+        ("dayofyear",): SeasonalSmoother(order=3),
+        ("price_ratio",): IsotonicRegressor(increasing=False),
+    }
+
+    plobs = [
+        observers.PlottingObserver(iteration=1),
+        observers.PlottingObserver(iteration=4),
+        observers.PlottingObserver(iteration=-1),
+    ]
+
+    CB_pipeline = pipeline_CBPoissonRegressor(
+        feature_properties=feature_properties,
+        feature_groups=[
+            "PG_ID_3",
+            "P_ID",
+            "L_ID",
+            ("P_ID", "L_ID"),
+            "dayofweek",
+            "PROMOTION_TYPE",
+            "dayofyear",
+            "price_ratio",
+        ],
+        hierarchical_feature_groups=[
+            "PG_ID_3",
+            "P_ID",
+            "L_ID",
+            ("P_ID", "L_ID"),
+            "dayofweek",
+            "PROMOTION_TYPE",
+            "dayofyear",
+            # "price_ratio",
+        ],
+        observers=plobs,
+        maximal_iterations=50,
+        smoother_choice=common_smoothers.SmootherChoiceGroupBy(
+            use_regression_type=True, use_normalization=False, explicit_smoothers=explicit_smoothers
+        ),
+    )
+
+    return CB_pipeline
+
+
+def test_poisson_regression_hierarchical(is_plot, prepare_data, cb_poisson_regressor_model_hierarchical):
+    X, y = prepare_data
+
+    CB_est = cb_poisson_regressor_model_hierarchical
+    CB_est.fit(X.copy(), y)
+
+    if is_plot:
+        plot_CB("analysis_CB_iterfirst", [CB_est[-1].observers[0]], CB_est[-2])
+        plot_CB("analysis_CB_iterfourth", [CB_est[-1].observers[1]], CB_est[-2])
+        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.699, 3)
 
 
 def test_poisson_regression_default_features(prepare_data, default_features, feature_properties):
