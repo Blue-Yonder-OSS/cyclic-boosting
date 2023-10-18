@@ -752,7 +752,7 @@ def regularize_to_prior_expectation(values, uncertainties, prior_expectation, th
     significance = (values - prior_expectation) / uncertainties
     return prior_expectation + uncertainties * np.where(
         np.abs(significance) > threshold,
-        np.sign(significance) * np.sqrt(significance**2.0 - threshold**2.0),
+        np.sign(significance) * np.sqrt(np.abs(significance**2.0 - threshold**2.0)),
         0,
     )
 

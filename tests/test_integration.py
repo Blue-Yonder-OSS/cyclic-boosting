@@ -391,7 +391,7 @@ def test_width_regression_default_features(feature_properties, default_features,
     CB_est = pipeline_CBPoissonRegressor(feature_properties=fp)
     CB_est.fit(X.copy(), y)
     yhat = CB_est.predict(X.copy())
-    X["yhat_mean"] = yhat
+    X = X.assign(yhat_mean=yhat)
 
     CB_est_width = cb_width_model
     CB_est_width.fit(X.copy(), y)

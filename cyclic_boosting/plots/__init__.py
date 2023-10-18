@@ -339,21 +339,20 @@ def plot_factor_histogram(feature):
     feat_group = _format_groupname_with_type(feat_group, feature_type)
     n_bins = _guess_suitable_number_of_histogram_bins(len(factors))
 
-    gs = gridspec.GridSpec(2, 1)
+    fig = plt.figure()
+    gs = gridspec.GridSpec(nrows=2, ncols=1, figure=fig)
 
-    plt.sca(plt.subplot(gs[0, 0]))
-    plt.title("Unsmoothed Factor-Histogram for {0}".format(feat_group))
+    fig.add_subplot(gs[0, 0])
+    plt.title("Unsmoothed-Factor Histogram for {0}".format(feat_group))
     plt.xlabel("Factor")
     plt.ylabel("Count")
     plt.hist(factors, bins=n_bins, log=True)
 
-    plt.sca(plt.subplot(gs[1, 0]))
+    fig.add_subplot(gs[1, 0])
     dev = smoothed_factors - factors
-    plt.hist(dev, bins=100, log=True)
-    plt.title("smoothed_factors - factors")
-    plt.xlabel("Factor")
+    plt.xlabel("smoothed_factors - factors")
     plt.ylabel("Count")
-    plt.hist(smoothed_factors - factors, bins=100, log=True)
+    plt.hist(dev, bins=100, log=True, color="red")
 
 
 plot_factor_high_dim = plot_factor_histogram
