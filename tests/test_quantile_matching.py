@@ -3,11 +3,137 @@ from scipy.stats import norm, gamma, nbinom
 import matplotlib.pyplot as plt
 
 from cyclic_boosting.quantile_matching import (
+    J_QPD_S,
+    J_QPD_B,
     quantile_fit_gaussian,
     quantile_fit_gamma,
     quantile_fit_nbinom,
     quantile_fit_spline,
 )
+
+
+def test_J_QPD_S(is_plot):
+    alpha = 0.2
+    # Gamma-like
+    qv_low = 1.12
+    qv_median = 2.023
+    qv_high = 3.322
+
+    j_qpd_s = J_QPD_S(alpha, qv_low, qv_median, qv_high)
+
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.8), qv_high, 3)
+    # expectation from Gamma
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.1), 0.79, 2)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.3), 1.42, 2)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.7), 2.78, 2)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.9), 4.18, 2)
+
+    np.testing.assert_almost_equal(j_qpd_s.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(qv_high), 0.8, 3)
+    # expectation from Gamma
+    np.testing.assert_almost_equal(j_qpd_s.cdf(0.79), 0.1, 2)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(1.42), 0.3, 2)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(2.78), 0.7, 2)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(4.18), 0.9, 2)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_s.ppf(xs))
+        plt.savefig("J_QPD_S.png")
+        plt.clf()
+
+    j_qpd_s = J_QPD_S(alpha, qv_low, qv_median, qv_high, version="logistic")
+
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.8), qv_high, 3)
+    # deviate from Gamma expecation
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.1), 0.76, 2)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.3), 1.42, 2)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.7), 2.78, 2)
+    np.testing.assert_almost_equal(j_qpd_s.ppf(0.9), 4.28, 2)
+
+    np.testing.assert_almost_equal(j_qpd_s.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(qv_high), 0.8, 3)
+    # deviate from Gamma expecation
+    np.testing.assert_almost_equal(j_qpd_s.cdf(0.76), 0.1, 2)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(1.42), 0.3, 2)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(2.78), 0.7, 2)
+    np.testing.assert_almost_equal(j_qpd_s.cdf(4.28), 0.9, 2)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_s.ppf(xs))
+        plt.savefig("J_QPD_S_logistic.png")
+        plt.clf()
+
+
+def test_J_QPD_B(is_plot):
+    alpha = 0.2
+    # Gaussian-like
+    qv_low = -0.878
+    qv_median = 0.3
+    qv_high = 1.478
+
+    j_qpd_b = J_QPD_B(alpha, qv_low, qv_median, qv_high, -5.0, 10.0)
+
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.8), qv_high, 3)
+    # expect from Gaussian
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.1), -1.49, 2)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.3), -0.43, 2)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.7), 1.03, 2)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.9), 2.09, 1)
+
+    np.testing.assert_almost_equal(j_qpd_b.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(qv_high), 0.8, 3)
+    # expect from Gaussian
+    np.testing.assert_almost_equal(j_qpd_b.cdf(-1.49), 0.1, 2)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(-0.43), 0.3, 2)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(1.03), 0.7, 2)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(2.09), 0.9, 2)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_b.ppf(xs))
+        plt.savefig("J_QPD_B.png")
+        plt.clf()
+
+    j_qpd_b = J_QPD_B(alpha, qv_low, qv_median, qv_high, -5.0, 10.0, version="logistic")
+
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.8), qv_high, 3)
+    # deviate from Gaussian expectation
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.1), -1.57, 2)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.3), -0.43, 2)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.7), 1.03, 2)
+    np.testing.assert_almost_equal(j_qpd_b.ppf(0.9), 2.19, 2)
+
+    np.testing.assert_almost_equal(j_qpd_b.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(qv_high), 0.8, 3)
+    # deviate from Gaussian expectation
+    np.testing.assert_almost_equal(j_qpd_b.cdf(-1.57), 0.1, 2)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(-0.43), 0.3, 2)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(1.03), 0.7, 2)
+    np.testing.assert_almost_equal(j_qpd_b.cdf(2.19), 0.9, 2)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_b.ppf(xs))
+        plt.savefig("J_QPD_B_logistic.png")
+        plt.clf()
 
 
 def test_cdf_fit_gaussian(is_plot):
