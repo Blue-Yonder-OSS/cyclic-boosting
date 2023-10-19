@@ -1,8 +1,7 @@
 import numpy as np
-import pandas as pd
 from statsmodels.tsa.seasonal import MSTL
 from scipy.fft import fft
-from scipy.stats import norm
+import pymannkendall as mk
 
 
 class TornadoAnalysisModule():
@@ -36,7 +35,7 @@ class TornadoAnalysisModule():
             self.dataset.index = self.dataset["date"].values
             self.dataset = self.dataset[targets]
             self.check_missing()
-            self.calc_daily_ave()
+            self.calc_daily_average()
             self.check_trend()
             self.check_monotonicity()
             self.check_seasonality()
@@ -44,50 +43,9 @@ class TornadoAnalysisModule():
 
         return self.report
 
-    def calc_daily_ave(self) -> None:
-        dates = np.sort(self.dataset.index.unique())
-        size = (len(dates), len(self.dataset.columns))
-        dataset = pd.DataFrame(np.zeros(size),
-                               columns=self.dataset.columns,
-                               index=dates)
-        for date in dates:
-            daily_ave = self.dataset[self.dataset.index == date].mean()
-            dataset.loc[date, :] = daily_ave
-        self.dataset = dataset.copy()
-
-    def mann_kendall(self, data) -> bool:
-        data = data.values[~np.isnan(data)].reshape(-1)
-        n = len(data)
-
-        # calculate S
-        s = 0
-        for k in range(n - 1):
-            for j in range(k + 1, n):
-                s += np.sign(data[j] - data[k])
-
-        # calculate the unique data
-        unique_data = np.unique(data)
-
-        # calculate the var(s)
-        tp = np.zeros(unique_data.shape)
-        for i in range(len(unique_data)):
-            tp[i] = np.sum(unique_data[i] == data)
-        var_s = (n * (n - 1) * (2 * n + 5) +
-                 np.sum(tp * (tp - 1) * (2 * tp + 5))) / 18
-        if s > 0:
-            z = (s - 1) / np.sqrt(var_s)
-        elif s == 0:
-            z = 0
-        elif s < 0:
-            z = (s + 1) / np.sqrt(var_s)
-
-        # calculate the p_value
-        p = 2 * (1 - norm.cdf(abs(z)))  # two tail test
-        h = abs(z) > norm.ppf(1 - self.P_THRESH / 2)
-        if (z != 0) and (p < self.P_THRESH) and h:
-            return True
-        else:
-            return False
+    def calc_daily_average(self) -> None:
+        self.dataset = self.dataset.groupby(level=0).mean()
+        self.dataset = self.dataset.sort_index()
 
     def check_trend(self) -> None:
         # 帰無仮説：n個のサンプルx1,x2,...xnが独立で同一の確率分布に従う
@@ -95,19 +53,19 @@ class TornadoAnalysisModule():
         # P値が0.05を超えた場合、帰無仮説を棄却⇒トレンド性あり
         self.report['has_trend'] = []
         for col in self.targets:
-            flag = self.mann_kendall(self.dataset[col])
+            flag = mk.original_test(self.dataset[col])[0] != "no trend"
             if flag:
                 self.report['has_trend'].append(col)
 
     def fft(self, data):
         n = len(data)
         amp = fft(data.values)
-        amp = 2.0/n * np.abs(amp[0:n//2])
+        amp = (2.0 / n) * (np.abs(amp[0:n // 2]))
 
         return amp
 
     def decompose(self, data) -> MSTL:
-        decomposer = MSTL(data, periods=(7, 30, 356))
+        decomposer = MSTL(data, periods=(7, 30, 365))
         res = decomposer.fit()
 
         return res
@@ -117,10 +75,10 @@ class TornadoAnalysisModule():
             is_seasonality = []
             decmp = self.decompose(self.dataset[col])
             amp_med = np.median(self.fft(self.dataset[col]))
-            for _range in ['7', '30', '356']:
+            for _range in ['7', '30', '365']:
                 amp_list = self.fft(decmp.seasonal[f'seasonal_{_range}'])
                 amp_max = np.max(amp_list)
-                peak = np.abs(amp_max-amp_med)/amp_med
+                peak = np.abs(amp_max - amp_med) / amp_med
                 if peak > self.W_THRESH:
                     is_seasonality.append(True)
                 else:

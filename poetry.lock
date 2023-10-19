@@ -2737,6 +2737,21 @@ files = [
 plugins = ["importlib-metadata"]
 
 [[package]]
+name = "pymannkendall"
+version = "1.4.3"
+description = "A python package for non-parametric Mann-Kendall family of trend tests."
+optional = false
+python-versions = "*"
+files = [
+    {file = "pymannkendall-1.4.3-py3-none-any.whl", hash = "sha256:7d988efffae26c12c04b95f77042b946c8581da7526d94b2bbfb7416fb55681f"},
+    {file = "pymannkendall-1.4.3.tar.gz", hash = "sha256:f9e3bbbb583b5285d15082aa0007825e5bea4dde9858d2e7ca81ee6f1e378e82"},
+]
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[[package]]
 name = "pyparsing"
 version = "3.1.1"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
@@ -3928,4 +3943,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "18079ddffc7e0601d7dcc088c1aeb7d2f0291ad24b1ca3e74defa7f164acb654"
+content-hash = "bb0ec0dca8710abff539d6ccdc62a31c3c7d26910bdb619452beda8e58135035"

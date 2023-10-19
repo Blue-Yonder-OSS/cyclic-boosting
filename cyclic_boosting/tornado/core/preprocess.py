@@ -62,4 +62,3 @@ def encode_catetory(dataset) -> pd.DataFrame:
         dataset[category] = enc.fit_transform(dataset[category])
 
     return dataset
-
