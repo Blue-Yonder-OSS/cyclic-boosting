@@ -10,7 +10,8 @@ from typing import Optional
 class J_QPD_S:
     """
     Implementation of the semi-bounded mode of Johnson Quantile-Parameterized
-    Distributions (J-QPD), see https://repositories.lib.utexas.edu/bitstream/handle/2152/63037/HADLOCK-DISSERTATION-2017.pdf.
+    Distributions (J-QPD), see https://repositories.lib.utexas.edu/bitstream/handle/2152/63037/HADLOCK-DISSERTATION-2017.pdf
+    (Due to the Python keyword, the parameter lambda from this reference is named kappa below.).
     A distribution is parameterized by a symmetric-percentile triplet (SPT).
 
     Parameters
@@ -84,6 +85,7 @@ class J_QPD_B:
     """
     Implementation of the bounded mode of Johnson Quantile-Parameterized
     Distributions (J-QPD), see https://repositories.lib.utexas.edu/bitstream/handle/2152/63037/HADLOCK-DISSERTATION-2017.pdf.
+    (Due to the Python keyword, the parameter lambda from this reference is named kappa below.)
     A distribution is parameterized by a symmetric-percentile triplet (SPT).
 
     Parameters
