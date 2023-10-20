@@ -27,7 +27,7 @@ jobs:
       uses: atlassian/gajira-create@v3
       with:
         # 付けたいチケット名を選択(jiraのAPItokenのlabelに合わせる)
-        project: TSTGITACT
+        project: CARGCARTCB
         # 課題タイプを指定
         issuetype: Task
         # issuesのタイトルが要約になるように設定
