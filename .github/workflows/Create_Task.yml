@@ -1,0 +1,45 @@
+name: Create Task
+
+# githubのissueが開かれたときに作動(type->[colosed]で閉められたとき)
+on:
+  issues:
+  push:
+    types: [opened]
+
+#ここからworkflow
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Create Jira Task
+    if: github.event.action == 'opened'
+    permissions:
+      issues: write
+    steps:
+    - name: Login
+      uses: atlassian/gajira-login@master
+      env:
+        JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+
+    - name: Create Task
+      id: create
+      uses: atlassian/gajira-create@v3
+      with:
+        # 付けたいチケット名を選択(jiraのAPItokenのlabelに合わせる)
+        project: TSTGITACT
+        # 課題タイプを指定
+        issuetype: Task
+        # issuesのタイトルが要約になるように設定
+        summary: ${{ github.event.issue.title}}
+        # issuesの本文が説明になるように設定
+        description: ${{ github.event.issue.body}}
+
+    - name: Log created issue
+      run: echo "Issue ${{ steps.create.outputs.issue }} was created"
+
+    - name: Add comment
+      uses: peter-evans/create-or-update-comment@v3
+      with:
+        issue-number: ${{ github.event.issue.number }}
+        body: ${{ steps.create.outputs.issue }}
