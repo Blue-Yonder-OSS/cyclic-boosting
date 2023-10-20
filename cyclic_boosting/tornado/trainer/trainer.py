@@ -60,7 +60,7 @@ class Trainer(TrainerBase):
             y_valid = np.asarray(validation[target])
             X_valid = validation.drop(target, axis=1)
             yhat = estimater.predict(X_valid)
-            evaluator.eval_all(y_valid, yhat, verbose)
+            evaluator.eval_all(y_valid, yhat, estimater, verbose)
 
             # log
             logger.log(estimater, evaluator, self.manager)
@@ -107,7 +107,7 @@ class SqueezeTrainer(TrainerBase):
 
             # self.manager.reset(train, target)
 
-        if log_policy == "compute_COD":
+        if log_policy in ["compute_COD", "vote_by_num", "vote"]:
             truncated_features = {}
             #ここのthresholdは自由に決めることができるが基本的に２が良いらしい
             threshold = 2
@@ -120,7 +120,7 @@ class SqueezeTrainer(TrainerBase):
                 if data["F"] > threshold:
                     truncated_features[feature] = data
 
-            print("TRUNCATED")
+            print("\nTRUNCATED")
             # base = [x for x in truncated_features.keys() if isinstance(x, str)]
             interaction = [x for x in truncated_features.keys() if isinstance(x, tuple)]
 
