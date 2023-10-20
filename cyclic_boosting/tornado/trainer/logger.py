@@ -4,6 +4,7 @@ import numpy as np
 import copy
 
 from cyclic_boosting import flags
+from cyclic_boosting.plots import plot_analysis
 
 
 class Logger():
@@ -73,6 +74,18 @@ class Logger():
                 if type(term) is tuple:
                     f.write(f"{term}\n")
 
+    def save_plot(self, est, name):
+        plobs = [est[-1].observers[-1]]
+        binner = est[-2]
+        for i, p in enumerate(plobs):
+            print(name + "_{}".format(i))
+            plot_analysis(
+                plot_observer=p,
+                file_obj=name + "_{}".format(i),
+                use_tightlayout=False,
+                binners=[binner],
+            )
+
     def save_best(self, est, mng):
         self.make_model_dir()
         self.save_metrics(self.best["metrics"],
@@ -84,6 +97,9 @@ class Logger():
         self.save_model(est,
                         os.path.join(self.model_dir,
                                      f'model_{self.best["iter"]}.pkl'))
+        self.save_plot(est,
+                       os.path.join(self.model_dir,
+                                    f'plot_{self.best["iter"]}'))
 
     def output(self, evt):
         print(f" === The best model was updated in Iteration {self.iter} ===")
@@ -127,7 +143,7 @@ class Logger():
             elif self.policy == "vote_by_num":
                 cnt = 0
                 for metrics, value in result.items():
-                    if value[self.iter] < best["metrics"][metrics]:
+                    if value[self.iter] < best[metrics]:
                         cnt += 1
                 is_best = cnt > len(evt.result.items().mapping) / 2
 
