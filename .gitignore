@@ -366,3 +366,5 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,pycharm,macos,windows,python
+examples/regression/interntest.ipynb
+examples/regression/remove_column.ipynb
