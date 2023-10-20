@@ -57,7 +57,7 @@ jobs:
     - name: Transition task
       uses: atlassian/gajira-transition@master
       # JiraタスクIDがIn Reviewになければスルー
-      if: fromJSON(steps.issue.outputs.json).fields.status.name == '作業中'
+      if: fromJSON(steps.issue.outputs.json).fields.status.name == 'In Review'
       with:
         # 前のステップのアウトプットを参照
         issue: ${{ steps.find.outputs.issue }}
