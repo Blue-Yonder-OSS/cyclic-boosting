@@ -60,7 +60,7 @@ class Trainer(TrainerBase):
             y_valid = np.asarray(validation[target])
             X_valid = validation.drop(target, axis=1)
             yhat = estimater.predict(X_valid)
-            evaluator.eval_all(y_valid, yhat, verbose)
+            evaluator.eval_all(y_valid, yhat, estimater, verbose)
 
             # log
             logger.log(estimater, evaluator, self.manager)
@@ -125,7 +125,10 @@ class SqueezeTrainer(TrainerBase):
             interaction = [x for x in truncated_features.keys() if isinstance(x, tuple)]
 
             # 寄与していると判定された交互作用項(2変数)の選別
+            print("base:", base)
+            print("interaction:", interaction)
             truncated_features = base + interaction
+            print("truncated_features:", truncated_features)
             self.manager.set_to_multiple(truncated_features)
             print(truncated_features)
 

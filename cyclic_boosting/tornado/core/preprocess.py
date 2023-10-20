@@ -23,20 +23,20 @@ def tolowerstr(dataset) -> pd.DataFrame:
 
 def dayofweek(dataset) -> pd.DataFrame:
     dataset["dayofweek"] = dataset["date"].dt.dayofweek
-    dataset["dayofweek"] = dataset["dayofweek"].astype('float64')
+    dataset["dayofweek"] = dataset["dayofweek"].astype('int64')
 
     return dataset
 
 
 def dayofyear(dataset) -> pd.DataFrame:
     dataset["dayofyear"] = dataset["date"].dt.dayofyear
-    dataset["dayofyear"] = dataset["dayofyear"].astype('float64')
+    dataset["dayofyear"] = dataset["dayofyear"].astype('int64')
 
     return dataset
 
 
 def encode_catetory(dataset) -> pd.DataFrame:
-    object_df = dataset.select_dtypes('object')
+    object_df = dataset.drop(columns="date").select_dtypes('object')
     category = []
     for col in object_df.columns:
         subset = object_df[col].dropna()
@@ -62,4 +62,3 @@ def encode_catetory(dataset) -> pd.DataFrame:
         dataset[category] = enc.fit_transform(dataset[category])
 
     return dataset
-

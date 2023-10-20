@@ -1,8 +1,7 @@
 import numpy as np
 from statsmodels.tsa.seasonal import MSTL
-from statsmodels.tsa.stattools import adfuller
 from scipy.fft import fft
-from scipy.signal import find_peaks
+import pymannkendall as mk
 
 
 class TornadoAnalysisModule():
@@ -21,7 +20,7 @@ class TornadoAnalysisModule():
         }
         self.is_time_series = is_time_series
         self.P_THRESH = 0.05
-        self.W_THRESH = 1.5
+        self.W_THRESH = 5.0
         self.C_THRESH = 0.95
 
     def analyze(self) -> dict:
@@ -29,54 +28,44 @@ class TornadoAnalysisModule():
             if 'date' not in self.dataset.columns:
                 raise ValueError("Dataset must be included 'date' column on \
                                  time-series prediction")
-            cols = self.dataset.select_dtypes(include='float').columns
+            cols = self.dataset.select_dtypes(include=['float']).columns
             self.targets = [c for c in cols]
             targets = [c for c in cols]
             print(f"Auto analysis target {targets}")
-            targets.append('date')
-            dataset = self.dataset[targets]
-            dataset = dataset.sort_values('date')
-            # self.check_trend()
+            self.dataset.index = self.dataset["date"].values
+            self.dataset = self.dataset[targets]
+            self.check_missing()
+            self.calc_daily_average()
+            self.check_trend()
             self.check_monotonicity()
             self.check_seasonality()
             self.check_linearity()
-            self.check_missing()
 
         return self.report
 
-    def adf(self, data) -> list:
-        ps = []
-        for reg in ['n', 'c', 'ct', 'ctt']:
-            _, pvalue, _, _, _, _ = adfuller(x=data,
-                                             regression=reg,
-                                             autolag='AIC')
-            ps.append(pvalue)
-
-        return ps
+    def calc_daily_average(self) -> None:
+        self.dataset = self.dataset.groupby(level=0).mean()
+        self.dataset = self.dataset.sort_index()
 
     def check_trend(self) -> None:
-        # P値が0.05を超えた場合、「データが定常性をもつ＝トレンドをもたない」
-        # という帰無仮説を棄却
-
+        # 帰無仮説：n個のサンプルx1,x2,...xnが独立で同一の確率分布に従う
+        # 　　　　　つまり、トレンド性なし
+        # P値が0.05を超えた場合、帰無仮説を棄却⇒トレンド性あり
         self.report['has_trend'] = []
         for col in self.targets:
-            ps = self.adf(self.dataset[col])
-            flag = np.all(np.array(ps) > self.P_THRESH)
+            flag = mk.original_test(self.dataset[col])[0] != "no trend"
             if flag:
                 self.report['has_trend'].append(col)
 
-    def fft(self, data) -> list:
-        amp = fft(data.values, 1)
-        peaks, _ = find_peaks(amp, prominence=0.5)
-        if len(peaks) >= 1:
-            peaks = sorted(peaks)
-            duration = [peaks[i+1] - peaks[i] for i in range(0, len(peaks)-1)]
-            return duration
-        else:
-            return []
+    def fft(self, data):
+        n = len(data)
+        amp = fft(data.values)
+        amp = (2.0 / n) * (np.abs(amp[0:n // 2]))
+
+        return amp
 
     def decompose(self, data) -> MSTL:
-        decomposer = MSTL(data, periods=(7, 30, 356))
+        decomposer = MSTL(data, periods=(7, 30, 365))
         res = decomposer.fit()
 
         return res
@@ -85,13 +74,15 @@ class TornadoAnalysisModule():
         for col in self.targets:
             is_seasonality = []
             decmp = self.decompose(self.dataset[col])
-            for _range in ['7', '30', '356']:
-                duration = self.fft(decmp.seasonal[f'seasonal_{_range}'])
-                if len(duration) > 0:
-                    if np.std(duration) < self.W_THRESH:
-                        is_seasonality.append(True)
-                    else:
-                        is_seasonality.append(False)
+            amp_med = np.median(self.fft(self.dataset[col]))
+            for _range in ['7', '30', '365']:
+                amp_list = self.fft(decmp.seasonal[f'seasonal_{_range}'])
+                amp_max = np.max(amp_list)
+                peak = np.abs(amp_max - amp_med) / amp_med
+                if peak > self.W_THRESH:
+                    is_seasonality.append(True)
+                else:
+                    is_seasonality.append(False)
             if np.any(is_seasonality):
                 self.report['has_seasonality'].append(col)
 
@@ -106,8 +97,9 @@ class TornadoAnalysisModule():
     def check_linearity(self) -> None:
         # NOTE: very rough
         for col in self.targets:
-            corr = self.dataset[['date', col]].corr()
-            if corr.iloc[0, 1] > self.C_THRESH:
+            corr = np.corrcoef(np.arange(len(self.dataset[col])),
+                               self.dataset[col].values)
+            if corr[0, 1] > self.C_THRESH:
                 self.report['has_linearity'].append(col)
 
     def check_missing(self) -> None:
