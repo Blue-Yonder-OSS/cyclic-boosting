@@ -59,5 +59,4 @@ jobs:
       with:
         # 前のステップのアウトプットを参照
         issue: ${{ steps.find.outputs.issue }}
-        # transition: 'In Review'
-        transition: '完了'  #for test
+        transition: 'In Review'
