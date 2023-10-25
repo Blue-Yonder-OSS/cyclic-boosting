@@ -137,12 +137,11 @@ class SqueezeTrainer(TrainerBase):
                 # train
                 X = copy.deepcopy(self.manager.X)
                 y = copy.deepcopy(self.manager.y)
-                _ = estimater.fit(X, y)
-
+                _ = estimater.fit(X.copy(), y)
                 # validation
                 y_valid = np.asarray(validation[target])
                 X_valid = validation.drop(target, axis=1)
-                yhat = estimater.predict(X_valid)
+                yhat = estimater.predict(X_valid.copy())
                 evaluator.eval_all(y_valid, yhat, estimater, verbose)
                 # log
                 logger.log(estimater, evaluator, self.manager)

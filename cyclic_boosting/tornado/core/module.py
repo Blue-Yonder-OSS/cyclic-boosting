@@ -89,6 +89,11 @@ class TornadoModuleBase():
 
         print(self.report)
 
+    def drop_unused_features(self) -> None:
+        for col in self.X.columns:
+            if col not in self.feature_properties.keys():
+                self.X = self.X.drop(col, axis=1)
+
     @abc.abstractmethod
     def set_feature(self) -> None:
         pass
@@ -104,6 +109,7 @@ class TornadoModuleBase():
         if not self.is_ts:
             self.X = self.X.drop('date', axis=1)
         self.set_feature_property()
+        self.drop_unused_features()
         self.create_interaction_term()
 
     def set_smoother(self) -> None:
@@ -164,6 +170,7 @@ class TornadoModule(TornadoModuleBase):
     def __init__(self, manual_feature_property=None,
                  is_time_series=True) -> None:
         super().__init__(manual_feature_property, is_time_series)
+        self.type = "multiple"
 
     # some comments
     def set_feature(self) -> None:
@@ -237,13 +244,13 @@ class TornadoVariableSelectionModule(TornadoModuleBase):
                 self.features.append(self.sorted_features[0])
             else:
                 self.features = self.next_features
-            print(self.features)
+            # print(self.features)
 
     def get_features(self, features):
         #ここで次に動かすfeatureを書きたい。もしかしたら最初とそれ以降で場合分けがいるかも
         self.next_features = features
 
-    def create_interaction_term(self, size=3) -> None:
+    def create_interaction_term(self, size=2) -> None:
         if size <= 1:
             raise ValueError("interaction size must be more than 2")
         elif size >= 3:

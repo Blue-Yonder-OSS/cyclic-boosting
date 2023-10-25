@@ -1,3 +1,5 @@
+import logging
+
 import os
 import pickle
 import numpy as np
@@ -5,6 +7,14 @@ import copy
 
 from cyclic_boosting import flags
 from cyclic_boosting.plots import plot_analysis
+
+
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+handler.terminator = ''
+_logger.addHandler(handler)
 
 
 class Logger():
@@ -35,20 +45,15 @@ class Logger():
     def save_model(self, est, name):
         pickle.dump(est, open(name, 'wb'))
 
-    def save_metrics(self, res, name):
+    def save_metrics(self, name):
         with open(name, 'w') as f:
-            for k, v in res.items():
+            for k, v in self.best["metrics"].items():
                 f.write(f"[{k}]: {v} \n")
 
-    def save_setting(self, mng, name):
-        # to string
-        fp = {}
-        for f, p in mng.feature_properties.items():
-            fp[f] = flags.flags_to_string(p)
+    def save_setting(self, name):
+        fp = self.best["feature_properties"]
 
-        s = {}
-        for f, sm in mng.smoothers.items():
-            s[f] = sm.name
+        s = self.best["smoothers"]
 
         with open(name, 'w') as f:
             # feature property
@@ -59,7 +64,7 @@ class Logger():
 
             # feature
             f.write("=== Feature ===\n")
-            f.write(f"{mng.features}\n")
+            f.write(f"{self.best['features']}\n")
             f.write("\n")
 
             # smoother
@@ -70,7 +75,7 @@ class Logger():
 
             # interaction term
             f.write("=== Interaction term ===\n")
-            for term in self.best["mng"].features:
+            for term in self.best["features"]:
                 if type(term) is tuple:
                     f.write(f"{term}\n")
 
@@ -78,47 +83,61 @@ class Logger():
         plobs = [est[-1].observers[-1]]
         binner = est[-2]
         for i, p in enumerate(plobs):
-            print(name + "_{}".format(i))
             plot_analysis(
                 plot_observer=p,
-                file_obj=name + "_{}".format(i),
+                file_obj=name,
                 use_tightlayout=False,
                 binners=[binner],
             )
 
-    def save_best(self, est, mng):
-        self.make_model_dir()
-        self.save_metrics(self.best["metrics"],
-                          os.path.join(self.model_dir,
-                                       f'metrics_{self.best["iter"]}.txt'))
-        self.save_setting(mng,
-                          os.path.join(self.model_dir,
-                                       f'setting_{self.best["iter"]}.txt'))
-        self.save_model(est,
-                        os.path.join(self.model_dir,
-                                     f'model_{self.best["iter"]}.pkl'))
-        self.save_plot(est,
-                       os.path.join(self.model_dir,
-                                    f'plot_{self.best["iter"]}'))
+    def save_best(self):
+        with open(os.path.join(self.save_dir,
+                               'temp.pkl'), 'rb') as f:
+            est = pickle.load(f)
+            self.make_model_dir()
+            self.save_metrics(os.path.join(self.model_dir,
+                                           f'metrics_{self.best["iter"]}.txt'))
+            self.save_setting(os.path.join(self.model_dir,
+                                           f'setting_{self.best["iter"]}.txt'))
+            self.save_model(est,
+                            os.path.join(self.model_dir,
+                                         f'model_{self.best["iter"]}.pkl'))
+            self.save_plot(est,
+                           os.path.join(self.model_dir,
+                                        f'plot_{self.best["iter"]}'))
 
-    def output(self, evt):
-        print(f" === The best model was updated in Iteration {self.iter} ===")
-        print(f"    best_features{self.best['mng'].features}\n    ", end="")
+    def output(self, evt, mng):
+        _logger.info(f"  ---- The best model was updated in iter {self.iter} ----\n")
+        _logger.info(f"    best_features{mng.features}\n    ")
         for keys in evt.result.keys():
-            print(f"{keys}: {evt.result[keys][-1]}", end=", ")
-        print("")
+            _logger.info(f"{keys}: {evt.result[keys][-1]}, ")
+        _logger.info("\n")
 
     def update_best(self, est, evt, mng):
+        best_feature_properties = {}
+        for f, p in mng.feature_properties.items():
+            best_feature_properties[f] = flags.flags_to_string(p)
+
+        best_smoothers = {}
+        for f, sm in mng.smoothers.items():
+            best_smoothers[f] = sm.name
+
         best_metrics = {}
         for metrics, value in evt.result.items():
             best_metrics[metrics] = copy.copy(value[-1])
         self.best = {
             "iter": self.iter,
-            "est": est,
-            "mng": mng,
+            "features": mng.features,
+            "feature_properties": best_feature_properties,
+            "smoothers": best_smoothers,
             "metrics": best_metrics,
             }
-        self.output(evt)
+
+        self.save_model(est,
+                        os.path.join(self.save_dir,
+                                     'temp.pkl'))
+
+        self.output(evt, mng)
 
     def is_best(self, evt) -> bool:
         if self.policy == "compute_COD":
@@ -170,16 +189,25 @@ class Logger():
             self.update_best(est, evt, mng)
         if not is_last_iter:
             if "VariableSelection" in str(type(mng)):
-                next_features = copy.deepcopy(self.best["mng"].features)
+                next_features = copy.deepcopy(self.best["features"])
                 next_features.append(mng.sorted_features[self.iter])
                 mng.get_features(next_features)
             else:
                 pass
         else:
-            self.save_best(est, mng)
+            self.save_best()
+            os.remove(os.path.join(self.save_dir,
+                                   'temp.pkl'))
+            _logger.info(
+                "\n\n"
+                "Now, you can make a forecasting analysis with the best model"
+                "using the pickle file in the ./models directory!\n"
+                "For instructions, please refer to the file tornado.ipynb in"
+                "the examples/regression/tornado directory."
+            )
 
     def log(self, est, evt, mng) -> None:
-        print(f"\riter: {self.iter} / {mng.max_interaction-1}", end='')
+        _logger.info(f"\riter: {self.iter} / {mng.max_interaction-1}")
         is_first_iter = self.iter == 0
         is_last_iter = mng.max_interaction-1 <= self.iter
         if mng.type == "single":
