@@ -95,6 +95,11 @@ class TornadoModuleBase():
             if col not in self.feature_properties.keys():
                 self.X = self.X.drop(col, axis=1)
 
+    def drop_unused_features(self) -> None:
+        for col in self.X.columns:
+            if col not in self.feature_properties.keys():
+                self.X = self.X.drop(col, axis=1)
+
     @abc.abstractmethod
     def set_feature(self) -> None:
         pass
