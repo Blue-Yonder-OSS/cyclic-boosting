@@ -207,7 +207,7 @@ class Logger():
             )
 
     def log(self, est, evt, mng) -> None:
-        _logger.info(f"\riter: {self.iter} / {mng.max_interaction-1}")
+        _logger.info(f"\riter: {self.iter} / {mng.max_interaction-1} ")
         is_first_iter = self.iter == 0
         is_last_iter = mng.max_interaction-1 <= self.iter
         if mng.type == "single":

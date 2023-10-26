@@ -1,3 +1,5 @@
+import logging
+
 import six
 import abc
 import copy
@@ -6,6 +8,14 @@ from sklearn.model_selection import train_test_split
 
 from .evaluator import EvaluatorBase
 from .logger import Logger
+
+
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+handler.terminator = ''
+_logger.addHandler(handler)
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -120,17 +130,14 @@ class SqueezeTrainer(TrainerBase):
                 if data["F"] > threshold:
                     truncated_features[feature] = data
 
-            print("\nTRUNCATED")
+            _logger.info("\nTRUNCATED\n")
             # base = [x for x in truncated_features.keys() if isinstance(x, str)]
             interaction = [x for x in truncated_features.keys() if isinstance(x, tuple)]
 
             # 寄与していると判定された交互作用項(2変数)の選別
-            print("base:", base)
-            print("interaction:", interaction)
             truncated_features = base + interaction
-            print("truncated_features:", truncated_features)
             self.manager.set_to_multiple(truncated_features)
-            print(truncated_features)
+            _logger.info(f"{truncated_features}\n\n")
 
             logger.reset_count()
             evaluator.clear()
