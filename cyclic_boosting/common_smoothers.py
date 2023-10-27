@@ -64,14 +64,6 @@ def _simplify_flags(feature_property: int, feature_group: Optional[str] = None):
         return flags.IS_UNORDERED
 
 
-def _choice_fct_svd(feature_group, feature_prop, feature_type=None):
-    if isinstance(feature_prop, tuple):
-        feature_prop = tuple([_simplify_flags(fp, feature_group) for fp in feature_prop])
-        return feature_prop
-    else:
-        return (_simplify_flags(feature_prop),)
-
-
 def _default_smoother_types(neutral_factor_link=0, use_normalization=True):
     smoother_types = {
         flags.IS_UNORDERED: smoothing.onedim.WeightedMeanSmoother(prior_prediction=neutral_factor_link),

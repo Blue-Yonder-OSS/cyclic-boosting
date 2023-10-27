@@ -486,7 +486,6 @@ def test_multiplicative_quantile_regression_90(is_plot, prepare_data, features, 
     np.testing.assert_almost_equal(quantile_acc, 0.9015, 3)
 
 
-@pytest.mark.skip(reason="Long running time")
 def test_multiplicative_quantile_regression_pdf_J_QPD_S(is_plot, prepare_data, features, feature_properties):
     X, y = prepare_data
 

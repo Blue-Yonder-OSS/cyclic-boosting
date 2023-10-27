@@ -168,7 +168,6 @@ def nans(shape):
 def multidim_binnos_to_lexicographic_binnos(binnos, n_bins=None, binsteps=None):
     """Map index-tuples of ``M``-dimensional features to integers.
 
-
     In the cyclic boosting algorithm there is a one-dimensional array of
     factors for each one-dimensional feature. For processing of
     multi-dimensional variables (i.e. combinations of several one-dimensional
@@ -205,7 +204,6 @@ def multidim_binnos_to_lexicographic_binnos(binnos, n_bins=None, binsteps=None):
         ordinal numbers of the bins in lexicographic order as
         :class:`numpy.ndarray` of type `int64` and maximal bin numbers as
         :class:`numpy.ndarray` of shape ``(M,)``
-
 
     Examples
     --------

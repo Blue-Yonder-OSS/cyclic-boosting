@@ -820,6 +820,7 @@ class CyclicBoostingBase(
 
         Iterate to calculate the factors and the global scale.
         """
+        y = np.asarray(y)
         self._init_fit(X, y)
         pred = CBLinkPredictionsFactors(self._get_prior_predictions(X))
         prediction = self._fit_main(X, y, pred)
