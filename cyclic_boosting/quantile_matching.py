@@ -46,6 +46,9 @@ class J_QPD_S:
         else:
             raise Exception("Invalid version.")
 
+        if (qv_low > qv_median) or (qv_high < qv_median):
+            raise ValueError("The SPT values need to be monotonically increasing.")
+
         self.l = l
 
         self.c = self.phi.ppf(1 - alpha)
