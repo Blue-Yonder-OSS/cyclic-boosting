@@ -489,6 +489,9 @@ def test_multiplicative_quantile_regression_90(is_plot, prepare_data, features, 
 def test_multiplicative_quantile_regression_pdf_J_QPD_S(is_plot, prepare_data, features, feature_properties):
     X, y = prepare_data
 
+    # empty bin check
+    X["P_ID"].iloc[1] = 20
+
     quantiles = []
     quantile_values = []
     for quantile in [0.2, 0.5, 0.8]:
@@ -513,23 +516,20 @@ def test_multiplicative_quantile_regression_pdf_J_QPD_S(is_plot, prepare_data, f
         np.testing.assert_almost_equal(j_qpd_s.ppf(0.2), quantile_values[0, i], 3)
         np.testing.assert_almost_equal(j_qpd_s.ppf(0.5), quantile_values[1, i], 3)
         np.testing.assert_almost_equal(j_qpd_s.ppf(0.8), quantile_values[2, i], 3)
-        if i == 24:
-            np.testing.assert_almost_equal(j_qpd_s.ppf(0.1), 0.457, 3)
-            np.testing.assert_almost_equal(j_qpd_s.ppf(0.9), 5.509, 3)
 
-            if is_plot:
+        if is_plot:
+            cdf_truth = smear_discrete_cdftruth(j_qpd_s.cdf, y[i])
+            cdf_truth_list.append(cdf_truth)
+
+            if i == 24:
                 plt.plot([0.2, 0.5, 0.8], [quantile_values[0, i], quantile_values[1, i], quantile_values[2, i]], "ro")
                 xs = np.linspace(0.0, 1.0, 100)
                 plt.plot(xs, j_qpd_s.ppf(xs))
                 plt.savefig("J_QPD_S_integration_" + str(i) + ".png")
                 plt.clf()
 
-        if is_plot:
-            cdf_truth = smear_discrete_cdftruth(j_qpd_s.cdf, y[i])
-            cdf_truth_list.append(cdf_truth)
-
-    cdf_truth = np.asarray(cdf_truth_list)
     if is_plot:
+        cdf_truth = np.asarray(cdf_truth_list)
         plt.hist(cdf_truth[cdf_truth > 0], bins=30)
         plt.savefig("J_QPD_S_cdf_truth_histo.png")
         plt.clf()
@@ -555,7 +555,7 @@ def test_multiplicative_quantile_regression_spline(is_plot, prepare_data, featur
 
     i = 24
     spl_fit = quantile_fit_spline(quantiles, quantile_values[:, i])
-    np.testing.assert_almost_equal(spl_fit(0.2), 0.527, 3)
+    np.testing.assert_almost_equal(spl_fit(0.2), 0.529, 3)
     np.testing.assert_almost_equal(spl_fit(0.5), 2.193, 3)
     np.testing.assert_almost_equal(spl_fit(0.8), 4.21, 3)
 

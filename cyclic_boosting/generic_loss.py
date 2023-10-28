@@ -67,11 +67,18 @@ class CBGenericLoss(CyclicBoostingBase):
         """
         sorting = feature.lex_binned_data.argsort()
         sorted_bins = feature.lex_binned_data[sorting]
-        splits_indices = np.unique(sorted_bins, return_index=True)[1][1:]
+        bins, split_indices = np.unique(sorted_bins, return_index=True)
+        split_indices = split_indices[1:]
 
         y_pred = np.hstack((y[..., np.newaxis], self.unlink_func(pred.predict_link())[..., np.newaxis]))
         y_pred = np.hstack((y_pred, self.weights[..., np.newaxis]))
-        y_pred_bins = np.split(y_pred[sorting], splits_indices)
+        y_pred_bins = np.split(y_pred[sorting], split_indices)
+
+        # keep potential empty bins in multi-dimensional features
+        all_bins = range(max(feature.lex_binned_data) + 1)
+        empty_bins = list(set(bins) ^ set(all_bins))
+        for i in empty_bins:
+            y_pred_bins.insert(i, np.zeros((0, 3)))
 
         n_bins = len(y_pred_bins)
         parameters = np.zeros(n_bins)
@@ -380,14 +387,14 @@ def quantile_costs(prediction: np.ndarray, y: np.ndarray, weights: np.ndarray, q
     float
         calcualted quantile costs
     """
-    if not len(y) > 0:
-        raise ValueError("Loss cannot be computed on empty data")
-    else:
+    if len(y) > 0:
         sum_weighted_error = np.nansum(
             ((y < prediction) * (1 - quantile) * (prediction - y) + (y >= prediction) * quantile * (y - prediction))
             * weights
         )
         return sum_weighted_error / np.nansum(weights)
+    else:
+        return 0
 
 
 def quantile_global_scale(
