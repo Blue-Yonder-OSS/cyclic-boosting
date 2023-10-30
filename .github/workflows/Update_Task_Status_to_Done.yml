@@ -56,8 +56,8 @@ jobs:
     # JiraタスクIDが特定できればJiraに対してトランジションを発行　
     - name: Transition task
       uses: atlassian/gajira-transition@master
-      # JiraタスクIDがIn Reviewになければスルー
-      if: fromJSON(steps.issue.outputs.json).fields.status.name == 'In Review'
+      # JiraタスクIDがレビューになければスルー
+      if: fromJSON(steps.issue.outputs.json).fields.status.name == 'レビュー'
       with:
         # 前のステップのアウトプットを参照
         issue: ${{ steps.find.outputs.issue }}
