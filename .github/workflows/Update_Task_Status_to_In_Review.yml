@@ -54,7 +54,7 @@ jobs:
     # JiraタスクIDが特定できればJiraに対してトランジションを発行　
     - name: Transition task
       uses: atlassian/gajira-transition@master
-      # JiraタスクIDがIn Progressになければスルー
+      # JiraタスクIDが作業中になければスルー
       if: fromJSON(steps.issue.outputs.json).fields.status.name == '作業中'
       with:
         # 前のステップのアウトプットを参照
