@@ -265,9 +265,26 @@ def test_crosstest_weighted_mean_smoother():
     X_for_reg = np.c_[np.arange(n), np.ones(n), [0.05, 0.05, 0.05, 0.05, 0.05, 0.15, 0.15, 0.05]]
     smoother = smoothing.onedim.WeightedMeanSmoother()
     smoother.fit(X_for_reg, y_for_reg)
-    erg = smoother.smoothed_y_
+    res = smoother.smoothed_y_
     ref = regularize1d(y_for_reg, X_for_reg[:, 2])
-    np.testing.assert_allclose(erg, ref)
+    np.testing.assert_allclose(res, ref)
+
+
+def test_crosstest_weighted_mean_neighbors_smoother():
+    y_for_reg = np.array([0.5, 2.0, 0.5])
+    n = len(y_for_reg)
+    X_for_reg = np.c_[np.arange(n), np.ones(n), np.ones(n)]
+    smoother = smoothing.onedim.WeightedMeanSmootherNeighbors()
+    smoother.fit(X_for_reg, y_for_reg)
+    res = smoother.smoothed_y_
+    ref = np.array(
+        [
+            (0.5 + 1.0 / (0.75 * 0.75) * 1.25) / (1 + 1.0 / (0.75 * 0.75)),
+            (2.0 + 1.0 / ((2 * 0.5 * 0.5 + 1) / 3.0)) / (1 + 1.0 / ((2 * 0.5 * 0.5 + 1) / 3.0)),
+            (0.5 + 1.0 / (0.75 * 0.75) * 1.25) / (1 + 1.0 / (0.75 * 0.75)),
+        ]
+    )
+    np.testing.assert_allclose(res, ref)
 
 
 def test_weighted_mean_smoother_raise_not_fitted_exception():
