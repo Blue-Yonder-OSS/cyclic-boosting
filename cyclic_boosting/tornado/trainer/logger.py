@@ -7,6 +7,7 @@ import copy
 
 from cyclic_boosting import flags
 from cyclic_boosting.plots import plot_analysis
+from cyclic_boosting.tornado.core.module import TornadoVariableSelectionModule
 
 
 _logger = logging.getLogger(__name__)
@@ -76,7 +77,7 @@ class Logger():
             # interaction term
             f.write("=== Interaction term ===\n")
             for term in self.best["features"]:
-                if type(term) is tuple:
+                if isinstance(term, tuple):
                     f.write(f"{term}\n")
 
     def save_plot(self, est, name):
@@ -188,18 +189,16 @@ class Logger():
         if is_best:
             self.update_best(est, evt, mng)
         if not is_last_iter:
-            if "VariableSelection" in str(type(mng)):
+            if isinstance(mng, TornadoVariableSelectionModule):
                 next_features = copy.deepcopy(self.best["features"])
                 next_features.append(mng.sorted_features[self.iter])
                 mng.get_features(next_features)
-            else:
-                pass
         else:
             self.save_best()
             os.remove(os.path.join(self.save_dir,
                                    'temp.pkl'))
             _logger.info(
-                "\n\n"
+                "\n"
                 "Now, you can make a forecasting analysis with the best model"
                 "using the pickle file in the ./models directory!\n"
                 "For instructions, please refer to the file tornado.ipynb in"
