@@ -6,7 +6,8 @@
 import abc
 import six
 import pandas as pd
-from preprocess import dayofweek
+from .preprocess import dayofweek, dayofyear, tolowerstr, todatetime, \
+                        encode_catetory
 
 
 # @six.add_metaclass(abc.ABCMeta)
@@ -21,20 +22,29 @@ class TornadoDataModule():
         self.func = []
 
     def load_dataset(self) -> None:
-        self.dataset = pd.read_csv(self.path_ds)
+        # transfrom column name to lower
+        self.dataset = tolowerstr(pd.read_csv(self.path_ds))
 
     def check_data(self) -> None:
         # datasetに対してどんな前処理を施す必要があるかを調べて返す
         col_names = self.dataset.columns.to_list()
 
-        if "dayofweek" not in col_names:
+        self.func.append(encode_catetory)
+
+        if "date" in col_names:
+            self.func.append(todatetime)
+
+        if "dayofweek" not in col_names and "date" in col_names:
             self.func.append(dayofweek)
+
+        if "dayofyear" not in col_names and "date" in col_names:
+            self.func.append(dayofyear)
 
     def preprocess(self) -> pd.DataFrame:
         # 特徴量エンジニアリングを実行
         dataset = self.dataset
-        for f in self.func:
-            dataset = self.f(dataset)
+        for func in self.func:
+            dataset = func(dataset)
 
         return dataset
 
