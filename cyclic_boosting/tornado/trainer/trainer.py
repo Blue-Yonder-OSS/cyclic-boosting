@@ -1,3 +1,5 @@
+import logging
+
 import six
 import abc
 import copy
@@ -6,6 +8,14 @@ from sklearn.model_selection import train_test_split
 
 from .evaluator import EvaluatorBase
 from .logger import Logger
+
+
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+handler.terminator = ''
+_logger.addHandler(handler)
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -107,7 +117,7 @@ class SqueezeTrainer(TrainerBase):
 
             # self.manager.reset(train, target)
 
-        if log_policy == "compute_COD":
+        if log_policy in ["compute_COD", "vote_by_num", "vote"]:
             truncated_features = {}
             #ここのthresholdは自由に決めることができるが基本的に２が良いらしい
             threshold = 2
@@ -120,17 +130,14 @@ class SqueezeTrainer(TrainerBase):
                 if data["F"] > threshold:
                     truncated_features[feature] = data
 
-            print("TRUNCATED")
+            _logger.info("\nTRUNCATED\n")
             # base = [x for x in truncated_features.keys() if isinstance(x, str)]
             interaction = [x for x in truncated_features.keys() if isinstance(x, tuple)]
 
             # 寄与していると判定された交互作用項(2変数)の選別
-            print("base:", base)
-            print("interaction:", interaction)
             truncated_features = base + interaction
-            print("truncated_features:", truncated_features)
             self.manager.set_to_multiple(truncated_features)
-            print(truncated_features)
+            _logger.info(f"{truncated_features}\n\n")
 
             logger.reset_count()
             evaluator.clear()
@@ -140,12 +147,11 @@ class SqueezeTrainer(TrainerBase):
                 # train
                 X = copy.deepcopy(self.manager.X)
                 y = copy.deepcopy(self.manager.y)
-                _ = estimater.fit(X, y)
-
+                _ = estimater.fit(X.copy(), y)
                 # validation
                 y_valid = np.asarray(validation[target])
                 X_valid = validation.drop(target, axis=1)
-                yhat = estimater.predict(X_valid)
+                yhat = estimater.predict(X_valid.copy())
                 evaluator.eval_all(y_valid, yhat, estimater, verbose)
                 # log
                 logger.log(estimater, evaluator, self.manager)
