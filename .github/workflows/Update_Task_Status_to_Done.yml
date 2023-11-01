@@ -61,7 +61,7 @@ jobs:
       with:
         # 前のステップのアウトプットを参照
         issue: ${{ steps.find.outputs.issue }}
-        transition: 'Done'
+        transition: 'Done (2)'
 
     # Issueを閉じる
     - name: Close Issue
