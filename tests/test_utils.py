@@ -76,12 +76,6 @@ def test_get_normalized_values(values, expected_result):
 
 
 def test_regularize_to_error_weighted_mean_neighbors():
-    X = pd.DataFrame({"a": [0, 1], "b": [3, 6], "c": [2, 7]})
-    features = utils.get_feature_column_names(X)
-    np.testing.assert_equal(features, ["a", "b", "c"])
-    features = utils.get_feature_column_names(X, exclude_columns=["a"])
-    np.testing.assert_equal(features, ["b", "c"])
-
     values = np.array([0.5, 2.0, 0.5])
     uncertainties = np.array([1.0, 1.0, 1.0])
     res = utils.regularize_to_error_weighted_mean_neighbors(values, uncertainties)

@@ -9,7 +9,7 @@ import pandas as pd
 import six
 import bisect
 
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from dataclasses import dataclass
 
@@ -844,7 +844,9 @@ def regularize_to_error_weighted_mean(values, uncertainties, prior_prediction=No
     return res
 
 
-def regularize_to_error_weighted_mean_neighbors(values, uncertainties, window_size=3):
+def regularize_to_error_weighted_mean_neighbors(
+    values: np.ndarray, uncertainties: np.ndarray, window_size: Optional[int] = 3
+) -> np.ndarray:
     """
     Regularize values with uncertainties to its error-weighted mean, using a
     sliding window.
@@ -872,14 +874,14 @@ def regularize_to_error_weighted_mean_neighbors(values, uncertainties, window_si
 
     window_arr = np.ones(window_size)
     x = values
-    wx = 1.0 / np.square(uncertainties)
+    wx = np.where(uncertainties > 0, 1.0 / np.square(uncertainties), 0.0)
 
     sum_wx = np.convolve(wx, window_arr, "same")
     x_mean = np.convolve(wx * x, window_arr, "same") / sum_wx
 
     wx_incl = np.ones(len(x))
     for i in range(len(x)):
-        wx_incl[i] = 1.0 / (np.convolve(wx * np.square(x - x_mean[i]), window_arr, "same") / sum_wx)[i]
+        wx_incl[i] = (sum_wx / np.convolve(wx * np.square(x - x_mean[i]), window_arr, "same"))[i]
 
     res = (wx * x + wx_incl * x_mean) / (wx + wx_incl)
     return res
