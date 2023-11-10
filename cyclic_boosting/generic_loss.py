@@ -65,31 +65,51 @@ class CBGenericLoss(CyclicBoostingBase):
         float, float
             estimated parameters and its uncertainties
         """
-        sorting = feature.lex_binned_data.argsort()
-        sorted_bins = feature.lex_binned_data[sorting]
-        bins, split_indices = np.unique(sorted_bins, return_index=True)
-        split_indices = split_indices[1:]
+        # ! TODO: [Q] Why these operations?
+        #  I probably do not understand the CB algo, high level explainer would be great
+        sorting = feature.lex_binned_data.argsort()  # 1. get element index row-wise ordered from smallest to greatest
+        sorted_bins = feature.lex_binned_data[sorting]  # 2. return the bins sorted from smallest to greatest
+        # do not quite understand how this works
+        # as my example with a3=np.random.rand(3,10) and a3[a3.argsort()] was returning an IndexError
+        bins, split_indices = np.unique(
+            sorted_bins, return_index=True
+        )  # 3. return only the unique values for each bin ordered
+        split_indices = split_indices[1:]  # 5. drop the zero index bin
 
         y_pred = np.hstack((y[..., np.newaxis], self.unlink_func(pred.predict_link())[..., np.newaxis]))
+        # 6. joining the values of the target variable with those of the predictions
         y_pred = np.hstack((y_pred, self.weights[..., np.newaxis]))
+        # 7. joining the previous matrix with the weights (of each input variable?)
         y_pred_bins = np.split(y_pred[sorting], split_indices)
+        # 8. sort the predictions according to the bins (of the input variable?) and split this into bins
 
         # keep potential empty bins in multi-dimensional features
         all_bins = range(max(feature.lex_binned_data) + 1)
-        empty_bins = list(set(bins) ^ set(all_bins))
+        empty_bins = set(bins) ^ set(all_bins)
+        # 9. returns the elements which are either in set(bins)
+        # or set(all_bins).
+        # ! TODO: list can be removed as only iterator is used below
+        # why does this return the empty bins though?
+        # because all_bins is a superset of sorted_bins, this is tantamount to finding the values
+        # which are not in bins. Bins return a list of all the values
+        # check, for example, a5= np.array([[i*j + 1 for i in range(0,3)] for j in range(0,3)])
+        # bins , split_indices = np.unique(a5, return_index=True)
         for i in empty_bins:
-            y_pred_bins.insert(i, np.zeros((0, 3)))
+            y_pred_bins.insert(i, np.zeros((0, 3)))  # ! TODO: [Q] Is the (0,3) format due to (y, y_hat, weights)?
 
         n_bins = len(y_pred_bins)
         parameters = np.zeros(n_bins)
         uncertainties = np.zeros(n_bins)
 
+        # 10. Try to minimize a loss function given y, y_pred and the weights?
         for bin in range(n_bins):
             parameters[bin], uncertainties[bin] = self.optimization(
                 y_pred_bins[bin][:, 0], y_pred_bins[bin][:, 1], y_pred_bins[bin][:, 2]
             )
+            # ! TODO: What parameters are being returned?
 
         neutral_factor = self.unlink_func(np.array(self.neutral_factor_link))
+        # 11. if there is one more bin corresponding to the neutral factor, then add it to the parameters
         if n_bins + 1 == feature.n_bins:
             parameters = np.append(parameters, neutral_factor)
             uncertainties = np.append(uncertainties, 0)
@@ -127,6 +147,8 @@ class CBGenericLoss(CyclicBoostingBase):
         res = minimize(self.objective_function, neutral_factor, args=(yhat_others, y, weights))
         return res.x, self.uncertainty(y, weights)
 
+    # TODO: Is the parameter computed for each bin, across all bins?
+    # I would assume that it is for each bin (one parameter per bin?)
     def objective_function(self, param: float, yhat_others: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Calculation of the in-sample costs (potentially including sample
@@ -181,6 +203,14 @@ class CBGenericLoss(CyclicBoostingBase):
         raise NotImplementedError("implement in subclass")
 
 
+# TODO : Because the only difference between the CBMultiplicativeQuantileRegressor and
+# AdditiveQuantileRegressor is in the model and uncertainty, would it not be best
+# to write a class CBQuantileRegressor? And create the
+# two classes as an implementation of CBQuantileRegressor?
+# This would also allow us to include the quantile_costs , quantile_global_scale
+# as static methods of the CBQuantileRegressor
+# and we would just need to define the specifics (model, uncertainty)
+# at the individual regressor
 class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, LogLinkMixin):
     """
     Cyclic Boosting multiplicative quantile-regression mode. A quantile loss,
@@ -329,6 +359,8 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
     def _check_y(self, y: np.ndarray) -> None:
         check_y_additive(y)
 
+    # ! TODO: From the examples below, the cost and the loss function are the same
+    # Is this always true and, if so, why have two functions rather than one?
     def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Calculation of the in-sample quantile loss, or to be exact costs,
@@ -404,7 +436,7 @@ def quantile_global_scale(
     weights: np.ndarray,
     prior_prediction_column: Union[str, int, None],
     link_func,
-) -> None:
+) -> Tuple:
     """
     Calculation of the global scale for quantile regression, corresponding
     to the (continuous approximation of the) respective quantile of the
