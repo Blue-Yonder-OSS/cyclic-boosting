@@ -147,8 +147,6 @@ class CBGenericLoss(CyclicBoostingBase):
         res = minimize(self.objective_function, neutral_factor, args=(yhat_others, y, weights))
         return res.x, self.uncertainty(y, weights)
 
-    # TODO: Is the parameter computed for each bin, across all bins?
-    # I would assume that it is for each bin (one parameter per bin?)
     def objective_function(self, param: float, yhat_others: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Calculation of the in-sample costs (potentially including sample
@@ -203,14 +201,6 @@ class CBGenericLoss(CyclicBoostingBase):
         raise NotImplementedError("implement in subclass")
 
 
-# TODO : Because the only difference between the CBMultiplicativeQuantileRegressor and
-# AdditiveQuantileRegressor is in the model and uncertainty, would it not be best
-# to write a class CBQuantileRegressor? And create the
-# two classes as an implementation of CBQuantileRegressor?
-# This would also allow us to include the quantile_costs , quantile_global_scale
-# as static methods of the CBQuantileRegressor
-# and we would just need to define the specifics (model, uncertainty)
-# at the individual regressor
 class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, LogLinkMixin):
     """
     Cyclic Boosting multiplicative quantile-regression mode. A quantile loss,
@@ -359,8 +349,6 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
     def _check_y(self, y: np.ndarray) -> None:
         check_y_additive(y)
 
-    # ! TODO: From the examples below, the cost and the loss function are the same
-    # Is this always true and, if so, why have two functions rather than one?
     def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         """
         Calculation of the in-sample quantile loss, or to be exact costs,
