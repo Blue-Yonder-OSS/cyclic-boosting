@@ -263,6 +263,67 @@ class CBQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin):
     def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         return self.quantile_costs(prediction, y, weights, self.quantile)
 
+    def prepare_plots(self, X: np.ndarray, y: np.ndarray, prediction: np.ndarray) -> None:
+        for feature in self.features:
+            if feature.feature_type is None:
+                weights = self.weights
+            else:
+                weights = self.weights_external
+
+            feature.bind_data(X, weights)
+
+            sum_w, _, sum_pw = (
+                np.bincount(feature.lex_binned_data, weights=w) for w in [weights, weights * y, weights * prediction]
+            )
+
+            df = pd.DataFrame({"y": y, "weights": weights, "binnumbers": feature.lex_binned_data})
+
+            def df_continuous_quantile_from_discrete_pdf(df, quantile):
+                return continuous_quantile_from_discrete_pdf(df["y"], quantile, df["weights"])
+
+            mean_target_binned = np.asarray(
+                df.groupby("binnumbers")[["y", "weights"]].apply(
+                    df_continuous_quantile_from_discrete_pdf, quantile=self.quantile
+                )
+            )
+
+            mean_prediction_binned = sum_pw / sum_w
+            mean_prediction_binned = np.where(np.isfinite(mean_prediction_binned), mean_prediction_binned, 1.0)
+
+            # keep potential empty bins in multi-dimensional features
+            all_bins = range(max(feature.lex_binned_data) + 1)
+            empty_bins = list(set(np.unique(feature.lex_binned_data)) ^ set(all_bins))
+            for i in empty_bins:
+                mean_target_binned = np.insert(mean_target_binned, i, 1.0)
+
+            mean_y_finite = continuous_quantile_from_discrete_pdf(y, self.quantile, weights)
+            mean_prediction_finite = np.sum(sum_pw) / np.sum(sum_w)
+
+            if len(mean_target_binned) + 1 == feature.n_bins:
+                mean_target_binned = np.append(mean_target_binned, 1.0)
+            if len(mean_prediction_binned) + 1 == feature.n_bins:
+                mean_prediction_binned = np.append(mean_prediction_binned, 1.0)
+
+            if isinstance(self, IdentityLinkMixin):
+                feature.mean_dev = mean_prediction_binned - mean_target_binned
+                feature.y = mean_target_binned - mean_y_finite
+                feature.prediction = mean_prediction_binned - mean_prediction_finite
+            else:
+                feature.mean_dev = np.log(mean_prediction_binned + 1e-12) - np.log(mean_target_binned + 1e-12)
+                feature.y = np.log(mean_target_binned / mean_y_finite + 1e-12)
+                feature.prediction = np.log(mean_prediction_binned / mean_prediction_finite + 1e-12)
+
+            feature.y_finite = mean_y_finite
+            feature.prediction_finite = mean_prediction_finite
+
+            feature.learn_rate = 1.0
+
+    def _call_observe_iterations(self, iteration, X, y, prediction, delta) -> None:
+        for observer in self.observers:
+            observer.observe_iterations(
+                iteration, X, y, prediction, self.weights, self.get_state(), delta, self.quantile
+            )
+
     @staticmethod
     def quantile_costs(prediction: np.ndarray, y: np.ndarray, weights: np.ndarray, quantile: float) -> float:
         """
@@ -318,7 +379,7 @@ class CBQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin):
         if weights is None:
             raise RuntimeError("The weights have to be initialized.")
 
-        global_scale_link_ = link_func(continuous_quantile_from_discrete_pdf(y, quantile))
+        global_scale_link_ = link_func(continuous_quantile_from_discrete_pdf(y, quantile, weights))
 
         prior_pred_link_offset_ = None
         if prior_prediction_column is not None:

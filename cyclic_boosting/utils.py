@@ -7,7 +7,6 @@ import numba as nb
 import numpy as np
 import pandas as pd
 import six
-import bisect
 
 from typing import Iterable, List, Optional
 
@@ -499,6 +498,11 @@ def calc_means_medians(binnumbers, y, weights=None):
             return _calc_means_medians_evenly_weighted(binnumbers, y)
         else:
             return _calc_means_medians_with_weights(binnumbers, y, weights)
+
+
+def calc_weighted_quantile(binnumbers, y, weights, quantile):
+    df = pd.DataFrame({"y": y, "weights": weights, "binnumbers": binnumbers})
+    return df.groupby("binnumbers").apply(_weighted_quantile_of_dataframe(quantile))
 
 
 def _calc_means_medians_evenly_weighted(binnumbers, y):
@@ -1021,7 +1025,7 @@ def get_feature_column_names(X, exclude_columns=[]):
     return features
 
 
-def continuous_quantile_from_discrete_pdf(y, quantile):
+def continuous_quantile_from_discrete_pdf(y, quantile, weights):
     """
     Calculates a continous quantile value approximation for a given quantile
     from an array of potentially discrete values.
@@ -1038,13 +1042,21 @@ def continuous_quantile_from_discrete_pdf(y, quantile):
     float
         calculated quantile value
     """
-    sorted_y = np.sort(y)
-    quantile_index = int(quantile * (len(y) - 1))
-    quantile_y = sorted_y[quantile_index]
-    index_low = bisect.bisect_left(sorted_y, quantile_y)
-    index_high = bisect.bisect_right(sorted_y, quantile_y)
+    y = np.asarray(y)
+    weights = np.asarray(weights)
+
+    sorting = y.argsort()
+    sorted_y = y[sorting]
+    cumsum = weights[sorting].cumsum()
+    quantile_index = weights.sum() * quantile
+    quantile_y = sorted_y[cumsum >= quantile_index][0]
+
+    all_quantile_y = np.where(sorted_y == quantile_y)[0]
+    index_low = all_quantile_y[0]
+    index_high = all_quantile_y[-1]
     if index_high > index_low:
-        quantile_y += (quantile_index - index_low) / (index_high - index_low)
+        quantile_y += (int(quantile_index) - index_low) / (index_high - index_low)
+
     return quantile_y
 
 

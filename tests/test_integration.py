@@ -104,16 +104,17 @@ def test_poisson_regression_ordered_smoothing(is_plot, prepare_data, cb_poisson_
     X, y = prepare_data
 
     # make the effect visible with high-uncertainty bin
-    X["P_ID"].iloc[1] = 11.5
+    X_special = X.copy()
+    X_special["P_ID"].iloc[1] = 11.5
 
     CB_est = cb_poisson_regressor_model_ordered_smoothing
-    CB_est.fit(X.copy(), y)
+    CB_est.fit(X_special.copy(), y)
 
     if is_plot:
         plot_CB("analysis_CB_iterfirst_ordered", [CB_est[-1].observers[0]], CB_est[-2])
         plot_CB("analysis_CB_iterlast_ordered", [CB_est[-1].observers[-1]], CB_est[-2])
 
-    yhat = CB_est.predict(X.copy())
+    yhat = CB_est.predict(X_special.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
     np.testing.assert_almost_equal(mad, 1.70, 3)
