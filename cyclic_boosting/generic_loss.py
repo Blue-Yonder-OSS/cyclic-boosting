@@ -544,21 +544,21 @@ def uncertainty_gamma(y: np.ndarray, weights: np.ndarray) -> float:
     # use moment-matching of a Gamma posterior with a log-normal
     # distribution as approximation
     alpha_prior = 2
-    alpha_posterior = np.sum(y) + alpha_prior
+    alpha_posterior = np.sum(weights * y) + alpha_prior
     sigma = np.sqrt(np.log(1 + alpha_posterior) - np.log(alpha_posterior))
     return sigma
 
 
 def uncertainty_gaussian(y: np.ndarray, weights: np.ndarray) -> float:
-    return np.sqrt(np.mean(y) / len(y))
+    return np.sqrt(np.sum(weights * y) / (np.sum(weights) - 1) / np.sum(weights))
 
 
 def uncertainty_beta(y: np.ndarray, weights: np.ndarray, link_func) -> float:
     # use moment-matching of a Beta posterior with a log-normal
     # distribution as approximation
     alpha_prior, beta_prior = get_beta_priors()
-    alpha_posterior = np.sum(y) + alpha_prior
-    beta_posterior = np.sum(1 - y) + beta_prior
+    alpha_posterior = np.sum(weights * y) + alpha_prior
+    beta_posterior = np.sum(weights * (1 - y)) + beta_prior
     shift = 0.4 * (alpha_posterior / (alpha_posterior + beta_posterior) - 0.5)
     perc1 = 0.75 - shift
     perc2 = 0.25 - shift
