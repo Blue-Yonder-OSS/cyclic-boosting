@@ -5,6 +5,7 @@ import pandas as pd
 from statsmodels.tsa.seasonal import MSTL
 from scipy.fft import fft
 import pymannkendall as mk
+import matplotlib.pyplot as plt
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
@@ -50,6 +51,9 @@ class TornadoAnalysisModule():
             self.calc_daily_average()
             if self.data_interval is None:
                 self.check_data_interval()
+            elif self.data_interval in ["monthly", "weekly", "daily"]:
+                self.dataset.index = [i.date() for i in self.dataset.index]
+                print(self.dataset.index)
             self.check_trend()
             self.check_monotonicity()
             self.check_seasonality()
@@ -71,8 +75,10 @@ class TornadoAnalysisModule():
                 data_interval = "M"
             self.data_interval = "monthly"
         elif interval.days == 7:
-            dayofweek = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"]
-            data_interval = dayofweek[self.dataset.index.to_series().dt.dayofweek.mode()[0]]
+            dayofweek = [
+                "W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"]
+            data_interval = dayofweek[self.dataset.index.to_series().dt.
+                                      dayofweek.mode()[0]]
             self.data_interval = "weekly"
         elif interval.days == 1:
             data_interval = "D"
@@ -82,7 +88,11 @@ class TornadoAnalysisModule():
             self.data_interval = "hourly"
         _logger.info(f"Data interval is '{self.data_interval}'. If not, give\n"
                      "    the data_interval option in the TornadoDataModule.")
+        if self.data_interval in ["monthly", "weekly", "daily"]:
+            self.dataset.index = [i.date() for i in self.dataset.index]
         self.dataset = self.dataset.asfreq(freq=data_interval)
+        self.dataset = self.dataset.interpolate(method='linear',
+                                                limit_direction='both')
 
     def check_trend(self) -> None:
         # 帰無仮説：n個のサンプルx1,x2,...xnが独立で同一の確率分布に従う
