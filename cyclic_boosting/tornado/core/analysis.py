@@ -49,11 +49,7 @@ class TornadoAnalysisModule():
             self.dataset = self.dataset[targets]
             self.check_missing()
             self.calc_daily_average()
-            if self.data_interval is None:
-                self.check_data_interval()
-            elif self.data_interval in ["monthly", "weekly", "daily"]:
-                self.dataset.index = [i.date() for i in self.dataset.index]
-                print(self.dataset.index)
+            self.check_data_interval()
             self.check_trend()
             self.check_monotonicity()
             self.check_seasonality()
@@ -66,8 +62,21 @@ class TornadoAnalysisModule():
         self.dataset = self.dataset.sort_index()
 
     def check_data_interval(self):
-        diff = self.dataset.index.to_series().diff()
-        interval = diff.min()
+        if self.data_interval is None:
+            diff = self.dataset.index.to_series().diff()
+            interval = diff.min()
+        elif self.data_interval == "monthly":
+            interval = pd.Timedelta(days=30)
+        elif self.data_interval == "weekly":
+            interval = pd.Timedelta(days=7)
+        elif self.data_interval == "daily":
+            interval = pd.Timedelta(days=1)
+        elif self.data_interval == "hourly":
+            interval = pd.Timedelta(hours=1)
+        else:
+            raise ValueError("data_interval must be 'monthly', 'weekly', \
+                             'daily', or 'hourly'.")
+
         if interval.days in [28, 29, 30, 31]:
             if self.dataset.index.to_series().dt.day.mode()[0] == 1:
                 data_interval = "MS"
