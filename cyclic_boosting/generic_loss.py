@@ -550,15 +550,13 @@ def uncertainty_gamma(y: np.ndarray, weights: np.ndarray) -> float:
 
 
 def uncertainty_gaussian(y: np.ndarray, weights: np.ndarray) -> float:
-    weighted_mean_y = np.sum(y * weights) / np.sum(weights)
-    variance_prior = np.sum((y - weighted_mean_y) * (y - weighted_mean_y) * weights) / np.sum(weights)
+    sum_weights = np.sum(weights)
+    weighted_mean_y = np.sum(y * weights) / sum_weights
+    weighted_squared_residual_sum = np.sum(weights * (y - weighted_mean_y) ** 2)
+
+    variance_prior = weighted_squared_residual_sum / sum_weights
     if variance_prior <= 1e-9:
         variance_prior = 1.0
-
-    sum_y = np.sum(weights * y)
-    sum_weights = np.sum(weights)
-    mean_y = sum_y / sum_weights
-    weighted_squared_residual_sum = np.sum(weights * (y - mean_y) ** 2)
 
     n_prior = 1
     a_0 = 0.5 * n_prior
