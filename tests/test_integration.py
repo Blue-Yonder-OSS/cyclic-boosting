@@ -724,10 +724,10 @@ def test_additive_quantile_regression_median(is_plot, prepare_data, default_feat
     yhat = CB_est.predict(X.copy())
 
     quantile_acc = evaluate_quantile(y, yhat)
-    np.testing.assert_almost_equal(quantile_acc, 0.4973, 3)
+    np.testing.assert_almost_equal(quantile_acc, 0.4950, 3)
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6991, 3)
+    np.testing.assert_almost_equal(mad, 1.7062, 3)
 
 
 def test_additive_quantile_regression_90(is_plot, prepare_data, default_features, feature_properties):
@@ -743,23 +743,32 @@ def test_additive_quantile_regression_90(is_plot, prepare_data, default_features
     yhat = CB_est.predict(X.copy())
 
     quantile_acc = evaluate_quantile(y, yhat)
-    np.testing.assert_almost_equal(quantile_acc, 0.8969, 3)
+    np.testing.assert_almost_equal(quantile_acc, 0.8934, 3)
 
 
 def test_additive_regression_mad(is_plot, prepare_data, default_features, feature_properties):
     X, y = prepare_data
     X = X[default_features]
 
+    plobs = [
+        observers.PlottingObserver(iteration=1),
+        observers.PlottingObserver(iteration=-1),
+    ]
+
     CB_est = pipeline_CBAdditiveGenericCRegressor(
         feature_properties=feature_properties,
         costs=costs_mad,
+        observers=plobs,
     )
     CB_est.fit(X.copy(), y)
+
+    if is_plot:
+        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
 
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6991, 3)
+    np.testing.assert_almost_equal(mad, 1.7062, 3)
 
 
 def test_additive_regression_mse(is_plot, prepare_data, default_features, feature_properties):
@@ -775,7 +784,7 @@ def test_additive_regression_mse(is_plot, prepare_data, default_features, featur
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.748, 3)
+    np.testing.assert_almost_equal(mad, 1.738, 3)
 
 
 def test_multiplicative_regression_mad(is_plot, prepare_data, default_features, feature_properties):
