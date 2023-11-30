@@ -7,7 +7,6 @@ import copy
 
 from cyclic_boosting import flags
 from cyclic_boosting.plots import plot_analysis
-from cyclic_boosting.tornado.core.module import TornadoVariableSelectionModule
 
 
 _logger = logging.getLogger(__name__)
@@ -197,12 +196,7 @@ class Logger:
         if is_best:
             self.update_best(est, eval, mng)
 
-        if not last_iter:
-            if isinstance(mng, TornadoVariableSelectionModule):
-                next_features = copy.deepcopy(self.best["features"])
-                next_features.append(mng.sorted_features[self.iter])
-                mng.get_features(next_features)
-        else:
+        if last_iter:
             self.save_best()
             os.remove(os.path.join(self.save_dir, "temp.pkl"))
             _logger.info(
@@ -214,6 +208,7 @@ class Logger:
             )
 
     def log(self, est, eval, mng) -> None:
+        self.iter = mng.experiment - 1
         _logger.info(f"\riter: {self.iter} / {mng.max_interaction-1} ")
         is_first_iter = self.iter == 0
         is_last_iter = mng.max_interaction - 1 <= self.iter
@@ -222,5 +217,3 @@ class Logger:
             self.log_single(est, eval, is_last_iter)
         elif mng.type == "multiple":
             self.log_multiple(est, eval, mng, is_first_iter, is_last_iter)
-
-        self.iter += 1
