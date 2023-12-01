@@ -35,7 +35,7 @@ def dayofyear(dataset) -> pd.DataFrame:
     return dataset
 
 
-def encode_category(dataset) -> pd.DataFrame:
+def encode_catetory(dataset) -> pd.DataFrame:
     object_df = dataset.drop(columns="date").select_dtypes('object')
     category = []
     for col in object_df.columns:
