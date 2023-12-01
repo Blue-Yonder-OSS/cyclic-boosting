@@ -121,7 +121,7 @@ class Logger():
 
         best_smoothers = {}
         for f, sm in mng.smoothers.items():
-            best_smoothers[f] = sm.name
+            best_smoothers[f] = sm.__class__.__name__
 
         best_metrics = {}
         for metrics, value in evt.result.items():
@@ -146,10 +146,11 @@ class Logger():
             best = self.best["metrics"]["COD"]
             is_best = result[self.iter] > best
         else:
+            # NOTE: 小さい値を持つほうがよい指標ばかりであるのが前提
             best = {k: v for k, v in self.best["metrics"].items()
-                    if k != "COD" and k != "F"}
+                    if k != "MD" and k != "COD" and k != "F"}
             result = {k: v for k, v in evt.result.items()
-                      if k != "COD" and k != "F"}
+                      if k != "MD" and k != "COD" and k != "F"}
             if self.policy == "vote":
                 cnt = 0
                 for metrics, value in result.items():
@@ -198,11 +199,11 @@ class Logger():
             os.remove(os.path.join(self.save_dir,
                                    'temp.pkl'))
             _logger.info(
-                "\n"
-                "Now, you can make a forecasting analysis with the best model"
-                "using the pickle file in the ./models directory!\n"
-                "For instructions, please refer to the file tornado.ipynb in"
-                "the examples/regression/tornado directory."
+                "\n\n"
+                "Now, you can make a forecasting analysis with the best model\n"
+                "    using the pickle file in the ./models directory!\n"
+                "For instructions, please refer to the file tornado.ipynb in\n"
+                "    the examples/regression/tornado directory."
             )
 
     def log(self, est, evt, mng) -> None:
