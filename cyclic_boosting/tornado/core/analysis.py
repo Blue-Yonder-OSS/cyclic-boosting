@@ -1,11 +1,23 @@
+import logging
+
 import numpy as np
+import pandas as pd
 from statsmodels.tsa.seasonal import MSTL
 from scipy.fft import fft
 import pymannkendall as mk
+import matplotlib.pyplot as plt
+
+_logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+handler.terminator = ''
+_logger.addHandler(handler)
 
 
 class TornadoAnalysisModule():
-    def __init__(self, dataset, is_time_series=True):
+    def __init__(self, dataset, is_time_series=True,
+                 data_interval=None):
         # super().__init__()
         # データセットはカテゴリ変数がint, 量的変数がfloatという前提をおく
         self.dataset = dataset
@@ -22,6 +34,7 @@ class TornadoAnalysisModule():
         self.P_THRESH = 0.05
         self.W_THRESH = 5.0
         self.C_THRESH = 0.95
+        self.data_interval = data_interval
 
     def analyze(self) -> dict:
         if self.is_time_series:
@@ -36,6 +49,7 @@ class TornadoAnalysisModule():
             self.dataset = self.dataset[targets]
             self.check_missing()
             self.calc_daily_average()
+            self.check_data_interval()
             self.check_trend()
             self.check_monotonicity()
             self.check_seasonality()
@@ -46,6 +60,48 @@ class TornadoAnalysisModule():
     def calc_daily_average(self) -> None:
         self.dataset = self.dataset.groupby(level=0).mean()
         self.dataset = self.dataset.sort_index()
+
+    def check_data_interval(self):
+        if self.data_interval is None:
+            diff = self.dataset.index.to_series().diff()
+            interval = diff.min()
+        elif self.data_interval == "monthly":
+            interval = pd.Timedelta(days=30)
+        elif self.data_interval == "weekly":
+            interval = pd.Timedelta(days=7)
+        elif self.data_interval == "daily":
+            interval = pd.Timedelta(days=1)
+        elif self.data_interval == "hourly":
+            interval = pd.Timedelta(hours=1)
+        else:
+            raise ValueError("data_interval must be 'monthly', 'weekly', \
+                             'daily', or 'hourly'.")
+
+        if interval.days in [28, 29, 30, 31]:
+            if self.dataset.index.to_series().dt.day.mode()[0] == 1:
+                data_interval = "MS"
+            elif self.dataset.index.to_series().dt.day.mode()[0] >= 28:
+                data_interval = "M"
+            self.data_interval = "monthly"
+        elif interval.days == 7:
+            dayofweek = [
+                "W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"]
+            data_interval = dayofweek[self.dataset.index.to_series().dt.
+                                      dayofweek.mode()[0]]
+            self.data_interval = "weekly"
+        elif interval.days == 1:
+            data_interval = "D"
+            self.data_interval = "daily"
+        elif interval.seconds == 3600:
+            data_interval = "H"
+            self.data_interval = "hourly"
+        _logger.info(f"Data interval is '{self.data_interval}'. If not, give\n"
+                     "    the data_interval option in the TornadoDataModule.")
+        if self.data_interval in ["monthly", "weekly", "daily"]:
+            self.dataset.index = [i.date() for i in self.dataset.index]
+        self.dataset = self.dataset.asfreq(freq=data_interval)
+        self.dataset = self.dataset.interpolate(method='linear',
+                                                limit_direction='both')
 
     def check_trend(self) -> None:
         # 帰無仮説：n個のサンプルx1,x2,...xnが独立で同一の確率分布に従う
@@ -65,7 +121,18 @@ class TornadoAnalysisModule():
         return amp
 
     def decompose(self, data) -> MSTL:
-        decomposer = MSTL(data, periods=(7, 30, 365))
+        if self.data_interval == "monthly":
+            periods = (12)
+        elif self.data_interval == "weekly":
+            periods = (4, 52)
+        elif self.data_interval == "daily":
+            periods = (7, 30, 365)
+        elif self.data_interval == "hourly":
+            periods = (24, 24*7, 24*30, 24*365)
+        else:
+            _logger.warning("Seasonality detection is only supported for\n"
+                            "    hourly, daily, weekly, and monthly data.")
+        decomposer = MSTL(data, periods=periods)
         res = decomposer.fit()
 
         return res
@@ -74,9 +141,10 @@ class TornadoAnalysisModule():
         for col in self.targets:
             is_seasonality = []
             decmp = self.decompose(self.dataset[col])
+            decmp_seasonal = pd.DataFrame(decmp.seasonal)
             amp_med = np.median(self.fft(self.dataset[col]))
-            for _range in ['7', '30', '365']:
-                amp_list = self.fft(decmp.seasonal[f'seasonal_{_range}'])
+            for _range in decmp_seasonal:
+                amp_list = self.fft(decmp_seasonal[_range])
                 amp_max = np.max(amp_list)
                 peak = np.abs(amp_max - amp_med) / amp_med
                 if peak > self.W_THRESH:
