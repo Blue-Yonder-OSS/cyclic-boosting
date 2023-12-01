@@ -75,7 +75,7 @@ class CBGenericLoss(CyclicBoostingBase):
         y_pred_bins = np.split(y_pred[sorting], split_indices)
 
         # keep potential empty bins in multi-dimensional features
-        all_bins = range(max(feature.lex_binned_data) + 1)
+        all_bins = range(feature.n_bins)
         empty_bins = list(set(bins) ^ set(all_bins))
         for i in empty_bins:
             y_pred_bins.insert(i, np.zeros((0, 3)))
@@ -90,14 +90,11 @@ class CBGenericLoss(CyclicBoostingBase):
             )
 
         neutral_factor = self.unlink_func(np.array(self.neutral_factor_link))
-        if n_bins + 1 == feature.n_bins:
-            parameters = np.append(parameters, neutral_factor)
-            uncertainties = np.append(uncertainties, 0)
-
         if neutral_factor != 0:
             epsilon = 1e-5
             parameters = np.where(np.abs(parameters) < epsilon, epsilon, parameters)
             parameters = np.log(parameters)
+
         return parameters, uncertainties
 
     def optimization(self, y: np.ndarray, yhat_others: np.ndarray, weights: np.ndarray) -> Tuple[float, float]:
