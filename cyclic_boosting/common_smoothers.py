@@ -47,7 +47,7 @@ def _simplify_flags(feature_property: int, feature_group: Optional[str] = None):
     elif flags.is_continuous_set(feature_property):
         return flags.IS_CONTINUOUS
     elif flags.is_ordered_set(feature_property):
-        return flags.IS_UNORDERED
+        return flags.IS_ORDERED
     elif flags.is_unordered_set(feature_property):
         return flags.IS_UNORDERED
     else:
@@ -67,7 +67,7 @@ def _simplify_flags(feature_property: int, feature_group: Optional[str] = None):
 def _default_smoother_types(neutral_factor_link=0, use_normalization=True):
     smoother_types = {
         flags.IS_UNORDERED: smoothing.onedim.WeightedMeanSmoother(prior_prediction=neutral_factor_link),
-        flags.IS_ORDERED: smoothing.onedim.WeightedMeanSmoother(prior_prediction=neutral_factor_link),
+        flags.IS_ORDERED: smoothing.onedim.WeightedMeanSmootherNeighbors(),
         flags.IS_CONTINUOUS: smoothing.onedim.OrthogonalPolynomialSmoother(),
         flags.IS_LINEAR: smoothing.extrapolate.LinearExtrapolator(),
         flags.IS_SEASONAL:

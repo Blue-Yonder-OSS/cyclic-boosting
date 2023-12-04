@@ -29,7 +29,7 @@ jobs:
         ISSUE_NUMBER=$(echo ${{ github.head_ref }} | grep -oP "\d+")
         echo "Issue number: $ISSUE_NUMBER"
         echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
-  
+
     # 取得したissue numberのissueに対する最初のコメントを取得
     - name: Find comment
       uses: peter-evans/find-comment@v2
@@ -61,7 +61,7 @@ jobs:
       with:
         # 前のステップのアウトプットを参照
         issue: ${{ steps.find.outputs.issue }}
-        transition: 'Done'
+        transition: 'Done (2)'
 
     # Issueを閉じる
     - name: Close Issue

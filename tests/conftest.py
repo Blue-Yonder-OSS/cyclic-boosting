@@ -38,10 +38,10 @@ def feature_properties() -> dict:
     fp["P_ID"] = flags.IS_UNORDERED
     fp["PG_ID_3"] = flags.IS_UNORDERED
     fp["L_ID"] = flags.IS_UNORDERED
-    fp["dayofweek"] = flags.IS_ORDERED
+    fp["dayofweek"] = flags.IS_UNORDERED
     fp["dayofyear"] = flags.IS_CONTINUOUS | flags.IS_LINEAR
     fp["price_ratio"] = flags.IS_CONTINUOUS | flags.HAS_MISSING | flags.MISSING_NOT_LEARNED
-    fp["PROMOTION_TYPE"] = flags.IS_ORDERED
+    fp["PROMOTION_TYPE"] = flags.IS_UNORDERED
     return fp
 
 
