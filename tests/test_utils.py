@@ -73,3 +73,17 @@ def test_get_normalized_values(values, expected_result):
         np.testing.assert_almost_equal(sum(normalized_values), 1.0, 6)
     else:
         np.testing.assert_almost_equal(sum(normalized_values), 0.0, 6)
+
+
+def test_regularize_to_error_weighted_mean_neighbors():
+    values = np.array([0.5, 2.0, 0.5])
+    uncertainties = np.array([1.0, 1.0, 1.0])
+    res = utils.regularize_to_error_weighted_mean_neighbors(values, uncertainties)
+    ref = np.array(
+        [
+            (0.5 + 1.0 / (0.75 * 0.75) * 1.25) / (1 + 1.0 / (0.75 * 0.75)),
+            (2.0 + 1.0 / ((2 * 0.5 * 0.5 + 1) / 3.0)) / (1 + 1.0 / ((2 * 0.5 * 0.5 + 1) / 3.0)),
+            (0.5 + 1.0 / (0.75 * 0.75) * 1.25) / (1 + 1.0 / (0.75 * 0.75)),
+        ]
+    )
+    np.testing.assert_allclose(res, ref)

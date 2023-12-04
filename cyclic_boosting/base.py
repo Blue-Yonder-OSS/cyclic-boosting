@@ -808,7 +808,7 @@ class CyclicBoostingBase(
             else:
                 feature.mean_dev = np.log(mean_prediction_binned + 1e-12) - np.log(mean_target_binned + 1e-12)
                 feature.y = np.log(mean_target_binned / mean_y_finite + 1e-12)
-                feature.prediction = np.log(mean_prediction_binned / mean_y_finite + 1e-12)
+                feature.prediction = np.log(mean_prediction_binned / mean_prediction_finite + 1e-12)
 
             feature.y_finite = mean_y_finite
             feature.prediction_finite = mean_prediction_finite
