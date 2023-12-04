@@ -7,9 +7,8 @@ import numba as nb
 import numpy as np
 import pandas as pd
 import six
-import bisect
 
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 from dataclasses import dataclass
 
@@ -501,6 +500,11 @@ def calc_means_medians(binnumbers, y, weights=None):
             return _calc_means_medians_with_weights(binnumbers, y, weights)
 
 
+def calc_weighted_quantile(binnumbers, y, weights, quantile):
+    df = pd.DataFrame({"y": y, "weights": weights, "binnumbers": binnumbers})
+    return df.groupby("binnumbers").apply(_weighted_quantile_of_dataframe(quantile))
+
+
 def _calc_means_medians_evenly_weighted(binnumbers, y):
     """Calculate the means, medians, counts, and errors for y grouped over the
     binnumbers.
@@ -756,7 +760,7 @@ def regularize_to_prior_expectation(values, uncertainties, prior_expectation, th
 
 
 def regularize_to_error_weighted_mean(values, uncertainties, prior_prediction=None):
-    r"""Regularize values with uncertainties to the error weighted mean.
+    r"""Regularize values with uncertainties to its error-weighted mean.
 
     :param values: measured values
     :type values: :class:`numpy.ndarray` (float64, dim=1)
@@ -822,7 +826,7 @@ def regularize_to_error_weighted_mean(values, uncertainties, prior_prediction=No
     ValueError: <values> and <uncertainties> must have the same shape
     """
     if values.shape != uncertainties.shape:
-        raise ValueError("<values> and <uncertainties> " "must have the same shape")
+        raise ValueError("values and uncertainties must have the same shape")
     if len(values) < 1 or (prior_prediction is None and len(values) == 1):
         return values
 
@@ -834,14 +838,56 @@ def regularize_to_error_weighted_mean(values, uncertainties, prior_prediction=No
             # if all values are the same,
             # regularizing to the mean makes no sense
             return x
-        x_mean = np.sum(wx * x) / np.sum(wx)
+        x_mean = np.sum(wx * x) / sum_wx
     else:
         if np.allclose(x, prior_prediction):
             return x
         x_mean = prior_prediction
     wx_incl = 1.0 / (np.sum(wx * np.square(x - x_mean)) / sum_wx)
     res = (wx * x + wx_incl * x_mean) / (wx + wx_incl)
+    return res
 
+
+def regularize_to_error_weighted_mean_neighbors(
+    values: np.ndarray, uncertainties: np.ndarray, window_size: Optional[int] = 3
+) -> np.ndarray:
+    """
+    Regularize values with uncertainties to its error-weighted mean, using a
+    sliding window.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        data (`float` type) to be regularized
+    uncertainties : np.ndarray
+        uncertainties (`float` type) of values
+    window_size : int
+        size of the sliding window to be used (e.g., 3 means include direct
+        left and right neighbors)
+
+    Returns
+    -------
+    np.ndarray
+        regularized values
+    """
+    if values.shape != uncertainties.shape:
+        raise ValueError("values and uncertainties must have the same shape")
+
+    if len(values) < 3:
+        return regularize_to_error_weighted_mean(values, uncertainties)
+
+    window_arr = np.ones(window_size)
+    x = values
+    wx = np.where(uncertainties > 0, 1.0 / np.square(uncertainties), 0.0)
+
+    sum_wx = np.convolve(wx, window_arr, "same")
+    x_mean = np.convolve(wx * x, window_arr, "same") / sum_wx
+
+    wx_incl = np.ones(len(x))
+    for i in range(len(x)):
+        wx_incl[i] = (sum_wx / np.convolve(wx * np.square(x - x_mean[i]), window_arr, "same"))[i]
+
+    res = (wx * x + wx_incl * x_mean) / (wx + wx_incl)
     return res
 
 
@@ -979,7 +1025,7 @@ def get_feature_column_names(X, exclude_columns=[]):
     return features
 
 
-def continuous_quantile_from_discrete_pdf(y, quantile):
+def continuous_quantile_from_discrete_pdf(y, quantile, weights):
     """
     Calculates a continous quantile value approximation for a given quantile
     from an array of potentially discrete values.
@@ -996,13 +1042,21 @@ def continuous_quantile_from_discrete_pdf(y, quantile):
     float
         calculated quantile value
     """
-    sorted_y = np.sort(y)
-    quantile_index = int(quantile * (len(y) - 1))
-    quantile_y = sorted_y[quantile_index]
-    index_low = bisect.bisect_left(sorted_y, quantile_y)
-    index_high = bisect.bisect_right(sorted_y, quantile_y)
+    y = np.asarray(y)
+    weights = np.asarray(weights)
+
+    sorting = y.argsort()
+    sorted_y = y[sorting]
+    cumsum = weights[sorting].cumsum()
+    quantile_index = weights.sum() * quantile
+    quantile_y = sorted_y[cumsum >= quantile_index][0]
+
+    all_quantile_y = np.where(sorted_y == quantile_y)[0]
+    index_low = all_quantile_y[0]
+    index_high = all_quantile_y[-1]
     if index_high > index_low:
-        quantile_y += (quantile_index - index_low) / (index_high - index_low)
+        quantile_y += (int(quantile_index) - index_low) / (index_high - index_low)
+
     return quantile_y
 
 

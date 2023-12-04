@@ -75,7 +75,7 @@ class CBGenericLoss(CyclicBoostingBase):
         y_pred_bins = np.split(y_pred[sorting], split_indices)
 
         # keep potential empty bins in multi-dimensional features
-        all_bins = range(max(feature.lex_binned_data) + 1)
+        all_bins = range(feature.n_bins)
         empty_bins = list(set(bins) ^ set(all_bins))
         for i in empty_bins:
             y_pred_bins.insert(i, np.zeros((0, 3)))
@@ -90,14 +90,11 @@ class CBGenericLoss(CyclicBoostingBase):
             )
 
         neutral_factor = self.unlink_func(np.array(self.neutral_factor_link))
-        if n_bins + 1 == feature.n_bins:
-            parameters = np.append(parameters, neutral_factor)
-            uncertainties = np.append(uncertainties, 0)
-
         if neutral_factor != 0:
             epsilon = 1e-5
             parameters = np.where(np.abs(parameters) < epsilon, epsilon, parameters)
             parameters = np.log(parameters)
+
         return parameters, uncertainties
 
     def optimization(self, y: np.ndarray, yhat_others: np.ndarray, weights: np.ndarray) -> Tuple[float, float]:
@@ -181,7 +178,235 @@ class CBGenericLoss(CyclicBoostingBase):
         raise NotImplementedError("implement in subclass")
 
 
-class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, LogLinkMixin):
+@six.add_metaclass(abc.ABCMeta)
+class CBQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin):
+    """
+    Cyclic Boosting generic quantile regressor. A quantile loss,
+    according to the desired quantile to be predicted, is minimized in each bin
+    of each feature. While its general structure allows arbitrary/empirical
+    target ranges/distributions, the multiplicative model of this mode requires
+    non-negative target values.
+
+    Parameters
+    ----------
+    quantile : float
+        quantile to be estimated
+    See: class:`cyclic_boosting.base` for all other parameters.
+    """
+
+    def __init__(
+        self,
+        feature_groups=None,
+        hierarchical_feature_groups=None,
+        feature_properties=None,
+        weight_column=None,
+        prior_prediction_column=None,
+        minimal_loss_change=1e-10,
+        minimal_factor_change=1e-10,
+        maximal_iterations=10,
+        observers=None,
+        smoother_choice=None,
+        output_column=None,
+        learn_rate=None,
+        quantile=None,
+        aggregate=True,
+    ):
+        CyclicBoostingBase.__init__(
+            self,
+            feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
+            feature_properties=feature_properties,
+            weight_column=weight_column,
+            prior_prediction_column=prior_prediction_column,
+            minimal_loss_change=minimal_loss_change,
+            minimal_factor_change=minimal_factor_change,
+            maximal_iterations=maximal_iterations,
+            observers=observers,
+            smoother_choice=smoother_choice,
+            output_column=output_column,
+            learn_rate=learn_rate,
+            aggregate=aggregate,
+        )
+
+        self.quantile = quantile
+
+    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
+        """
+        Calculation of the in-sample quantile loss, or to be exact costs,
+        (potentially including sample weights) after full feature cycles, i.e.,
+        iterations, to be used as stopping criteria.
+
+        Parameters
+        ----------
+        prediction : np.ndarray
+            (in-sample) predictions for desired quantile, containing data with `float` type
+        y : np.ndarray
+            target variable, containing data with `float` type (potentially discrete)
+        weights : np.ndarray
+            optional (otherwise set to 1) sample weights, containing data with `float` type
+
+        Returns
+        -------
+        float
+            calculated quantile costs
+        """
+        return self.quantile_costs(prediction, y, weights, self.quantile)
+
+    def _init_global_scale(self, X: Union[pd.DataFrame, np.ndarray], y: np.ndarray) -> None:
+        self.global_scale_link_, self.prior_pred_link_offset_ = self.quantile_global_scale(
+            X, y, self.quantile, self.weights, self.prior_prediction_column, self.link_func
+        )
+
+    def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
+        return self.quantile_costs(prediction, y, weights, self.quantile)
+
+    def prepare_plots(self, X: np.ndarray, y: np.ndarray, prediction: np.ndarray) -> None:
+        for feature in self.features:
+            if feature.feature_type is None:
+                weights = self.weights
+            else:
+                weights = self.weights_external
+
+            feature.bind_data(X, weights)
+
+            sum_w, _, sum_pw = (
+                np.bincount(feature.lex_binned_data, weights=w) for w in [weights, weights * y, weights * prediction]
+            )
+
+            df = pd.DataFrame({"y": y, "weights": weights, "binnumbers": feature.lex_binned_data})
+
+            def df_continuous_quantile_from_discrete_pdf(df, quantile):
+                return continuous_quantile_from_discrete_pdf(df["y"], quantile, df["weights"])
+
+            mean_target_binned = np.asarray(
+                df.groupby("binnumbers")[["y", "weights"]].apply(
+                    df_continuous_quantile_from_discrete_pdf, quantile=self.quantile
+                )
+            )
+
+            mean_prediction_binned = sum_pw / sum_w
+            mean_prediction_binned = np.where(np.isfinite(mean_prediction_binned), mean_prediction_binned, 1.0)
+
+            # keep potential empty bins in multi-dimensional features
+            all_bins = range(max(feature.lex_binned_data) + 1)
+            empty_bins = list(set(np.unique(feature.lex_binned_data)) ^ set(all_bins))
+            for i in empty_bins:
+                mean_target_binned = np.insert(mean_target_binned, i, 1.0)
+
+            mean_y_finite = continuous_quantile_from_discrete_pdf(y, self.quantile, weights)
+            mean_prediction_finite = np.sum(sum_pw) / np.sum(sum_w)
+
+            if len(mean_target_binned) + 1 == feature.n_bins:
+                mean_target_binned = np.append(mean_target_binned, 1.0)
+            if len(mean_prediction_binned) + 1 == feature.n_bins:
+                mean_prediction_binned = np.append(mean_prediction_binned, 1.0)
+
+            if isinstance(self, IdentityLinkMixin):
+                feature.mean_dev = mean_prediction_binned - mean_target_binned
+                feature.y = mean_target_binned - mean_y_finite
+                feature.prediction = mean_prediction_binned - mean_prediction_finite
+            else:
+                feature.mean_dev = np.log(mean_prediction_binned + 1e-12) - np.log(mean_target_binned + 1e-12)
+                feature.y = np.log(mean_target_binned / mean_y_finite + 1e-12)
+                feature.prediction = np.log(mean_prediction_binned / mean_prediction_finite + 1e-12)
+
+            feature.y_finite = mean_y_finite
+            feature.prediction_finite = mean_prediction_finite
+
+            feature.learn_rate = 1.0
+
+    def _call_observe_iterations(self, iteration, X, y, prediction, delta) -> None:
+        for observer in self.observers:
+            observer.observe_iterations(
+                iteration, X, y, prediction, self.weights, self.get_state(), delta, self.quantile
+            )
+
+    @staticmethod
+    def quantile_costs(prediction: np.ndarray, y: np.ndarray, weights: np.ndarray, quantile: float) -> float:
+        """
+        Calculation of the in-sample quantile costs (potentially including sample
+        weights).
+
+        Parameters
+        ----------
+        prediction : np.ndarray
+            (in-sample) predictions for desired quantile, containing data with `float` type
+        y : np.ndarray
+            target variable, containing data with `float` type (potentially discrete)
+        weights : np.ndarray
+            optional (otherwise set to 1) sample weights, containing data with `float` type
+        quantile : float
+            quantile to be estimated
+
+        Returns
+        -------
+        float
+            calculated quantile costs
+        """
+        if len(y) > 0:
+            sum_weighted_error = np.nansum(
+                ((y < prediction) * (1 - quantile) * (prediction - y) + (y >= prediction) * quantile * (y - prediction))
+                * weights
+            )
+            quantile_costs = sum_weighted_error / np.nansum(weights)
+            return quantile_costs
+        else:
+            return 0.0
+
+    @staticmethod
+    def quantile_global_scale(
+        X: Union[pd.DataFrame, np.ndarray],
+        y: np.ndarray,
+        quantile: float,
+        weights: np.ndarray,
+        prior_prediction_column: Union[str, int, None],
+        link_func,
+    ) -> Tuple:
+        """
+        Calculation of the global scale for quantile regression, corresponding
+        to the (continuous approximation of the) respective quantile of the
+        target values used in the training.
+
+        The exact value of the global scale is not critical for the model
+        accuracy (as the model has enough parameters to compensate).
+        However, a value which is not representative of a good overall average leads to factors with
+        averages unequal to 1 for each feature (making interpretation more
+        difficult).
+        """
+        if weights is None:
+            raise RuntimeError("The weights have to be initialized.")
+
+        global_scale_link_ = link_func(continuous_quantile_from_discrete_pdf(y, quantile, weights))
+
+        prior_pred_link_offset_ = None
+        if prior_prediction_column is not None:
+            prior_pred = get_X_column(X, prior_prediction_column)
+            finite = np.isfinite(prior_pred)
+            if not np.all(finite):
+                _logger.warning(
+                    "Found a total number of {} non-finite values in the prior prediction column".format(
+                        np.sum(~finite)
+                    )
+                )
+
+            prior_pred_mean = np.sum(prior_pred[finite] * weights[finite]) / np.sum(weights[finite])
+
+            prior_pred_link_mean = link_func(prior_pred_mean)
+
+            if np.isfinite(prior_pred_link_mean):
+                prior_pred_link_offset_ = global_scale_link_ - prior_pred_link_mean
+            else:
+                warnings.warn(
+                    "The mean prior prediction in link-space is not finite. "
+                    "Therefore no individualization is done "
+                    "and no prior mean subtraction is necessary."
+                )
+                prior_pred_link_offset_ = float(global_scale_link_)
+
+        return global_scale_link_, prior_pred_link_offset_
+
+
+class CBMultiplicativeQuantileRegressor(CBQuantileRegressor, LogLinkMixin):
     """
     Cyclic Boosting multiplicative quantile-regression mode. A quantile loss,
     according to the desired quantile to be predicted, is minimized in each bin
@@ -215,7 +440,7 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
         quantile=None,
         aggregate=True,
     ):
-        CyclicBoostingBase.__init__(
+        CBQuantileRegressor.__init__(
             self,
             feature_groups=feature_groups,
             hierarchical_feature_groups=hierarchical_feature_groups,
@@ -229,43 +454,12 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
             smoother_choice=smoother_choice,
             output_column=output_column,
             learn_rate=learn_rate,
+            quantile=quantile,
             aggregate=aggregate,
         )
 
-        self.quantile = quantile
-
     def _check_y(self, y: np.ndarray) -> None:
         check_y_multiplicative(y)
-
-    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
-        """
-        Calculation of the in-sample quantile loss, or to be exact costs,
-        (potentially including sample weights) after full feature cycles, i.e.,
-        iterations, to be used as stopping criteria.
-
-        Parameters
-        ----------
-        prediction : np.ndarray
-            (in-sample) predictions for desired quantile, containing data with `float` type
-        y : np.ndarray
-            target variable, containing data with `float` type (potentially discrete)
-        weights : np.ndarray
-            optional (otherwise set to 1) sample weights, containing data with `float` type
-
-        Returns
-        -------
-        float
-            calcualted quantile costs
-        """
-        return quantile_costs(prediction, y, weights, self.quantile)
-
-    def _init_global_scale(self, X: Union[pd.DataFrame, np.ndarray], y: np.ndarray) -> None:
-        self.global_scale_link_, self.prior_pred_link_offset_ = quantile_global_scale(
-            X, y, self.quantile, self.weights, self.prior_prediction_column, self.link_func
-        )
-
-    def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
-        return quantile_costs(prediction, y, weights, self.quantile)
 
     def model(self, param: float, yhat_others: np.ndarray) -> np.ndarray:
         return model_multiplicative(param, yhat_others)
@@ -274,7 +468,7 @@ class CBMultiplicativeQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMix
         return uncertainty_gamma(y, weights)
 
 
-class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, IdentityLinkMixin):
+class CBAdditiveQuantileRegressor(CBQuantileRegressor, IdentityLinkMixin):
     """
     Cyclic Boosting additive quantile-regression mode. A quantile loss,
     according to the desired quantile to be predicted, is minimized in each bin
@@ -287,7 +481,7 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
     ----------
     quantile : float
         quantile to be estimated
-    See :class:`cyclic_boosting.base` for all other parameters.
+    See: class:`cyclic_boosting.base` for all other parameters.
     """
 
     def __init__(
@@ -307,7 +501,7 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
         quantile=None,
         aggregate=True,
     ):
-        CyclicBoostingBase.__init__(
+        CBQuantileRegressor.__init__(
             self,
             feature_groups=feature_groups,
             hierarchical_feature_groups=hierarchical_feature_groups,
@@ -321,130 +515,18 @@ class CBAdditiveQuantileRegressor(CBGenericLoss, sklearn.base.RegressorMixin, Id
             smoother_choice=smoother_choice,
             output_column=output_column,
             learn_rate=learn_rate,
+            quantile=quantile,
             aggregate=aggregate,
         )
 
-        self.quantile = quantile
-
     def _check_y(self, y: np.ndarray) -> None:
         check_y_additive(y)
-
-    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
-        """
-        Calculation of the in-sample quantile loss, or to be exact costs,
-        (potentially including sample weights) after full feature cycles, i.e.,
-        iterations, to be used as stopping criteria.
-
-        Parameters
-        ----------
-        prediction : np.ndarray
-            (in-sample) predictions for desired quantile, containing data with `float` type
-        y : np.ndarray
-            target variable, containing data with `float` type (potentially discrete)
-        weights : np.ndarray
-            optional (otherwise set to 1) sample weights, containing data with `float` type
-
-        Returns
-        -------
-        float
-            calcualted quantile costs
-        """
-        return quantile_costs(prediction, y, weights, self.quantile)
-
-    def _init_global_scale(self, X: Union[pd.DataFrame, np.ndarray], y: np.ndarray) -> None:
-        self.global_scale_link_, self.prior_pred_link_offset_ = quantile_global_scale(
-            X, y, self.quantile, self.weights, self.prior_prediction_column, self.link_func
-        )
-
-    def costs(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
-        return quantile_costs(prediction, y, weights, self.quantile)
 
     def model(self, param: float, yhat_others: np.ndarray) -> np.ndarray:
         return model_additive(param, yhat_others)
 
     def uncertainty(self, y: np.ndarray, weights: np.ndarray) -> float:
         return uncertainty_gaussian(y, weights)
-
-
-def quantile_costs(prediction: np.ndarray, y: np.ndarray, weights: np.ndarray, quantile: float) -> float:
-    """
-    Calculation of the in-sample quantile costs (potentially including sample
-    weights).
-
-    Parameters
-    ----------
-    prediction : np.ndarray
-        (in-sample) predictions for desired quantile, containing data with `float` type
-    y : np.ndarray
-        target variable, containing data with `float` type (potentially discrete)
-    weights : np.ndarray
-        optional (otherwise set to 1) sample weights, containing data with `float` type
-    quantile : float
-        quantile to be estimated
-
-    Returns
-    -------
-    float
-        calcualted quantile costs
-    """
-    if len(y) > 0:
-        sum_weighted_error = np.nansum(
-            ((y < prediction) * (1 - quantile) * (prediction - y) + (y >= prediction) * quantile * (y - prediction))
-            * weights
-        )
-        return sum_weighted_error / np.nansum(weights)
-    else:
-        return 0
-
-
-def quantile_global_scale(
-    X: Union[pd.DataFrame, np.ndarray],
-    y: np.ndarray,
-    quantile: float,
-    weights: np.ndarray,
-    prior_prediction_column: Union[str, int, None],
-    link_func,
-) -> None:
-    """
-    Calculation of the global scale for quantile regression, corresponding
-    to the (continuous approximation of the) respective quantile of the
-    target values used in the training.
-
-    The exact value of the global scale is not critical for the model
-    accuracy (as the model has enough parameters to compensate), but a
-    value not representating a good overall average leads to factors with
-    averages unequal to 1 for each feature (making interpretation more
-    difficult).
-    """
-    if weights is None:
-        raise RuntimeError("The weights have to be initialized.")
-
-    global_scale_link_ = link_func(continuous_quantile_from_discrete_pdf(y, quantile))
-
-    prior_pred_link_offset_ = None
-    if prior_prediction_column is not None:
-        prior_pred = get_X_column(X, prior_prediction_column)
-        finite = np.isfinite(prior_pred)
-        if not np.all(finite):
-            _logger.warning(
-                "Found a total number of {} non-finite values in the prior prediction column".format(np.sum(~finite))
-            )
-
-        prior_pred_mean = np.sum(prior_pred[finite] * weights[finite]) / np.sum(weights[finite])
-
-        prior_pred_link_mean = link_func(prior_pred_mean)
-
-        if np.isfinite(prior_pred_link_mean):
-            prior_pred_link_offset_ = global_scale_link_ - prior_pred_link_mean
-        else:
-            warnings.warn(
-                "The mean prior prediction in link-space is not finite. "
-                "Therefore no indiviualization is done "
-                "and no prior mean substraction is necessary."
-            )
-            prior_pred_link_offset_ = float(global_scale_link_)
-
-    return global_scale_link_, prior_pred_link_offset_
 
 
 def model_multiplicative(param: float, yhat_others: np.ndarray) -> np.ndarray:
@@ -459,21 +541,44 @@ def uncertainty_gamma(y: np.ndarray, weights: np.ndarray) -> float:
     # use moment-matching of a Gamma posterior with a log-normal
     # distribution as approximation
     alpha_prior = 2
-    alpha_posterior = np.sum(y) + alpha_prior
+    alpha_posterior = np.sum(weights * y) + alpha_prior
     sigma = np.sqrt(np.log(1 + alpha_posterior) - np.log(alpha_posterior))
     return sigma
 
 
 def uncertainty_gaussian(y: np.ndarray, weights: np.ndarray) -> float:
-    return np.sqrt(np.mean(y) / len(y))
+    sum_weights = np.sum(weights)
+    weighted_mean_y = np.sum(y * weights) / sum_weights
+    weighted_squared_residual_sum = np.sum(weights * (y - weighted_mean_y) ** 2)
+
+    variance_prior = weighted_squared_residual_sum / sum_weights
+    if variance_prior <= 1e-9:
+        variance_prior = 1.0
+
+    n_prior = 1
+    a_0 = 0.5 * n_prior
+    b_0 = a_0 * variance_prior
+    a = a_0 + 0.5 * sum_weights
+    b = b_0 + 0.5 * weighted_squared_residual_sum
+    variance_y = b / a
+    w = weights / variance_y
+
+    sum_w = np.sum(w)
+    sum_vw = np.sum(weights * w)
+    w0 = 1e-2
+    sum_w += w0
+    sum_vw += w0
+    variance_weighted_mean = sum_vw / sum_w**2
+
+    return np.sqrt(variance_weighted_mean)
 
 
 def uncertainty_beta(y: np.ndarray, weights: np.ndarray, link_func) -> float:
     # use moment-matching of a Beta posterior with a log-normal
     # distribution as approximation
     alpha_prior, beta_prior = get_beta_priors()
-    alpha_posterior = np.sum(y) + alpha_prior
-    beta_posterior = np.sum(1 - y) + beta_prior
+    alpha_posterior = np.sum(weights * y) + alpha_prior
+    beta_posterior = np.sum(weights * (1 - y)) + beta_prior
     shift = 0.4 * (alpha_posterior / (alpha_posterior + beta_posterior) - 0.5)
     perc1 = 0.75 - shift
     perc2 = 0.25 - shift

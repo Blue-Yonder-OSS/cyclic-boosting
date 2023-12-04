@@ -220,6 +220,20 @@ class WeightedMeanSmoother(AbstractBinSmoother, PredictingBinValueMixin):
         self.smoothed_y_ = utils.regularize_to_error_weighted_mean(y, X_for_smoother[:, 2], self.prior_prediction)
 
 
+class WeightedMeanSmootherNeighbors(AbstractBinSmoother, PredictingBinValueMixin):
+    """
+    Smoother for regularizing one-dimensional bin values with uncertainties to
+    the weighted mean of a window including only its left and right neigboring
+    bins.
+    """
+
+    def fit(self, X_for_smoother, y):
+        if len(y) < 3:
+            self.smoothed_y_ = utils.regularize_to_error_weighted_mean(y, X_for_smoother[:, 2])
+        else:
+            self.smoothed_y_ = utils.regularize_to_error_weighted_mean_neighbors(y, X_for_smoother[:, 2], window_size=3)
+
+
 class OrthogonalPolynomialSmoother(AbstractBinSmoother):
     """A polynomial fit that uses orthogonal polynomials as basis functions.
 

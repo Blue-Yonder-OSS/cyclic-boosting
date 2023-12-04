@@ -69,6 +69,58 @@ def test_poisson_regression(is_plot, prepare_data, cb_poisson_regressor_model):
 
 
 @pytest.fixture(scope="function")
+def cb_poisson_regressor_model_ordered_smoothing(features, feature_properties):
+    explicit_smoothers = {
+        ("dayofyear",): SeasonalSmoother(order=3),
+        ("price_ratio",): IsotonicRegressor(increasing=False),
+    }
+
+    plobs = [
+        observers.PlottingObserver(iteration=1),
+        observers.PlottingObserver(iteration=-1),
+    ]
+
+    fp = feature_properties.copy()
+    fp["P_ID"] = flags.IS_ORDERED
+    fp["PG_ID_3"] = flags.IS_ORDERED
+    fp["L_ID"] = flags.IS_ORDERED
+    fp["dayofweek"] = flags.IS_ORDERED
+    fp["price_ratio"] = flags.IS_ORDERED
+
+    CB_pipeline = pipeline_CBPoissonRegressor(
+        feature_properties=fp,
+        feature_groups=features,
+        observers=plobs,
+        maximal_iterations=50,
+        smoother_choice=common_smoothers.SmootherChoiceGroupBy(
+            use_regression_type=True, use_normalization=False, explicit_smoothers=explicit_smoothers
+        ),
+    )
+
+    return CB_pipeline
+
+
+def test_poisson_regression_ordered_smoothing(is_plot, prepare_data, cb_poisson_regressor_model_ordered_smoothing):
+    X, y = prepare_data
+
+    # make the effect visible with high-uncertainty bin
+    X_special = X.copy()
+    X_special["P_ID"].iloc[1] = 11.5
+
+    CB_est = cb_poisson_regressor_model_ordered_smoothing
+    CB_est.fit(X_special.copy(), y)
+
+    if is_plot:
+        plot_CB("analysis_CB_iterfirst_ordered", [CB_est[-1].observers[0]], CB_est[-2])
+        plot_CB("analysis_CB_iterlast_ordered", [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X_special.copy())
+
+    mad = np.nanmean(np.abs(y - yhat))
+    np.testing.assert_almost_equal(mad, 1.70, 3)
+
+
+@pytest.fixture(scope="function")
 def cb_poisson_regressor_model_hierarchical(features, feature_properties):
     explicit_smoothers = {
         ("dayofyear",): SeasonalSmoother(order=3),
@@ -178,7 +230,7 @@ def test_regression_ndarray_w_feature_properties(prepare_data, default_features,
     CB_est.fit(X.copy(), y)
     yhat = CB_est.predict(X.copy())
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.695, 3)
+    np.testing.assert_almost_equal(mad, 1.697, 3)
 
 
 def test_poisson_regression_default_features_and_properties(is_plot, prepare_data, default_features):
@@ -672,10 +724,10 @@ def test_additive_quantile_regression_median(is_plot, prepare_data, default_feat
     yhat = CB_est.predict(X.copy())
 
     quantile_acc = evaluate_quantile(y, yhat)
-    np.testing.assert_almost_equal(quantile_acc, 0.4973, 3)
+    np.testing.assert_almost_equal(quantile_acc, 0.4950, 3)
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6991, 3)
+    np.testing.assert_almost_equal(mad, 1.7062, 3)
 
 
 def test_additive_quantile_regression_90(is_plot, prepare_data, default_features, feature_properties):
@@ -691,23 +743,32 @@ def test_additive_quantile_regression_90(is_plot, prepare_data, default_features
     yhat = CB_est.predict(X.copy())
 
     quantile_acc = evaluate_quantile(y, yhat)
-    np.testing.assert_almost_equal(quantile_acc, 0.8969, 3)
+    np.testing.assert_almost_equal(quantile_acc, 0.8934, 3)
 
 
 def test_additive_regression_mad(is_plot, prepare_data, default_features, feature_properties):
     X, y = prepare_data
     X = X[default_features]
 
+    plobs = [
+        observers.PlottingObserver(iteration=1),
+        observers.PlottingObserver(iteration=-1),
+    ]
+
     CB_est = pipeline_CBAdditiveGenericCRegressor(
         feature_properties=feature_properties,
         costs=costs_mad,
+        observers=plobs,
     )
     CB_est.fit(X.copy(), y)
+
+    if is_plot:
+        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
 
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.6991, 3)
+    np.testing.assert_almost_equal(mad, 1.7062, 3)
 
 
 def test_additive_regression_mse(is_plot, prepare_data, default_features, feature_properties):
@@ -723,7 +784,7 @@ def test_additive_regression_mse(is_plot, prepare_data, default_features, featur
     yhat = CB_est.predict(X.copy())
 
     mad = np.nanmean(np.abs(y - yhat))
-    np.testing.assert_almost_equal(mad, 1.748, 3)
+    np.testing.assert_almost_equal(mad, 1.738, 3)
 
 
 def test_multiplicative_regression_mad(is_plot, prepare_data, default_features, feature_properties):
