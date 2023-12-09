@@ -11,6 +11,8 @@ from ._binary_search import eq_multi, ge_multi
 from ._utils import _read_feature_property, check_frame_empty
 from .ecdf_transformer import ECdfTransformer
 
+from typing import Union, Optional
+
 MISSING_VALUE_AS_BINNO = -1
 
 _logger = logging.getLogger(__name__)
@@ -174,7 +176,9 @@ class BinNumberTransformer(ECdfTransformer):
             xt = MISSING_VALUE_AS_BINNO
         return xt
 
-    def transform(self, X_orig, y=None):
+    def transform(
+        self, X_orig: Union[pd.DataFrame, np.ndarray], y: Optional[np.ndarray] = None
+    ) -> Union[pd.DataFrame, np.ndarray]:
         self._check_input_for_transform(X_orig)
 
         if not self.inplace:
@@ -185,7 +189,6 @@ class BinNumberTransformer(ECdfTransformer):
         if check_frame_empty(X):
             if isinstance(X, pd.DataFrame):
                 X = X.astype({col: np.int8 for col, _, _ in self.bins_and_cdfs_})
-
             else:
                 return _as_int_array_of_minimum_dtype(X)
 
