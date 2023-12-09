@@ -48,6 +48,7 @@ def pipeline_CB(
     regalpha=0.0,
     quantile=None,
     costs=None,
+    inplace=False,
 ):
     if estimator in [CBPoissonRegressor, CBLocPoissonRegressor, CBLocationRegressor, CBClassifier]:
         estimatorCB = estimator(
@@ -171,7 +172,7 @@ def pipeline_CB(
         )
     else:
         raise Exception("No valid CB estimator.")
-    binner = binning.BinNumberTransformer(n_bins=number_of_bins, feature_properties=feature_properties)
+    binner = binning.BinNumberTransformer(n_bins=number_of_bins, feature_properties=feature_properties, inplace=inplace)
 
     return Pipeline([("binning", binner), ("CB", estimatorCB)])
 

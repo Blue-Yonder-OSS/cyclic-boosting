@@ -124,6 +124,7 @@ class BinNumberTransformer(ECdfTransformer):
         weight_column=None,
         epsilon=1e-9,
         tolerance=0.1,
+        inplace=False,
     ):
         self.n_bins = n_bins
         self.feature_properties = feature_properties
@@ -131,6 +132,7 @@ class BinNumberTransformer(ECdfTransformer):
         self.epsilon = epsilon
         self.tolerance = tolerance
         self.nan_representation = MISSING_VALUE_AS_BINNO
+        self.inplace = inplace
         ECdfTransformer.__init__(
             self,
             n_bins=self.n_bins,
@@ -172,8 +174,13 @@ class BinNumberTransformer(ECdfTransformer):
             xt = MISSING_VALUE_AS_BINNO
         return xt
 
-    def transform(self, X, y=None):
-        self._check_input_for_transform(X)
+    def transform(self, X_orig, y=None):
+        self._check_input_for_transform(X_orig)
+
+        if not self.inplace:
+            X = X_orig.copy()
+        else:
+            X = X_orig
 
         if check_frame_empty(X):
             if isinstance(X, pd.DataFrame):
