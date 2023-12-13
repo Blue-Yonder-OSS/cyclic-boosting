@@ -35,12 +35,14 @@ class TornadoModuleBase:
         self,
         manual_feature_property=None,
         is_time_series=True,
+        data_interval=None,
         task="regression",
         dist="poisson",
         model="multiplicative",
     ) -> None:
         self.mfp = manual_feature_property
         self.is_ts = is_time_series
+        self.data_interval = data_interval
         self.task = task
         self.dist = dist
         self.model = model

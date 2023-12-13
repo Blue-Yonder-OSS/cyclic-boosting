@@ -139,7 +139,7 @@ class Logger(LoggerBase):
         self.make_dir()
 
     def output(self, eval, mng):
-        log = f"\n  ---- The best model was updated in iter {self.iter} ----\n"
+        log = f"\n  ---- The best model was updated in iter {self.iter + 1} ----\n"
         _logger.info(log)
 
         # log = f"    best_features{mng.features}\n    "
