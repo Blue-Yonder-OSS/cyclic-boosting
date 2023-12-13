@@ -235,11 +235,11 @@ class Logger(LoggerBase):
             self.save(_est)
             os.remove(os.path.join(self.save_dir, "temp.pkl"))
             _logger.info(
-                "\n"
-                "Now, you can make a forecasting analysis with the best model"
-                "using the pickle file in the ./models directory!\n"
-                "For instructions, please refer to the file tornado.ipynb in"
-                "the examples/regression/tornado directory."
+                "\n\n"
+                "Now, you can make a forecasting analysis with the best model\n"
+                "    using the pickle file in the ./models directory!\n"
+                "For instructions, please refer to the file tornado.ipynb in\n"
+                "    the examples/regression/tornado directory."
             )
 
     def log(self, est, eval, mng, verbose=True) -> None:

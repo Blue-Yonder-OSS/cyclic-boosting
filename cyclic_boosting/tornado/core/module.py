@@ -90,9 +90,9 @@ class TornadoModuleBase:
     def int_or_float_feature_property(self) -> None:
         cols = self.X.select_dtypes(include=["int", "float", "object"])
         for col in cols:
-            if type(self.X[col][0]) == np.int64:
+            if isinstance(self.X[col][0], np.int64):
                 self.feature_properties[col] = flags.IS_UNORDERED
-            elif type(self.X[col][0]) == np.float64:
+            elif isinstance(self.X[col][0], np.float64):
                 self.feature_properties[col] = flags.IS_CONTINUOUS
             else:
                 raise ValueError("整数または小数ではない")
@@ -101,7 +101,7 @@ class TornadoModuleBase:
         if self.mfp is None and fp is None:
             # self.gen_base_feature_property()
             self.int_or_float_feature_property()
-            analyzer = TornadoAnalysisModule(self.X, is_time_series=self.is_ts)
+            analyzer = TornadoAnalysisModule(self.X, is_time_series=self.is_ts, data_interval=self.data_interval)
             self.report = analyzer.analyze()
             for check_point, analyzed_features in self.report.items():
                 if check_point == "has_seasonality":
@@ -249,8 +249,9 @@ class TornadoModuleBase:
 
 
 class TornadoModule(TornadoModuleBase):
-    def __init__(self, manual_feature_property=None, is_time_series=True) -> None:
-        super().__init__(manual_feature_property, is_time_series)
+    def __init__(self, manual_feature_property=None, is_time_series=True, data_interval=None) -> None:
+        super().__init__(manual_feature_property, is_time_series, data_interval)
+        self.type = "multiple"
 
     def set_feature(self) -> None:
         # single feature
@@ -292,8 +293,8 @@ class TornadoModule(TornadoModuleBase):
 
 
 class ForwardSelectionModule(TornadoModuleBase):
-    def __init__(self, manual_feature_property=None, is_time_series=True, dist="poisson") -> None:
-        super().__init__(manual_feature_property, is_time_series, dist=dist)
+    def __init__(self, manual_feature_property=None, is_time_series=True, data_interval=None, dist="poisson") -> None:
+        super().__init__(manual_feature_property, is_time_series, data_interval, dist=dist)
         self.first_round = "single_regression_analysis"
         self.second_round = "multiple_regression_analysis"
         self.mode = self.first_round
