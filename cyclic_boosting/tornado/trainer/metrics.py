@@ -35,8 +35,11 @@ def mean_y(y, **args) -> float:
     return nanmean(y)
 
 
-def coefficient_of_determination(y, yhat) -> float:
-    return 1 - (nansum((y - yhat) ** 2) / nansum((y - nanmean(y)) ** 2))
+def coefficient_of_determination(y, yhat, k) -> float:
+    n = len(y)
+    numerator = nansum((y - yhat) ** 2) / (n - k - 1)
+    denominator = nansum((y - nanmean(y)) ** 2) / (n - 1)
+    return 1 - (numerator / denominator)
 
 
 def F(y, yhat, k) -> float:
@@ -44,6 +47,27 @@ def F(y, yhat, k) -> float:
     residual_variance = nansum((y - yhat) ** 2) / (n - k - 1)
     regression_variance = nansum((yhat - nanmean(y)) ** 2) / k
     return regression_variance / residual_variance
+
+
+def F_quantile(
+    y,
+    yhat_q1,
+    yhat_q2,
+    q1,
+    k,
+) -> float:
+    # from scipy.stats import f
+    q2 = 1 - q1
+    n = len(y)
+    q_range = q2 - q1
+    rss_indep = sum(square(v) for v in [yhat_q1, yhat_q2])
+    rss_part = (rss_indep[1] - rss_indep[0]) / (q_range)
+    sse_full = nansum(square(y - nanmean(y)))
+    rss_full = sse_full - nansum(rss_indep)
+    F_value = rss_part / (rss_full / (n - k - 1))
+    # p_value = 1 - f.cdf(F_value, 1, n - k - 1)
+    print("F-value: %.4f" % F_value)
+    return F_value
 
 
 def mean_pinball_loss(y, yhat, alpha) -> float:
