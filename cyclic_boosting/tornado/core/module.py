@@ -21,12 +21,13 @@ from .analysis import TornadoAnalysisModule
 @six.add_metaclass(abc.ABCMeta)
 class TornadoModuleBase():
     def __init__(self, manual_feature_property=None,
-                 is_time_series=True) -> None:
+                 is_time_series=True, data_interval=None) -> None:
         self.X = None
         self.y = None
         self.target = None
         self.mfp = manual_feature_property
         self.is_ts = is_time_series
+        self.data_interval = data_interval
         self.feature_properties = {}
         self.features = []
         self.interaction_term = []
@@ -49,24 +50,25 @@ class TornadoModuleBase():
                 self.feature_properties[col] = flags.IS_CONTINUOUS
             else:
                 raise ValueError("please type 'cat' or 'con'")
-            
-    #FIXME
-    #この関数は入力の手間をなくすためだけのものであり本質的に自動化を行っているわけではない.修正の必要あり
+
+    # FIXME
+    # この関数は入力の手間をなくすためだけのものであり本質的に自動化を行っているわけではない.修正の必要あり
     def int_or_float_feature_property(self) -> None:
         cols = self.X.select_dtypes(include=['int', 'float', 'object'])
         for col in cols:
-            if type(self.X[col][0]) == np.int64:
+            if isinstance(self.X[col][0], np.int64):
                 self.feature_properties[col] = flags.IS_UNORDERED
-            elif type(self.X[col][0]) == np.float64:
+            elif isinstance(self.X[col][0], np.float64):
                 self.feature_properties[col] = flags.IS_CONTINUOUS
             else:
                 raise ValueError("整数または小数ではない")
-            
+
     def set_feature_property(self) -> None:
         if self.mfp is None:
             # self.gen_base_feature_property()
             self.int_or_float_feature_property()
-            analyzer = TornadoAnalysisModule(self.X, is_time_series=self.is_ts)
+            analyzer = TornadoAnalysisModule(self.X, is_time_series=self.is_ts,
+                                             data_interval=self.data_interval)
             self.report = analyzer.analyze()
             for key, cols in self.report.items():
                 if key == 'has_seasonality':
@@ -169,8 +171,9 @@ class TornadoModuleBase():
 # @six.add_metaclass(abc.ABCMeta)
 class TornadoModule(TornadoModuleBase):
     def __init__(self, manual_feature_property=None,
-                 is_time_series=True) -> None:
-        super().__init__(manual_feature_property, is_time_series)
+                 is_time_series=True, data_interval=None) -> None:
+        super().__init__(manual_feature_property, is_time_series,
+                         data_interval)
         self.type = "multiple"
 
     # some comments
@@ -223,16 +226,17 @@ class TornadoModule(TornadoModuleBase):
 
 class TornadoVariableSelectionModule(TornadoModuleBase):
     def __init__(self, manual_feature_property=None,
-                 is_time_series=True) -> None:
-        super().__init__(manual_feature_property, is_time_series)
+                 is_time_series=True, data_interval=None) -> None:
+        super().__init__(manual_feature_property, is_time_series,
+                         data_interval)
         self.next_features = []
         self.sorted_features = []
         self.type = "single"
 
     def set_feature(self) -> None:
         if self.type == "single":
-            #TODO
-            #ここで毎回all_featuresを作っているところは修正したい
+            # TODO
+            # ここで毎回all_featuresを作っているところは修正したい
             all_features = []
             for feature in self.feature_properties.keys():
                 all_features.append(feature)
@@ -248,7 +252,7 @@ class TornadoVariableSelectionModule(TornadoModuleBase):
             # print(self.features)
 
     def get_features(self, features):
-        #ここで次に動かすfeatureを書きたい。もしかしたら最初とそれ以降で場合分けがいるかも
+        # ここで次に動かすfeatureを書きたい。もしかしたら最初とそれ以降で場合分けがいるかも
         self.next_features = features
 
     def create_interaction_term(self, size=2) -> None:
@@ -267,8 +271,8 @@ class TornadoVariableSelectionModule(TornadoModuleBase):
         self.max_interaction = len(self.feature_properties.keys()) + len(self.interaction_term)
 
     def manage(self) -> bool:
-        #TODO
-        #基本的にmanageと同じ機能を実装するが、sorted_CODsを受け取らないといけなさそう
+        # TODO
+        # 基本的にmanageと同じ機能を実装するが、sorted_CODsを受け取らないといけなさそう
         if self.experiment <= self.max_interaction - 1:
             # 設定変更するコードを起動する
             self.experiment += 1
@@ -277,7 +281,7 @@ class TornadoVariableSelectionModule(TornadoModuleBase):
             return True
         else:
             return False
-    
+
     def set_to_multiple(self, features):
         self.sorted_features = features
         self.max_interaction = len(features)

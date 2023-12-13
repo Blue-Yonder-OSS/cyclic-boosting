@@ -119,7 +119,7 @@ class SqueezeTrainer(TrainerBase):
 
         if log_policy in ["compute_COD", "vote_by_num", "vote"]:
             truncated_features = {}
-            #ここのthresholdは自由に決めることができるが基本的に２が良いらしい
+            # ここのthresholdは自由に決めることができるが基本的に２が良いらしい
             threshold = 2
 
             base = []
@@ -141,7 +141,7 @@ class SqueezeTrainer(TrainerBase):
 
             logger.reset_count()
             evaluator.clear()
-            #ここで二回書いているのは後で関数にしたい
+            # ここで二回書いているのは後で関数にしたい
             while self.manager.manage():
                 estimater = self.manager.build()
                 # train

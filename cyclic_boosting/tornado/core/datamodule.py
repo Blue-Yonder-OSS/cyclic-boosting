@@ -7,7 +7,7 @@ import abc
 import six
 import pandas as pd
 from .preprocess import dayofweek, dayofyear, tolowerstr, todatetime, \
-                        encode_catetory
+                        encode_category
 
 
 # @six.add_metaclass(abc.ABCMeta)
@@ -29,7 +29,7 @@ class TornadoDataModule():
         # datasetに対してどんな前処理を施す必要があるかを調べて返す
         col_names = self.dataset.columns.to_list()
 
-        self.func.append(encode_catetory)
+        self.func.append(encode_category)
 
         if "date" in col_names:
             self.func.append(todatetime)
