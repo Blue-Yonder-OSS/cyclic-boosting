@@ -71,12 +71,12 @@ class QuantileEvaluator(EvaluatorBase):
         self.result = dict()
         self.eval_funcs = {"PINBALL": mean_pinball_loss, "COD": coefficient_of_determination}
 
-    def eval(self, y, yhat, q, verbose=True, digit=5):
+    def eval(self, y, yhat, q, est, verbose=True, digit=5):
         for metrics, func in self.eval_funcs.items():
             if metrics == "PINBALL":
                 result = func(y, yhat, q)
             else:
-                result = func(y, yhat)
+                result = func(y, yhat, k=len(est["CB"].feature_groups))
 
             self.result[metrics] = result
 
