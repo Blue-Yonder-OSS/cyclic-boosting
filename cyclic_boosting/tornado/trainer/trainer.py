@@ -4,11 +4,14 @@ import abc
 import copy
 import six
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from .evaluator import Evaluator, QuantileEvaluator
 from .logger import Logger, BFForwardLogger
 from cyclic_boosting.quantile_matching import J_QPD_S, J_QPD_B
+
+from typing import List, Dict, Union
 
 
 _logger = logging.getLogger(__name__)
@@ -137,21 +140,18 @@ class ForwardTrainer(TornadoBase):
         while self.manager.manage():
             estimator = self.manager.build()
 
-            # train
             X = copy.deepcopy(self.manager.X)
             y = copy.deepcopy(self.manager.y)
             _ = estimator.fit(X, y)
 
-            # validation
             y_valid = np.asarray(valid_data[target])
             X_valid = valid_data.drop(target, axis=1)
             yhat = estimator.predict(X_valid)
             evaluator.eval(y_valid, yhat, estimator, verbose)
 
-            # log
             logger.log(estimator, evaluator, self.manager)
 
-            # update
+            # update param
             mng_params = self.manager.get_params()
             if mng_params["mode"] == mng_params["second_round"]:
                 keys = ["features", "feature_properties"]
@@ -162,7 +162,6 @@ class ForwardTrainer(TornadoBase):
         return estimator
 
     def predict(self, X):
-        # create dataset
         X = self.data_deliveler.generate(X)
         pred = self.estimator.predict(X)
 
@@ -256,24 +255,29 @@ class QPDForwardTrainer(TornadoBase):
         while self.manager.manage():
             estimator = self.manager.build()
 
-            # train
             X = copy.deepcopy(self.manager.X)
             y = copy.deepcopy(self.manager.y)
             _ = estimator.fit(X, y)
 
-            # validation
             y_valid = np.asarray(valid_data[target])
             X_valid = valid_data.loc[:, X.columns]
             y_pred = estimator.predict(X_valid)
-            evaluator.eval(y_valid, y_pred, args["quantile"], verbose=False)
+            evaluator.eval(y_valid, y_pred, args["quantile"], estimator, verbose=False)
 
-            # log
             logger.log(estimator, evaluator, self.manager, verbose=verbose)
 
         return estimator
 
-    def predict(self, X, output="ppf", ix=0.5):
-        # create dataset
+    def predict(self, X, quantile="median") -> np.ndarray:
+        X = self.data_deliveler.generate(X)
+
+        est_ix = {"lower": 0, "median": 1, "upper": 2}
+        est = self.estimators[est_ix[quantile]]
+        quantile_values = est.predict(X)
+
+        return quantile_values
+
+    def predict_proba(self, X, output="proba") -> Union[List[J_QPD_S], pd.DataFrame]:
         X = self.data_deliveler.generate(X)
 
         quantile_values = list()
@@ -293,17 +297,20 @@ class QPDForwardTrainer(TornadoBase):
             median[idx] = np.nanmean(median)
             high[idx] = np.nanmean(high)
 
-        qpd = list()
+        individual_qpds = list()
         lower_quantile = self.alpha[0]
         for lq, mq, hq in zip(low, median, high):
             dist = J_QPD_S(lower_quantile, lq, mq, hq)
-            qpd.append(dist)
+            individual_qpds.append(dist)
 
-        if output == "proba":
-            return qpd
+        if output == "func":
+            return individual_qpds
 
-        elif output == "ppf":
-            proba = list()
-            for dist in qpd:
-                proba.append(dist.ppf(ix))
-            return np.array(proba)
+        elif output == "proba":
+            ix = np.arange(0.05, 1.0, 0.05)
+            proba_df = pd.DataFrame(columns=ix)
+            for i in ix:
+                proba = [qpd.ppf(i) for qpd in individual_qpds]
+                proba_df[i] = proba
+
+            return proba_df
