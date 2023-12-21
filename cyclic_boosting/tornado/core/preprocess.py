@@ -6,7 +6,6 @@ import logging
 
 import pandas as pd
 import numpy as np
-import copy
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, \
                                   PowerTransformer, QuantileTransformer, \
                                   OrdinalEncoder, KBinsDiscretizer, \
@@ -54,34 +53,34 @@ class Preprocess():
             return
         col_names = dataset.columns.to_list()
 
-        self.preprocessors[self.encode_category] = {}
-        self.preprocessors[self.check_dtype] = {}
-        self.preprocessors[self.check_cardinality] = {}
+        self.preprocessors['encode_category'] = {}
+        self.preprocessors['check_dtype'] = {}
+        self.preprocessors['check_cardinality'] = {}
 
         if is_ts:
             if "date" in col_names:
-                self.preprocessors[self.todatetime] = {}
-                self.preprocessors[self.lag] = {}
-                self.preprocessors[self.rolling] = {}
-                self.preprocessors[self.expanding] = {}
+                self.preprocessors['todatetime'] = {}
+                self.preprocessors['lag'] = {}
+                self.preprocessors['rolling'] = {}
+                self.preprocessors['expanding'] = {}
             else:
                 _logger.error("If this is a forecast of time-series data,\n"
-                                " a 'date' column is required to identify\n"
-                                " the datetime of the data.")
+                              " a 'date' column is required to identify\n"
+                              " the datetime of the data.")
 
             if "dayofweek" not in col_names and "date" in col_names:
-                self.preprocessors[self.dayofweek] = {}
+                self.preprocessors['dayofweek'] = {}
 
             if "dayofyear" not in col_names and "date" in col_names:
-                self.preprocessors[self.dayofyear] = {}
+                self.preprocessors['dayofyear'] = {}
 
-        self.preprocessors[self.standarlization] = {}
-        self.preprocessors[self.minmax] = {}
-        self.preprocessors[self.logarithmic] = {}
-        self.preprocessors[self.clipping] = {}
-        self.preprocessors[self.binning] = {}
-        self.preprocessors[self.rank] = {}
-        self.preprocessors[self.rankgauss] = {}
+        self.preprocessors['standarlization'] = {}
+        self.preprocessors['minmax'] = {}
+        self.preprocessors['logarithmic'] = {}
+        self.preprocessors['clipping'] = {}
+        self.preprocessors['binning'] = {}
+        self.preprocessors['rank'] = {}
+        self.preprocessors['rankgauss'] = {}
 
     def apply(self, train, valid, target) -> None:
         # 特徴量エンジニアリングを実行
@@ -91,7 +90,10 @@ class Preprocess():
         self.valid = valid.copy()
         preprocessors = self.get_preprocessors().copy()
         for prep, params in preprocessors.items():
-            train, valid = prep(self.train_raw.copy(), self.valid_raw.copy(), target, any(params))
+            train, valid = eval(f'self.{prep}')(self.train_raw.copy(),
+                                                self.valid_raw.copy(),
+                                                target,
+                                                any(params))
             train[self.train.columns] = self.train
             valid[self.valid.columns] = self.valid
             self.train = train.copy()
@@ -102,7 +104,8 @@ class Preprocess():
     def todatetime(self, train, valid, target, params_exist) -> pd.DataFrame:
         train["date"] = pd.to_datetime(train["date"])
         valid["date"] = pd.to_datetime(valid["date"])
-        self.set_preprocessors({self.todatetime: {}})
+
+        self.set_preprocessors({'todatetime': {}})
         self.train.drop("date", axis=1, inplace=True)
         self.valid.drop("date", axis=1, inplace=True)
         self.train_raw = train
@@ -121,7 +124,7 @@ class Preprocess():
         valid["dayofweek"] = valid["date"].dt.dayofweek
         train["dayofweek"] = train["dayofweek"].astype('int64')
         valid["dayofweek"] = valid["dayofweek"].astype('int64')
-        self.set_preprocessors({self.dayofweek: {}})
+        self.set_preprocessors({'dayofweek': {}})
 
         return train, valid
 
@@ -130,7 +133,7 @@ class Preprocess():
         valid["dayofyear"] = valid["date"].dt.dayofyear
         train["dayofyear"] = train["dayofyear"].astype('int64')
         valid["dayofyear"] = valid["dayofyear"].astype('int64')
-        self.set_preprocessors({self.dayofyear: {}})
+        self.set_preprocessors({'dayofyear': {}})
 
         return train, valid
 
@@ -152,7 +155,7 @@ class Preprocess():
 
     def lag(self, train, valid, target, params_exist) -> pd.DataFrame:
         if params_exist:
-            lags = self.get_preprocessors()[self.lag]['lags']
+            lags = self.get_preprocessors()['lag']['lags']
         else:
             dataset = pd.concat([train, valid])
             daily_data = self.create_daily_data(dataset, target)
@@ -161,7 +164,7 @@ class Preprocess():
             lag_size = opt['lag_size']
             _logger.info(f"lag_size = {lag_size}")
             lags = daily_data.shift(lag_size)
-            self.set_preprocessors({self.lag: {'lags': lags}})
+            self.set_preprocessors({'lag': {'lags': lags}})
         train["lag"] = train["date"].map(lags[target])
         valid["lag"] = valid["date"].map(lags[target])
 
@@ -169,7 +172,7 @@ class Preprocess():
 
     def rolling(self, train, valid, target, params_exist) -> pd.DataFrame:
         if params_exist:
-            rollings = self.get_preprocessors()[self.rolling]['rollings']
+            rollings = self.get_preprocessors()['rolling']['rollings']
         else:
             dataset = pd.concat([train, valid])
             daily_data = self.create_daily_data(dataset, target)
@@ -184,7 +187,7 @@ class Preprocess():
                 rollings = lags.rolling(best_lag - lag_size).mean()
             else:
                 return train, valid
-            self.set_preprocessors({self.rolling: {'rollings': rollings}})
+            self.set_preprocessors({'rolling': {'rollings': rollings}})
         train["rolling"] = train["date"].map(rollings[target])
         valid["rolling"] = valid["date"].map(rollings[target])
 
@@ -192,7 +195,7 @@ class Preprocess():
 
     def expanding(self, train, valid, target, params_exist) -> pd.DataFrame:
         if params_exist:
-            expandings = self.get_preprocessors()[self.expanding]['expandings']
+            expandings = self.get_preprocessors()['expanding']['expandings']
         else:
             dataset = pd.concat([train, valid])
             daily_data = self.create_daily_data(dataset, target)
@@ -201,7 +204,7 @@ class Preprocess():
             lag_size = opt['lag_size']
             lags = daily_data.shift(lag_size)
             expandings = lags.expanding().mean()
-            self.set_preprocessors({self.expanding: {'expandings': expandings}})
+            self.set_preprocessors({'expanding': {'expandings': expandings}})
         train["expanding"] = train["date"].map(expandings[target])
         valid["expanding"] = valid["date"].map(expandings[target])
 
@@ -224,7 +227,7 @@ class Preprocess():
                             "is very high.\n    By using methods such as hierarchical"
                             " grouping,\n    the cardinality can be reduced, leading "
                             "to an improvement\n    in inference accuracy.")
-            self.set_preprocessors({self.check_cardinality: {}})
+            self.set_preprocessors({'check_cardinality': {}})
 
         return train, valid
 
@@ -240,7 +243,7 @@ class Preprocess():
                 _logger.warn(f"Please check the columns {float_integer_cols}.\n"
                             "    Ensure that categorical variables are of 'int' type"
                             "\n    and continuous variables are of 'float' type.")
-            self.set_preprocessors({self.check_dtype: {}})
+            self.set_preprocessors({'check_dtype': {}})
 
         return train, valid
 
@@ -250,12 +253,12 @@ class Preprocess():
             opt = self.get_opt('standarlization')
             scaler = StandardScaler(**opt)
             if params_exist:
-                attr = self.get_preprocessors()[self.standarlization]['attr']
+                attr = self.get_preprocessors()['standarlization']['attr']
                 setattr(scaler, '__dict__', attr)
             else:
                 scaler.fit(train[float_train.columns])
                 attr = getattr(scaler, '__dict__')
-                self.set_preprocessors({self.standarlization: {'attr': attr}})
+                self.set_preprocessors({'standarlization': {'attr': attr}})
             train[float_train.columns + '_standarlization'] = scaler.transform(train[float_train.columns])
             valid[float_train.columns + '_standarlization'] = scaler.transform(valid[float_train.columns])
 
@@ -267,12 +270,12 @@ class Preprocess():
             opt = self.get_opt('minmax')
             scaler = MinMaxScaler(**opt)
             if params_exist:
-                attr = self.get_preprocessors()[self.minmax]['attr']
+                attr = self.get_preprocessors()['minmax']['attr']
                 setattr(scaler, '__dict__', attr)
             else:
                 scaler.fit(train[float_train.columns])
                 attr = getattr(scaler, '__dict__')
-                self.set_preprocessors({self.minmax: {'attr': attr}})
+                self.set_preprocessors({'minmax': {'attr': attr}})
             train[float_train.columns + '_minmax'] = scaler.transform(train[float_train.columns])
             valid[float_train.columns + '_minmax'] = scaler.transform(valid[float_train.columns])
 
@@ -284,12 +287,12 @@ class Preprocess():
             opt = self.get_opt('logarithmic')
             pt = PowerTransformer(**opt)
             if params_exist:
-                attr = self.get_preprocessors()[self.logarithmic]['attr']
+                attr = self.get_preprocessors()['logarithmic']['attr']
                 setattr(pt, '__dict__', attr)
             else:
                 pt.fit(train[float_train.columns])
                 attr = getattr(pt, '__dict__')
-                self.set_preprocessors({self.logarithmic: {'attr': attr}})
+                self.set_preprocessors({'logarithmic': {'attr': attr}})
             train[float_train.columns + '_logarithmic'] = pt.transform(train[float_train.columns])
             valid[float_train.columns + '_logarithmic'] = pt.transform(valid[float_train.columns])
 
@@ -298,7 +301,7 @@ class Preprocess():
     def clipping(self, train, valid, target, params_exist) -> pd.DataFrame:
         float_train = train.drop(columns=target).select_dtypes('float')
         if params_exist:
-            p = self.get_preprocessors()[self.clipping]
+            p = self.get_preprocessors()['clipping']
             p_l = p['p_l']
             p_u = p['p_u']
         else:
@@ -307,7 +310,7 @@ class Preprocess():
             opt.setdefault('q_u', 0.99)
             p_l = train[float_train.columns].quantile(opt['q_l'])
             p_u = train[float_train.columns].quantile(opt['q_u'])
-            self.set_preprocessors({self.clipping: {'p_l': p_l, 'p_u': p_u}})
+            self.set_preprocessors({'clipping': {'p_l': p_l, 'p_u': p_u}})
         train[float_train.columns + '_clipping'] = train[float_train.columns].clip(p_l, p_u, axis=1)
         valid[float_train.columns + '_clipping'] = valid[float_train.columns].clip(p_l, p_u, axis=1)
 
@@ -323,12 +326,12 @@ class Preprocess():
             opt.setdefault('random_state', 0)
             binner = KBinsDiscretizer(**opt)
             if params_exist:
-                attr = self.get_preprocessors()[self.binning]['attr']
+                attr = self.get_preprocessors()['binning']['attr']
                 setattr(binner, '__dict__', attr)
             else:
                 binner.fit(train[float_train.columns])
                 attr = getattr(binner, '__dict__')
-                self.set_preprocessors({self.binning: {'attr': attr}})
+                self.set_preprocessors({'binning': {'attr': attr}})
             train[float_train.columns + '_binning'] = binner.transform(train[float_train.columns])
             valid[float_train.columns + '_binning'] = binner.transform(valid[float_train.columns])
 
@@ -343,12 +346,12 @@ class Preprocess():
             opt.setdefault('random_state', 0)
             qt = QuantileTransformer(**opt)
             if params_exist:
-                attr = self.get_preprocessors()[self.rank]['attr']
+                attr = self.get_preprocessors()['rank']['attr']
                 setattr(qt, '__dict__', attr)
             else:
                 qt.fit(train[float_train.columns])
                 attr = getattr(qt, '__dict__')
-                self.set_preprocessors({self.rank: {'attr': attr}})
+                self.set_preprocessors({'rank': {'attr': attr}})
             train[float_train.columns + '_rank'] = qt.transform(train[float_train.columns])
             valid[float_train.columns + '_rank'] = qt.transform(valid[float_train.columns])
 
@@ -363,12 +366,12 @@ class Preprocess():
             opt.setdefault('random_state', 0)
             qt = QuantileTransformer(**opt)
             if params_exist:
-                attr = self.get_preprocessors()[self.rankgauss]['attr']
+                attr = self.get_preprocessors()['rankgauss']['attr']
                 setattr(qt, '__dict__', attr)
             else:
                 qt.fit(train[float_train.columns])
                 attr = getattr(qt, '__dict__')
-                self.set_preprocessors({self.rankgauss: {'attr': attr}})
+                self.set_preprocessors({'rankgauss': {'attr': attr}})
             train[float_train.columns + '_rankgauss'] = qt.transform(train[float_train.columns])
             valid[float_train.columns + '_rankgauss'] = qt.transform(valid[float_train.columns])
 
@@ -383,12 +386,12 @@ class Preprocess():
             opt.setdefault('sparse_output', False)
             ohe = OneHotEncoder(**opt)
             if params_exist:
-                attr = self.get_preprocessors()[self.onehot_encording]['attr']
+                attr = self.get_preprocessors()['onehot_encording']['attr']
                 setattr(ohe, '__dict__', attr)
             else:
                 ohe.fit(dataset[object_datset.columns])
                 attr = getattr(ohe, '__dict__')
-                self.set_preprocessors({self.onehot_encording: {'attr': attr}})
+                self.set_preprocessors({'onehot_encording': {'attr': attr}})
             columns = []
             for i, c in enumerate(object_datset.columns):
                 columns += [f'{c}_{v}' for v in ohe.categories_[i]]
@@ -412,12 +415,12 @@ class Preprocess():
             opt.setdefault('dtype', np.int64)
             oe = OrdinalEncoder(**opt)
             if params_exist:
-                attr = self.get_preprocessors()[self.label_encording]['attr']
+                attr = self.get_preprocessors()['label_encording']['attr']
                 setattr(oe, '__dict__', attr)
             else:
                 oe.fit(dataset[object_datset.columns])
                 attr = getattr(oe, '__dict__')
-                self.set_preprocessors({self.label_encording: {'attr': attr}})
+                self.set_preprocessors({'label_encording': {'attr': attr}})
             train[object_datset.columns + 'label_encording'] = oe.transform(train[object_datset.columns])
             valid[object_datset.columns + 'label_encording'] = oe.transform(valid[object_datset.columns])
             train.drop(object_datset.columns, axis=1, inplace=True)
@@ -433,7 +436,7 @@ class Preprocess():
         if len(object_train.columns) > 0:
             opt = self.get_opt('feature_hashing')
             if params_exist:
-                opt.setdefault('n_features', self.get_preprocessors()[self.feature_hashing]['n_features'])
+                opt.setdefault('n_features', self.get_preprocessors()['feature_hashing']['n_features'])
             else:
                 opt.setdefault('n_features', 10)
             opt.setdefault('input_type', 'string')
@@ -446,7 +449,7 @@ class Preprocess():
                 hash_valid = pd.DataFrame(hash_valid.todense(), columns=[f'{col}_{i}' for i in range(n_features)])
                 train = pd.concat([train, hash_train], axis=1)
                 valid = pd.concat([valid, hash_valid], axis=1)
-            self.set_preprocessors({self.feature_hashing: {'n_features': n_features}})
+            self.set_preprocessors({'feature_hashing': {'n_features': n_features}})
             train.drop(object_train.columns, axis=1, inplace=True)
             valid.drop(object_valid.columns, axis=1, inplace=True)
             self.train.drop(object_train.columns, axis=1, inplace=True)
@@ -459,13 +462,13 @@ class Preprocess():
         if len(object_train.columns) > 0:
             opt = self.get_opt('freqency_encording')
             if params_exist:
-                opt.setdefault('freqs', self.get_preprocessors()[self.freqency_encording]['freqs'])
+                opt.setdefault('freqs', self.get_preprocessors()['freqency_encording']['freqs'])
             else:
                 freqs = {}
                 for col in object_train.columns:
                     freqs[col] = train[col].value_counts()
                 opt.setdefault('freqs', freqs)
-                self.set_preprocessors({self.freqency_encording: {'freqs': freqs}})
+                self.set_preprocessors({'freqency_encording': {'freqs': freqs}})
             freqs = opt['freqs']
             for col in object_train.columns:
                 train[col] = train[col].map(freqs[col])
@@ -481,7 +484,7 @@ class Preprocess():
         object_train = train.drop(columns=["date", target]).select_dtypes('object')
         if len(object_train.columns) > 0:
             if params_exist:
-                attrs = self.get_preprocessors()[self.freqency_encording]['attrs']
+                attrs = self.get_preprocessors()['freqency_encording']['attrs']
                 for col in object_train.columns:
                     te = TargetEncoder()
                     attr = attrs[col]
@@ -506,7 +509,7 @@ class Preprocess():
                     attrs[col] = attr
                     train.rename(columns={col: col + '_target_encording'}, inplace=True)
                     valid.rename(columns={col: col + '_target_encording'}, inplace=True)
-                self.set_preprocessors({self.target_encording: {'attrs': attrs}})
+                self.set_preprocessors({'target_encording': {'attrs': attrs}})
             self.train.drop(columns=object_train.columns, inplace=True)
             self.valid.drop(columns=object_train.columns, inplace=True)
 
@@ -529,16 +532,7 @@ class Preprocess():
             # NOTE: check unknown_value and encoded_missing_value's behaivier
             # NOTE: and check CB's missing feature processing
             # it might be better than this process
-            # enc = OrdinalEncoder(
-            #     handle_unknown="use_encoded_value",
-            #     unknown_value=-1,
-            #     encoded_missing_value=-2,
-            #     dtype=np.int64
-            # )
-
-            # # transform
-            # dataset[category] = enc.fit_transform(dataset[category])
-            train, valid = self.label_encording(train, valid, target, params_exist)
+            train, valid = self.target_encording(train, valid, target, params_exist)
             self.train_raw = train
             self.valid_raw = valid
 

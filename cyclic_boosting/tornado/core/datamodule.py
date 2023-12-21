@@ -8,6 +8,7 @@ import abc
 import six
 import numpy as np
 import pandas as pd
+import pickle
 from sklearn.model_selection import train_test_split
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 # from .preprocess import dayofweek, dayofyear, tolowerstr, todatetime, \
@@ -17,18 +18,23 @@ from .preprocess import Preprocess
 
 
 _logger = logging.getLogger(__name__)
+_logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter(fmt="%(message)s"))
+handler.terminator = ''
+_logger.addHandler(handler)
 
 
 # @six.add_metaclass(abc.ABCMeta)
 class TornadoDataModule():
     # some comments
 
-    def __init__(self, path, save_dir=None, auto_preprocess=False, preprocessors={}, params={}) -> None:
+    def __init__(self, path, save_dir=None, auto_preprocess=False, log_path=None, params={}) -> None:
         super().__init__()
         self.path_ds = path
         self.save_dir = save_dir
         self.auto_preprocess = auto_preprocess
-        self.preprocessors = preprocessors
+        self.log_path = log_path
         self.params = params
         # self.dataset = None
         self.train = None
@@ -36,58 +42,19 @@ class TornadoDataModule():
         self.target = None
         self.is_ts = True
         self.func = []
-        self.features = {}
-
-    def get_preprocessors(self) -> dict:
-        return self.preprocessors
-
-    def set_preprocessors(self, preps) -> None:
-        for prep, params in preps.items():
-            self.preprocessors[prep] = params
-
-    # def load_dataset(self) -> pd.DataFrame:
-    #     # transfrom column name to lower
-    #     if self.path_ds.endswith(".csv"):
-    #         dataset = tolowerstr(pd.read_csv(self.path_ds))
-    #     elif self.path_ds.endswith(".xlsx"):
-    #         dataset = tolowerstr(pd.read_excel(self.path_ds))
-    #     else:
-    #         _logger.error("The file format is not supported.\n"
-    #                       "Please use the csv or xlsx format.")
-    #     return dataset
-
-    # def check_data(self, dataset) -> None:
-    #     # datasetに対してどんな前処理を施す必要があるかを調べて返す
-    #     col_names = dataset.columns.to_list()
-
-    #     self.preprocessors[None] = {x: {} for x in col_names}
-    #     self.preprocessors[encode_category] = {}
-    #     self.preprocessors[check_dtype] = {}
-    #     self.preprocessors[check_cardinality] = {}
-
-    #     if self.is_ts:
-    #         if "date" in col_names:
-    #             self.preprocessors[todatetime] = {}
-    #             self.preprocessors[lag] = {}
-    #             self.preprocessors[rolling] = {}
-    #             self.preprocessors[expanding] = {}
-    #         else:
-    #             _logger.error("If this is a forecast of time-series data,\n"
-    #                             " a 'date' column is required to identify\n"
-    #                             " the datetime of the data.")
-
-    #         if "dayofweek" not in col_names and "date" in col_names:
-    #             self.preprocessors[dayofweek] = {}
-
-    #         if "dayofyear" not in col_names and "date" in col_names:
-    #             self.preprocessors[dayofyear] = {}
-
-    # def preprocess(self) -> None:
-    #     # 特徴量エンジニアリングを実行
-    #     preprocessors = self.get_preprocessors()
-    #     for prep, params in preprocessors.items():
-    #         if prep in []:
-    #             self.train, self.valid = prep(self.train, self.valid, self.target, any(params))
+        if self.log_path:
+            try:
+                with open(self.log_path, 'rb') as p:
+                    log = pickle.load(p)
+                    self.preprocessors = log['preprocessors']
+                    self.features = log['features']
+                    print(self.preprocessors.keys())
+                    print(self.features)
+            except FileNotFoundError:
+                self.preprocessors = {}
+                self.features = []
+        else:
+            self.log_path = self.path_ds[:self.path_ds.rfind('.')] + '.pickle'
 
     def corr_based_removal(self):
         dataset = pd.concat([self.train.copy(), self.valid.copy()])
@@ -136,31 +103,14 @@ class TornadoDataModule():
             self.train = self.train.loc[:, self.features]
             self.valid = self.valid.loc[:, self.features]
 
-        # preprocessors = self.get_preprocessors()
-        
-        # remove_features = []
-        # for prep, features in preprocessors.items():
-        #     for feature in features:
-        #         if prep in [None, todatetime, dayofweek, dayofyear]:
-        #             col = feature
-        #         else:
-        #             col = f"{feature}_{prep.__name__}"
-        #         if col not in self.train.columns:
-        #             remove_features.append([prep, feature])
-        # print("==== dropped features ====")
-        # for prep, feature in remove_features:
-        #     preprocessors[prep].pop(feature)
-        #     print(f"{feature}_{prep}")
-        # print("==========================")
-
-        # self.set_preprocessors(preprocessors)
-
     def generate(self, target, is_ts, test_size, seed) -> pd.DataFrame:
         self.target = target
         self.is_ts = is_ts
         # self.check_data(dataset)
         preprocess = Preprocess(self.params)
         dataset = preprocess.load_dataset(self.path_ds)
+        n_features_original = len(dataset.columns) - 1
+        _logger.info(f"\rn_features: {n_features_original} ->")
         if self.preprocessors:
             preprocess.set_preprocessors(self.preprocessors)
         else:
@@ -169,9 +119,19 @@ class TornadoDataModule():
             dataset,
             test_size=test_size,
             random_state=seed)
-        # self.preprocess()
         self.train, self.valid = preprocess.apply(self.train, self.valid, self.target)
+        n_features_preprocessed = len(self.train.columns) - 1
+        _logger.info(f"\rn_features: {n_features_original} -> "
+                     f"{n_features_preprocessed} ->")
         self.remove_features()
-        print(self.features)
+        n_features_selected = len(self.features) - 1
+        _logger.info(f"\rn_features: {n_features_original} -> "
+                     f"{n_features_preprocessed} -> {n_features_selected}\n")
+        _logger.info(f"{self.features}\n")
+        self.preprocessors = preprocess.get_preprocessors()
+        with open(self.log_path, 'wb') as p:
+            log = {'preprocessors': self.preprocessors,
+                   'features': self.features}
+            pickle.dump(log, p)
 
         return self.train, self.valid
