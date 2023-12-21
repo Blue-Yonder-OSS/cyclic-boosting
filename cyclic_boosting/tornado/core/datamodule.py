@@ -29,7 +29,7 @@ _logger.addHandler(handler)
 class TornadoDataModule():
     # some comments
 
-    def __init__(self, path, save_dir=None, auto_preprocess=False, log_path=None, params={}) -> None:
+    def __init__(self, path, save_dir=None, auto_preprocess=True, log_path=None, params={}) -> None:
         super().__init__()
         self.path_ds = path
         self.save_dir = save_dir
@@ -106,32 +106,39 @@ class TornadoDataModule():
     def generate(self, target, is_ts, test_size, seed) -> pd.DataFrame:
         self.target = target
         self.is_ts = is_ts
-        # self.check_data(dataset)
         preprocess = Preprocess(self.params)
         dataset = preprocess.load_dataset(self.path_ds)
-        n_features_original = len(dataset.columns) - 1
-        _logger.info(f"\rn_features: {n_features_original} ->")
-        if self.preprocessors:
-            preprocess.set_preprocessors(self.preprocessors)
+        if self.auto_preprocess:
+            n_features_original = len(dataset.columns) - 1
+            _logger.info(f"\rn_features: {n_features_original} ->")
+            if self.preprocessors:
+                preprocess.set_preprocessors(self.preprocessors)
+            else:
+                preprocess.check_data(dataset, self.is_ts)
+            self.train, self.valid = train_test_split(
+                dataset,
+                test_size=test_size,
+                random_state=seed)
+            self.train, self.valid = preprocess.apply(self.train, self.valid, self.target)
+            n_features_preprocessed = len(self.train.columns) - 1
+            _logger.info(f"\rn_features: {n_features_original} -> "
+                         f"{n_features_preprocessed} ->")
+            self.remove_features()
+            n_features_selected = len(self.features) - 1
+            _logger.info(f"\rn_features: {n_features_original} -> "
+                         f"{n_features_preprocessed} -> {n_features_selected}\n")
+            _logger.info(f"{self.features}\n")
+            self.preprocessors = preprocess.get_preprocessors()
+            with open(self.log_path, 'wb') as p:
+                log = {'preprocessors': self.preprocessors,
+                       'features': self.features}
+                pickle.dump(log, p)
         else:
-            preprocess.check_data(dataset, self.is_ts)
-        self.train, self.valid = train_test_split(
-            dataset,
-            test_size=test_size,
-            random_state=seed)
-        self.train, self.valid = preprocess.apply(self.train, self.valid, self.target)
-        n_features_preprocessed = len(self.train.columns) - 1
-        _logger.info(f"\rn_features: {n_features_original} -> "
-                     f"{n_features_preprocessed} ->")
-        self.remove_features()
-        n_features_selected = len(self.features) - 1
-        _logger.info(f"\rn_features: {n_features_original} -> "
-                     f"{n_features_preprocessed} -> {n_features_selected}\n")
-        _logger.info(f"{self.features}\n")
-        self.preprocessors = preprocess.get_preprocessors()
-        with open(self.log_path, 'wb') as p:
-            log = {'preprocessors': self.preprocessors,
-                   'features': self.features}
-            pickle.dump(log, p)
+            self.train, self.valid = train_test_split(
+                dataset,
+                test_size=test_size,
+                random_state=seed)
+            self.train["date"] = pd.to_datetime(self.train["date"])
+            self.valid["date"] = pd.to_datetime(self.valid["date"])
 
         return self.train, self.valid
