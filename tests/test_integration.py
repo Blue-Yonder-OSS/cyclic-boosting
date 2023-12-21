@@ -29,7 +29,50 @@ from tests.utils import plot_CB, costs_mad, costs_mse
 np.random.seed(42)
 
 
-def test_interactions_selection(prepare_data, feature_properties, features, is_plot):
+@pytest.fixture(scope="function")
+def cb_poisson_regressor_model(features, feature_properties):
+    explicit_smoothers = {
+        ("dayofyear",): SeasonalSmoother(order=3),
+        ("price_ratio",): IsotonicRegressor(increasing=False),
+    }
+
+    plobs = [
+        observers.PlottingObserver(iteration=1),
+        observers.PlottingObserver(iteration=-1),
+    ]
+
+    CB_pipeline = pipeline_CBPoissonRegressor(
+        feature_properties=feature_properties,
+        feature_groups=features,
+        observers=plobs,
+        maximal_iterations=50,
+        smoother_choice=common_smoothers.SmootherChoiceGroupBy(
+            use_regression_type=True, use_normalization=False, explicit_smoothers=explicit_smoothers
+        ),
+    )
+
+    return CB_pipeline
+
+
+def test_poisson_regression(is_plot, prepare_data, cb_poisson_regressor_model):
+    X, y = prepare_data
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+
+    CB_est = cb_poisson_regressor_model
+    CB_est.fit(X_train, y_train)
+
+    if is_plot:
+        plot_CB("analysis_CB_iterfirst", [CB_est[-1].observers[0]], CB_est[-2])
+        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
+
+    yhat = CB_est.predict(X_test)
+
+    mad = np.nanmean(np.abs(y_test - yhat))
+    np.testing.assert_almost_equal(mad, 1.688, 3)
+
+
+def test_poisson_regression_interactions_selection(prepare_data, feature_properties, features, is_plot):
     X, y = prepare_data
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
@@ -77,49 +120,6 @@ def test_interactions_selection(prepare_data, feature_properties, features, is_p
 
     mad = np.nanmean(np.abs(y_test - yhat))
     np.testing.assert_almost_equal(mad, 1.641, 3)
-
-
-@pytest.fixture(scope="function")
-def cb_poisson_regressor_model(features, feature_properties):
-    explicit_smoothers = {
-        ("dayofyear",): SeasonalSmoother(order=3),
-        ("price_ratio",): IsotonicRegressor(increasing=False),
-    }
-
-    plobs = [
-        observers.PlottingObserver(iteration=1),
-        observers.PlottingObserver(iteration=-1),
-    ]
-
-    CB_pipeline = pipeline_CBPoissonRegressor(
-        feature_properties=feature_properties,
-        feature_groups=features,
-        observers=plobs,
-        maximal_iterations=50,
-        smoother_choice=common_smoothers.SmootherChoiceGroupBy(
-            use_regression_type=True, use_normalization=False, explicit_smoothers=explicit_smoothers
-        ),
-    )
-
-    return CB_pipeline
-
-
-def test_poisson_regression(is_plot, prepare_data, cb_poisson_regressor_model):
-    X, y = prepare_data
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
-
-    CB_est = cb_poisson_regressor_model
-    CB_est.fit(X_train, y_train)
-
-    if is_plot:
-        plot_CB("analysis_CB_iterfirst", [CB_est[-1].observers[0]], CB_est[-2])
-        plot_CB("analysis_CB_iterlast", [CB_est[-1].observers[-1]], CB_est[-2])
-
-    yhat = CB_est.predict(X_test)
-
-    mad = np.nanmean(np.abs(y_test - yhat))
-    np.testing.assert_almost_equal(mad, 1.688, 3)
 
 
 @pytest.fixture(scope="function")
