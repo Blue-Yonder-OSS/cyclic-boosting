@@ -543,7 +543,7 @@ class Preprocess():
             # NOTE: check unknown_value and encoded_missing_value's behaivier
             # NOTE: and check CB's missing feature processing
             # it might be better than this process
-            train, valid = self.target_encording(train,
+            train, valid = self.label_encording(train,
                                                  valid,
                                                  target,
                                                  params_exist)
