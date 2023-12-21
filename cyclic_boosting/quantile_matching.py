@@ -6,7 +6,7 @@ from scipy.stats import norm, gamma, nbinom, logistic, mstats
 from scipy.interpolate import InterpolatedUnivariateSpline
 from sklearn.base import BaseEstimator
 
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 
 class J_QPD_S:
@@ -73,12 +73,12 @@ class J_QPD_S:
 
         self.kappa = 1.0 / (self.delta * self.c) * min(self.H - self.B, self.B - self.L)
 
-    def ppf(self, x):
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.l + self.theta * exp(
             self.kappa * sinh(arcsinh(self.delta * self.phi.ppf(x)) + arcsinh(self.n * self.c * self.delta))
         )
 
-    def cdf(self, x):
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.phi.cdf(
             1.0
             / self.delta
@@ -154,19 +154,19 @@ class J_QPD_B:
 
         self.kappa = (self.H - self.L) / sinh(2 * self.delta * self.c)
 
-    def ppf(self, x):
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.l + (self.u - self.l) * self.phi.cdf(
             self.xi + self.kappa * sinh(self.delta * (self.phi.ppf(x) + self.n * self.c))
         )
 
-    def cdf(self, x):
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.phi.cdf(
             1.0 / self.delta * arcsinh(1.0 / self.kappa * (self.phi.ppf((x - self.l) / (self.u - self.l)) - self.xi))
             - self.n * self.c
         )
 
 
-class sinhlogistic:
+class SinhLogistic:
     """
     sinh/arcsinh-modified logistic distribution for smooth interpolation
     between logistic and t2 distribution.
@@ -181,7 +181,7 @@ class sinhlogistic:
     def __init__(self, shape: float):
         self.shape = shape
 
-    def ppf(self, x):
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         # ppf of natural logistic distribution
         xlog = 0.25 * np.log(x / (1.0 - x))
 
@@ -194,7 +194,7 @@ class sinhlogistic:
             x = xlog
         return x
 
-    def cdf(self, x):
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         # sinh or arcsinh scaling
         if self.shape > 0:
             xlog = np.sinh(self.shape * x) / self.shape
@@ -206,7 +206,7 @@ class sinhlogistic:
         # natural logistic cdf
         return 1.0 / (1 + np.exp(-4 * xlog))
 
-    def pdf(self, x):
+    def pdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         if self.shape > 0:
             return np.cosh(self.shape * x) / (np.cosh(2.0 / self.shape * np.sinh(self.shape * x))) ** 2
         elif self.shape < 0:
@@ -217,29 +217,29 @@ class sinhlogistic:
             return 1.0 / (np.cosh(2 * x)) ** 2
 
 
-class basedist:
+class BaseDist:
     """
     Scaling of base ppfs such that ppf(1 - alpha) = 1. A detailed description
     can be found in the presentation JQPDregression.pdf in the docs folder of
     this repository.
     """
 
-    def __init__(self, dist, alpha):
+    def __init__(self, dist, alpha: float):
         self.dist = dist
         self.alpha = alpha
         self.width = self.dist.ppf(1 - self.alpha)
 
-    def ppf(self, x):
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.dist.ppf(x) / self.width
 
-    def cdf(self, x):
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.dist.cdf(x * self.width)
 
-    def pdf(self, x):
+    def pdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.dist.pdf(x * self.width) * self.width
 
 
-def unconstrained_calc(L, B, H):
+def unconstrained_calc(L: float, B: float, H: float) -> Tuple[float, float, float, float]:
     gamma = -np.sign(L + H - 2 * B)
 
     if gamma == 0:
@@ -277,7 +277,7 @@ class J_QPD_extended_U:
     qv_high : float
         quantile function value of quantile ``1 - alpha``
     version: str
-        options are ``normal`` (default) or ``logistic``
+        options are ``normal`` (sinhlogistic), ``normal`, or ``logistic``
     shape: float
         parameter modifying the logistic base distribution via
         sinh/arcsinh-scaling (only active in sinhlogistic version)
@@ -300,7 +300,7 @@ class J_QPD_extended_U:
         elif version == "logistic":
             self.phi = logistic()
         elif version == "sinhlogistic":
-            self.phi = sinhlogistic(shape=self.shape)
+            self.phi = SinhLogistic(shape=self.shape)
         else:
             raise Exception("Invalid version.")
 
@@ -310,20 +310,20 @@ class J_QPD_extended_U:
         # identity transformation
         self.gamma, self.xi, self.kappa, self.delta = unconstrained_calc(qv_low, qv_median, qv_high)
 
-    def ppf(self, x):
-        basequantiles = basedist(self.phi, self.alpha).ppf(x)
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        basequantiles = BaseDist(self.phi, self.alpha).ppf(x)
 
         # internal unconstrained quantiles from Johnson transform
         # back transformatiaon into physical space (identity here)
         return self.xi + self.kappa * sinh((basequantiles - self.gamma) / self.delta)
 
-    def cdf(self, x):
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         # transform from physical to internal space (identity here)
         # internal unconstrained quantiles from Johnson transform
         basequantiles = self.gamma + self.delta * arcsinh((x - self.xi) / self.kappa)
 
         # cdf of base distribution
-        return basedist(self.phi, self.alpha).cdf(basequantiles)
+        return BaseDist(self.phi, self.alpha).cdf(basequantiles)
 
 
 class J_QPD_extended_S:
@@ -345,7 +345,7 @@ class J_QPD_extended_S:
     l : float
         lower bound of semi-bounded range (default is 0)
     version: str
-        options are ``normal`` (default) or ``logistic``
+        options are ``normal`` (sinhlogistic), ``normal`, or ``logistic``
     shape: float
         parameter modifying the logistic base distribution via
         sinh/arcsinh-scaling (only active in sinhlogistic version)
@@ -369,7 +369,7 @@ class J_QPD_extended_S:
         elif version == "logistic":
             self.phi = logistic()
         elif version == "sinhlogistic":
-            self.phi = sinhlogistic(shape=self.shape)
+            self.phi = SinhLogistic(shape=self.shape)
         else:
             raise Exception("Invalid version.")
 
@@ -386,8 +386,8 @@ class J_QPD_extended_S:
         # now handle like unconstrained
         self.gamma, self.xi, self.kappa, self.delta = unconstrained_calc(self.L, self.B, self.H)
 
-    def ppf(self, x):
-        basequantiles = basedist(self.phi, self.alpha).ppf(x)
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        basequantiles = BaseDist(self.phi, self.alpha).ppf(x)
 
         # internal unconstrained quantiles from Johnson transform
         z = self.xi + self.kappa * sinh((basequantiles - self.gamma) / self.delta)
@@ -395,14 +395,14 @@ class J_QPD_extended_S:
         # back transformation into physical space
         return back_transform_in_semibound_lower(z, self.l)
 
-    def cdf(self, x):
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         # transform from physical to internal space
         z = transform_from_semibound_lower(x, self.l)
 
         # internal unconstrained quantiles from Johnson transform
         basequantiles = self.gamma + self.delta * arcsinh((z - self.xi) / self.kappa)
 
-        return basedist(self.phi, self.alpha).cdf(basequantiles)
+        return BaseDist(self.phi, self.alpha).cdf(basequantiles)
 
 
 class J_QPD_extended_B:
@@ -426,7 +426,7 @@ class J_QPD_extended_B:
     u : float
         upper bound of supported range
     version: str
-        options are ``normal`` (default) or ``logistic``
+        options are ``normal`` (sinhlogistic), ``normal`, or ``logistic``
     shape: float
         parameter modifying the logistic base distribution via
         sinh/arcsinh-scaling (only active in sinhlogistic version)
@@ -451,7 +451,7 @@ class J_QPD_extended_B:
         elif version == "logistic":
             self.phi = logistic()
         elif version == "sinhlogistic":
-            self.phi = sinhlogistic(shape=self.shape)
+            self.phi = SinhLogistic(shape=self.shape)
         else:
             raise Exception("Invalid version.")
 
@@ -469,8 +469,8 @@ class J_QPD_extended_B:
         # now handle like unconstrained
         self.gamma, self.xi, self.kappa, self.delta = unconstrained_calc(self.L, self.B, self.H)
 
-    def ppf(self, x):
-        basequantiles = basedist(self.phi, self.alpha).ppf(x)
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        basequantiles = BaseDist(self.phi, self.alpha).ppf(x)
 
         # internal unconstrained quantiles from Johnson transform
         z = self.xi + self.kappa * sinh((basequantiles - self.gamma) / self.delta)
@@ -478,7 +478,7 @@ class J_QPD_extended_B:
         # back transformation into [l, u]
         return back_transform_in_bounds(z, self.l, self.u)
 
-    def cdf(self, x):
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         # transform from bounded physical space to unconstrained internal space
         z = transform_from_bounds(x, self.l, self.u)
 
@@ -486,7 +486,7 @@ class J_QPD_extended_B:
         basequantiles = self.gamma + self.delta * arcsinh((z - self.xi) / self.kappa)
 
         # cdf of base distribution
-        p = basedist(self.phi, self.alpha).cdf(basequantiles)
+        p = BaseDist(self.phi, self.alpha).cdf(basequantiles)
 
         return p
 
@@ -556,7 +556,7 @@ def fit_sinhlogistic_shape(alpha: float, l: float, u: float, bound: str, y: np.n
 
     def fit_shape(shape, p, q):
         jqpd_inclusive.shape = shape
-        jqpd_inclusive.phi = sinhlogistic(shape=jqpd_inclusive.shape)
+        jqpd_inclusive.phi = SinhLogistic(shape=jqpd_inclusive.shape)
 
         q_fit = jqpd_inclusive.ppf(p)
 
