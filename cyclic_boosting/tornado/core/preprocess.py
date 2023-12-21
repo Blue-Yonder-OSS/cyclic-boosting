@@ -223,10 +223,11 @@ class Preprocess():
                 if unique_values / len(category_df) > cardinality_th:
                     high_cardinality_cols.append(col)
             if len(high_cardinality_cols) > 0:
-                _logger.warn(f"The cardinality of the {high_cardinality_cols} column "
-                            "is very high.\n    By using methods such as hierarchical"
-                            " grouping,\n    the cardinality can be reduced, leading "
-                            "to an improvement\n    in inference accuracy.")
+                _logger.warn(f"The cardinality of the {high_cardinality_cols} "
+                             "column is very high.\n    By using methods such "
+                             "as hierarchical grouping,\n    the cardinality "
+                             "can be reduced, leading to an improvement\n    "
+                             "in inference accuracy.")
             self.set_preprocessors({'check_cardinality': {}})
 
         return train, valid
@@ -240,9 +241,10 @@ class Preprocess():
                 if float_datset[col].apply(lambda x: x.is_integer()).all():
                     float_integer_cols.append(col)
             if len(float_integer_cols) > 0:
-                _logger.warn(f"Please check the columns {float_integer_cols}.\n"
-                            "    Ensure that categorical variables are of 'int' type"
-                            "\n    and continuous variables are of 'float' type.")
+                _logger.warn(f"Please check the columns {float_integer_cols}."
+                             "\n    Ensure that categorical variables are of "
+                             "'int' type\n    and continuous variables are of "
+                             "'float' type.")
             self.set_preprocessors({'check_dtype': {}})
 
         return train, valid
@@ -259,8 +261,9 @@ class Preprocess():
                 scaler.fit(train[float_train.columns])
                 attr = getattr(scaler, '__dict__')
                 self.set_preprocessors({'standarlization': {'attr': attr}})
-            train[float_train.columns + '_standarlization'] = scaler.transform(train[float_train.columns])
-            valid[float_train.columns + '_standarlization'] = scaler.transform(valid[float_train.columns])
+            columns = float_train.columns + '_standarlization'
+            train[columns] = scaler.transform(train[float_train.columns])
+            valid[columns] = scaler.transform(valid[float_train.columns])
 
         return train, valid
 
@@ -276,8 +279,9 @@ class Preprocess():
                 scaler.fit(train[float_train.columns])
                 attr = getattr(scaler, '__dict__')
                 self.set_preprocessors({'minmax': {'attr': attr}})
-            train[float_train.columns + '_minmax'] = scaler.transform(train[float_train.columns])
-            valid[float_train.columns + '_minmax'] = scaler.transform(valid[float_train.columns])
+            columns = float_train.columns + '_minmax'
+            train[columns] = scaler.transform(train[float_train.columns])
+            valid[columns] = scaler.transform(valid[float_train.columns])
 
         return train, valid
 
@@ -293,26 +297,29 @@ class Preprocess():
                 pt.fit(train[float_train.columns])
                 attr = getattr(pt, '__dict__')
                 self.set_preprocessors({'logarithmic': {'attr': attr}})
-            train[float_train.columns + '_logarithmic'] = pt.transform(train[float_train.columns])
-            valid[float_train.columns + '_logarithmic'] = pt.transform(valid[float_train.columns])
+            columns = float_train.columns + '_logarithmic'
+            train[columns] = pt.transform(train[float_train.columns])
+            valid[columns] = pt.transform(valid[float_train.columns])
 
         return train, valid
 
     def clipping(self, train, valid, target, params_exist) -> pd.DataFrame:
         float_train = train.drop(columns=target).select_dtypes('float')
-        if params_exist:
-            p = self.get_preprocessors()['clipping']
-            p_l = p['p_l']
-            p_u = p['p_u']
-        else:
-            opt = self.get_opt('clipping')
-            opt.setdefault('q_l', 0.01)
-            opt.setdefault('q_u', 0.99)
-            p_l = train[float_train.columns].quantile(opt['q_l'])
-            p_u = train[float_train.columns].quantile(opt['q_u'])
-            self.set_preprocessors({'clipping': {'p_l': p_l, 'p_u': p_u}})
-        train[float_train.columns + '_clipping'] = train[float_train.columns].clip(p_l, p_u, axis=1)
-        valid[float_train.columns + '_clipping'] = valid[float_train.columns].clip(p_l, p_u, axis=1)
+        if len(float_train.columns) > 0:
+            if params_exist:
+                p = self.get_preprocessors()['clipping']
+                p_l = p['p_l']
+                p_u = p['p_u']
+            else:
+                opt = self.get_opt('clipping')
+                opt.setdefault('q_l', 0.01)
+                opt.setdefault('q_u', 0.99)
+                p_l = train[float_train.columns].quantile(opt['q_l'])
+                p_u = train[float_train.columns].quantile(opt['q_u'])
+                self.set_preprocessors({'clipping': {'p_l': p_l, 'p_u': p_u}})
+            columns = float_train.columns + '_clipping'
+            train[columns] = train[float_train.columns].clip(p_l, p_u, axis=1)
+            valid[columns] = valid[float_train.columns].clip(p_l, p_u, axis=1)
 
         return train, valid
 
@@ -332,8 +339,9 @@ class Preprocess():
                 binner.fit(train[float_train.columns])
                 attr = getattr(binner, '__dict__')
                 self.set_preprocessors({'binning': {'attr': attr}})
-            train[float_train.columns + '_binning'] = binner.transform(train[float_train.columns])
-            valid[float_train.columns + '_binning'] = binner.transform(valid[float_train.columns])
+            columns = float_train.columns + '_binning'
+            train[columns] = binner.transform(train[float_train.columns])
+            valid[columns] = binner.transform(valid[float_train.columns])
 
         return train, valid
 
@@ -352,8 +360,9 @@ class Preprocess():
                 qt.fit(train[float_train.columns])
                 attr = getattr(qt, '__dict__')
                 self.set_preprocessors({'rank': {'attr': attr}})
-            train[float_train.columns + '_rank'] = qt.transform(train[float_train.columns])
-            valid[float_train.columns + '_rank'] = qt.transform(valid[float_train.columns])
+            columns = float_train.columns + '_rank'
+            train[columns] = qt.transform(train[float_train.columns])
+            valid[columns] = qt.transform(valid[float_train.columns])
 
         return train, valid
 
@@ -372,15 +381,16 @@ class Preprocess():
                 qt.fit(train[float_train.columns])
                 attr = getattr(qt, '__dict__')
                 self.set_preprocessors({'rankgauss': {'attr': attr}})
-            train[float_train.columns + '_rankgauss'] = qt.transform(train[float_train.columns])
-            valid[float_train.columns + '_rankgauss'] = qt.transform(valid[float_train.columns])
+            columns = float_train.columns + '_rankgauss'
+            train[columns] = qt.transform(train[float_train.columns])
+            valid[columns] = qt.transform(valid[float_train.columns])
 
         return train, valid
 
     def onehot_encording(self, train, valid, target, params_exist) -> pd.DataFrame:
         dataset = pd.concat([train, valid])
-        object_datset = dataset.drop(columns=["date", target]).select_dtypes('object')
-        if len(object_datset.columns) > 0:
+        object_dataset = dataset.drop(columns=["date", target]).select_dtypes('object')
+        if len(object_dataset.columns) > 0:
             opt = self.get_opt('onehot_encording')
             opt.setdefault('handle_unknown', 'ignore')
             opt.setdefault('sparse_output', False)
@@ -389,25 +399,25 @@ class Preprocess():
                 attr = self.get_preprocessors()['onehot_encording']['attr']
                 setattr(ohe, '__dict__', attr)
             else:
-                ohe.fit(dataset[object_datset.columns])
+                ohe.fit(dataset[object_dataset.columns])
                 attr = getattr(ohe, '__dict__')
                 self.set_preprocessors({'onehot_encording': {'attr': attr}})
             columns = []
-            for i, c in enumerate(object_datset.columns):
+            for i, c in enumerate(object_dataset.columns):
                 columns += [f'{c}_{v}' for v in ohe.categories_[i]]
-            train_ohe = pd.DataFrame(ohe.transform(train[object_datset.columns]), columns=columns)
-            valid_ohe = pd.DataFrame(ohe.transform(valid[object_datset.columns]), columns=columns)
-            train = pd.concat([train.drop[object_datset.columns], train_ohe], axis=1)
-            valid = pd.concat([valid.drop[object_datset.columns], valid_ohe], axis=1)
-            self.train.drop(object_datset.columns, axis=1, inplace=True)
-            self.valid.drop(object_datset.columns, axis=1, inplace=True)
+            train_ohe = pd.DataFrame(ohe.transform(train[object_dataset.columns]), columns=columns)
+            valid_ohe = pd.DataFrame(ohe.transform(valid[object_dataset.columns]), columns=columns)
+            train = pd.concat([train.drop[object_dataset.columns], train_ohe], axis=1)
+            valid = pd.concat([valid.drop[object_dataset.columns], valid_ohe], axis=1)
+            self.train.drop(object_dataset.columns, axis=1, inplace=True)
+            self.valid.drop(object_dataset.columns, axis=1, inplace=True)
 
         return train, valid
 
     def label_encording(self, train, valid, target, params_exist) -> pd.DataFrame:
         dataset = pd.concat([train, valid])
-        object_datset = dataset.drop(columns=["date", target]).select_dtypes('object')
-        if len(object_datset.columns) > 0:
+        object_dataset = dataset.drop(columns=["date", target]).select_dtypes('object')
+        if len(object_dataset.columns) > 0:
             opt = self.get_opt('label_encording')
             opt.setdefault('handle_unknown', 'use_encoded_value')
             opt.setdefault('unknown_value', -1)
@@ -418,15 +428,15 @@ class Preprocess():
                 attr = self.get_preprocessors()['label_encording']['attr']
                 setattr(oe, '__dict__', attr)
             else:
-                oe.fit(dataset[object_datset.columns])
+                oe.fit(dataset[object_dataset.columns])
                 attr = getattr(oe, '__dict__')
                 self.set_preprocessors({'label_encording': {'attr': attr}})
-            train[object_datset.columns + 'label_encording'] = oe.transform(train[object_datset.columns])
-            valid[object_datset.columns + 'label_encording'] = oe.transform(valid[object_datset.columns])
-            train.drop(object_datset.columns, axis=1, inplace=True)
-            valid.drop(object_datset.columns, axis=1, inplace=True)
-            self.train.drop(object_datset.columns, axis=1, inplace=True)
-            self.valid.drop(object_datset.columns, axis=1, inplace=True)
+            train[object_dataset.columns + 'label_encording'] = oe.transform(train[object_dataset.columns])
+            valid[object_dataset.columns + 'label_encording'] = oe.transform(valid[object_dataset.columns])
+            train.drop(object_dataset.columns, axis=1, inplace=True)
+            valid.drop(object_dataset.columns, axis=1, inplace=True)
+            self.train.drop(object_dataset.columns, axis=1, inplace=True)
+            self.valid.drop(object_dataset.columns, axis=1, inplace=True)
 
         return train, valid
 
@@ -526,13 +536,17 @@ class Preprocess():
             if len(subset) == len(is_str):
                 category.append(col)
             else:
-                raise RuntimeError('The dataset has differenct dtype in same col')
+                raise RuntimeError('The dataset has differenct '
+                                   'dtype in same col')
 
         if len(category) > 0:
             # NOTE: check unknown_value and encoded_missing_value's behaivier
             # NOTE: and check CB's missing feature processing
             # it might be better than this process
-            train, valid = self.target_encording(train, valid, target, params_exist)
+            train, valid = self.target_encording(train,
+                                                 valid,
+                                                 target,
+                                                 params_exist)
             self.train_raw = train
             self.valid_raw = valid
 

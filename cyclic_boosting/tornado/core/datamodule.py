@@ -83,7 +83,7 @@ class TornadoDataModule():
         vif_max = c
         while vif_max >= c:
             vif = pd.DataFrame()
-            with np.errstate(divide='ignore'): 
+            with np.errstate(divide='ignore'):
                 vif["VIF Factor"] = [variance_inflation_factor(dataset.values, i)
                                      for i in range(dataset.shape[1])]
             vif["features"] = dataset.columns
