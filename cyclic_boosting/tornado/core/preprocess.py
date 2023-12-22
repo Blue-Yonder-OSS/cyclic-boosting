@@ -12,12 +12,14 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, \
                                   OneHotEncoder, TargetEncoder
 from sklearn.feature_extraction import FeatureHasher
 import statsmodels.api as sm
+from typing import Tuple
+
 
 _logger = logging.getLogger(__name__)
 
 
 class Preprocess():
-    def __init__(self, opt):
+    def __init__(self, opt) -> None:
         self.preprocessors = {}
         self.opt = opt
 
@@ -82,7 +84,7 @@ class Preprocess():
         self.preprocessors['rank'] = {}
         self.preprocessors['rankgauss'] = {}
 
-    def apply(self, train, valid, target) -> None:
+    def apply(self, train, valid, target) -> Tuple[pd.DataFrame, pd.DataFrame]:
         # 特徴量エンジニアリングを実行
         self.train_raw = train.copy()
         self.valid_raw = valid.copy()
@@ -101,7 +103,7 @@ class Preprocess():
 
         return self.train, self.valid
 
-    def todatetime(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def todatetime(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         train["date"] = pd.to_datetime(train["date"])
         valid["date"] = pd.to_datetime(valid["date"])
 
@@ -119,7 +121,7 @@ class Preprocess():
 
         return dataset
 
-    def dayofweek(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def dayofweek(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         train["dayofweek"] = train["date"].dt.dayofweek
         valid["dayofweek"] = valid["date"].dt.dayofweek
         train["dayofweek"] = train["dayofweek"].astype('int64')
@@ -128,7 +130,7 @@ class Preprocess():
 
         return train, valid
 
-    def dayofyear(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def dayofyear(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         train["dayofyear"] = train["date"].dt.dayofyear
         valid["dayofyear"] = valid["date"].dt.dayofyear
         train["dayofyear"] = train["dayofyear"].astype('int64')
@@ -143,7 +145,7 @@ class Preprocess():
 
         return daily_data
 
-    def check_corr(self, daily_data) -> pd.DataFrame:
+    def check_corr(self, daily_data) -> Tuple[int, int]:
         nlags = int(len(daily_data)/2-1)
         nlags = min(nlags, 500)
         acf = sm.tsa.stattools.acf(daily_data, nlags=nlags)
@@ -153,7 +155,7 @@ class Preprocess():
 
         return argmax_acf, argmax_pacf
 
-    def lag(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def lag(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if params_exist:
             lags = self.get_preprocessors()['lag']['lags']
         else:
@@ -170,7 +172,7 @@ class Preprocess():
 
         return train, valid
 
-    def rolling(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def rolling(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if params_exist:
             rollings = self.get_preprocessors()['rolling']['rollings']
         else:
@@ -193,7 +195,7 @@ class Preprocess():
 
         return train, valid
 
-    def expanding(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def expanding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if params_exist:
             expandings = self.get_preprocessors()['expanding']['expandings']
         else:
@@ -210,7 +212,7 @@ class Preprocess():
 
         return train, valid
 
-    def check_cardinality(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def check_cardinality(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if not params_exist:
             opt = self.get_opt('check_cardinality')
             opt.setdefault('cardinality_th', 0.8)
@@ -232,7 +234,7 @@ class Preprocess():
 
         return train, valid
 
-    def check_dtype(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def check_dtype(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         if not params_exist:
             dataset = pd.concat([train, valid])
             float_datset = dataset.drop(columns=target).select_dtypes('float')
@@ -249,7 +251,7 @@ class Preprocess():
 
         return train, valid
 
-    def standarlization(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def standarlization(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         float_train = train.drop(columns=target).select_dtypes('float')
         if len(float_train.columns) > 0:
             opt = self.get_opt('standarlization')
@@ -267,7 +269,7 @@ class Preprocess():
 
         return train, valid
 
-    def minmax(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def minmax(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         float_train = train.drop(columns=target).select_dtypes('float')
         if len(float_train.columns) > 0:
             opt = self.get_opt('minmax')
@@ -285,7 +287,7 @@ class Preprocess():
 
         return train, valid
 
-    def logarithmic(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def logarithmic(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         float_train = train.drop(columns=target).select_dtypes('float')
         if len(float_train.columns) > 0:
             opt = self.get_opt('logarithmic')
@@ -303,7 +305,7 @@ class Preprocess():
 
         return train, valid
 
-    def clipping(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def clipping(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         float_train = train.drop(columns=target).select_dtypes('float')
         if len(float_train.columns) > 0:
             if params_exist:
@@ -323,7 +325,7 @@ class Preprocess():
 
         return train, valid
 
-    def binning(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def binning(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         float_train = train.drop(columns=target).select_dtypes('float')
         if len(float_train.columns) > 0:
             opt = self.get_opt('binning')
@@ -345,7 +347,7 @@ class Preprocess():
 
         return train, valid
 
-    def rank(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def rank(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         float_train = train.drop(columns=target).select_dtypes('float')
         if len(float_train.columns) > 0:
             opt = self.get_opt('rank')
@@ -366,7 +368,7 @@ class Preprocess():
 
         return train, valid
 
-    def rankgauss(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def rankgauss(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         float_train = train.drop(columns=target).select_dtypes('float')
         if len(float_train.columns) > 0:
             opt = self.get_opt('rankgauss')
@@ -387,7 +389,7 @@ class Preprocess():
 
         return train, valid
 
-    def onehot_encording(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def onehot_encording(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         dataset = pd.concat([train, valid])
         object_dataset = dataset.drop(columns=["date", target]).select_dtypes('object')
         if len(object_dataset.columns) > 0:
@@ -414,7 +416,7 @@ class Preprocess():
 
         return train, valid
 
-    def label_encording(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def label_encording(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         dataset = pd.concat([train, valid])
         object_dataset = dataset.drop(columns=["date", target]).select_dtypes('object')
         if len(object_dataset.columns) > 0:
@@ -440,7 +442,7 @@ class Preprocess():
 
         return train, valid
 
-    def feature_hashing(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def feature_hashing(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         object_train = train.drop(columns=["date", target]).select_dtypes('object')
         object_valid = valid.drop(columns=["date", target]).select_dtypes('object')
         if len(object_train.columns) > 0:
@@ -467,7 +469,7 @@ class Preprocess():
 
         return train, valid
 
-    def freqency_encording(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def freqency_encording(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         object_train = train.drop(columns=["date", target]).select_dtypes('object')
         if len(object_train.columns) > 0:
             opt = self.get_opt('freqency_encording')
@@ -490,7 +492,7 @@ class Preprocess():
 
         return train, valid
 
-    def target_encording(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def target_encording(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         object_train = train.drop(columns=["date", target]).select_dtypes('object')
         if len(object_train.columns) > 0:
             if params_exist:
@@ -525,7 +527,7 @@ class Preprocess():
 
         return train, valid
 
-    def encode_category(self, train, valid, target, params_exist) -> pd.DataFrame:
+    def encode_category(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         dataset = pd.concat([train, valid])
         object_df = dataset.drop(columns=["date", target]).select_dtypes('object')
         category = []

@@ -15,6 +15,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 #                         encode_category, lag, rolling, expanding, \
 #                         check_cardinality, check_dtype
 from .preprocess import Preprocess
+from typing import Tuple
 
 
 _logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ class TornadoDataModule():
         else:
             self.log_path = self.path_ds[:self.path_ds.rfind('.')] + '.pickle'
 
-    def corr_based_removal(self):
+    def corr_based_removal(self) -> None:
         dataset = pd.concat([self.train.copy(), self.valid.copy()])
         dataset = dataset.drop(columns=["date"])
         corr_rl = 0.1
@@ -103,7 +104,7 @@ class TornadoDataModule():
             self.train = self.train.loc[:, self.features]
             self.valid = self.valid.loc[:, self.features]
 
-    def generate(self, target, is_ts, test_size, seed) -> pd.DataFrame:
+    def generate(self, target, is_ts, test_size, seed) -> Tuple[pd.DataFrame, pd.DataFrame]:
         self.target = target
         self.is_ts = is_ts
         preprocess = Preprocess(self.params)
