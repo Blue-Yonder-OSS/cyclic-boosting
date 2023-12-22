@@ -21,7 +21,13 @@ from cyclic_boosting.pipelines import (
     pipeline_CBAdditiveGenericCRegressor,
     pipeline_CBGenericClassifier,
 )
-from cyclic_boosting.quantile_matching import quantile_fit_gamma, quantile_fit_nbinom, quantile_fit_spline, J_QPD_S
+from cyclic_boosting.quantile_matching import (
+    quantile_fit_gamma,
+    quantile_fit_nbinom,
+    quantile_fit_spline,
+    J_QPD_S,
+    QPD_RegressorChain,
+)
 from cyclic_boosting.utils import smear_discrete_cdftruth
 from cyclic_boosting.interaction_selection import select_interaction_terms_anova
 from tests.utils import plot_CB, costs_mad, costs_mse
@@ -638,6 +644,55 @@ def test_multiplicative_quantile_regression_pdf_J_QPD_S(is_plot, prepare_data, f
         cdf_truth = np.asarray(cdf_truth_list)
         plt.hist(cdf_truth[cdf_truth > 0], bins=30)
         plt.savefig("J_QPD_S_cdf_truth_histo.png")
+        plt.clf()
+
+
+def test_qpd_regression(is_plot, prepare_data, features, feature_properties):
+    X, y = prepare_data
+
+    est = QPD_RegressorChain(
+        pipeline_CBAdditiveQuantileRegressor(
+            feature_groups=features, feature_properties=feature_properties, quantile=0.5
+        ),
+        pipeline_CBAdditiveQuantileRegressor(
+            feature_groups=features, feature_properties=feature_properties, quantile=0.5
+        ),
+        pipeline_CBAdditiveQuantileRegressor(
+            feature_groups=features, feature_properties=feature_properties, quantile=0.5
+        ),
+        "S",
+    )
+    est.fit(X, y)
+
+    np.testing.assert_almost_equal(est.shape, 12.151, 3)
+
+    pred_lowq, pred_median, pred_highq, qpd = est.predict(X)
+
+    np.testing.assert_almost_equal(np.mean(pred_lowq), 1.17, 3)
+    np.testing.assert_almost_equal(np.mean(pred_median), 2.324, 3)
+    np.testing.assert_almost_equal(np.mean(pred_highq), 3.867, 3)
+
+    cdf_truth_list = []
+    for i in range(len(X)):
+        np.testing.assert_almost_equal(qpd[i].ppf(est.alpha), pred_lowq[i], 3)
+        np.testing.assert_almost_equal(qpd[i].ppf(0.5), pred_median[i], 3)
+        np.testing.assert_almost_equal(qpd[i].ppf(1 - est.alpha), pred_highq[i], 3)
+
+        if is_plot:
+            cdf_truth = smear_discrete_cdftruth(qpd[i].cdf, y[i])
+            cdf_truth_list.append(cdf_truth)
+
+            if i == 24:
+                plt.plot([est.alpha, 0.5, 1 - est.alpha], [pred_lowq[i], pred_median[i], pred_highq[i]], "ro")
+                xs = np.linspace(0.0, 1.0, 100)
+                plt.plot(xs, qpd[i].ppf(xs))
+                plt.savefig("QPD_regression_integration_" + str(i) + ".png")
+                plt.clf()
+
+    if is_plot:
+        cdf_truth = np.asarray(cdf_truth_list)
+        plt.hist(cdf_truth[cdf_truth > 0], bins=30)
+        plt.savefig("QPD_regression_cdf_truth_histo.png")
         plt.clf()
 
 
