@@ -22,7 +22,7 @@ _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-handler.terminator = ''
+handler.terminator = ""
 _logger.addHandler(handler)
 
 
@@ -45,17 +45,17 @@ class TornadoDataModule():
         self.func = []
         if self.log_path:
             try:
-                with open(self.log_path, 'rb') as p:
+                with open(self.log_path, "rb") as p:
                     log = pickle.load(p)
-                    self.preprocessors = log['preprocessors']
-                    self.features = log['features']
+                    self.preprocessors = log["preprocessors"]
+                    self.features = log["features"]
                     print(self.preprocessors.keys())
                     print(self.features)
             except FileNotFoundError:
                 self.preprocessors = {}
                 self.features = []
         else:
-            self.log_path = self.path_ds[:self.path_ds.rfind('.')] + '.pickle'
+            self.log_path = self.path_ds[:self.path_ds.rfind(".")] + ".pickle"
 
     def corr_based_removal(self) -> None:
         dataset = pd.concat([self.train.copy(), self.valid.copy()])
@@ -73,18 +73,18 @@ class TornadoDataModule():
                         if corr.loc[feature1, self.target] < corr.loc[feature2, self.target]:
                             features = features.drop(feature1)
         dataset = dataset[features]
-        self.train = self.train.loc[:, dataset.columns.tolist() + ['date']]
-        self.valid = self.valid.loc[:, dataset.columns.tolist() + ['date']]
+        self.train = self.train.loc[:, dataset.columns.tolist() + ["date"]]
+        self.valid = self.valid.loc[:, dataset.columns.tolist() + ["date"]]
 
     def vif_based_removal(self) -> None:
         dataset = pd.concat([self.train.copy(), self.valid.copy()])
         dataset = dataset.drop(columns=["date", self.target])
-        dataset = dataset.astype('float').dropna()
+        dataset = dataset.astype("float").dropna()
         c = 10
         vif_max = c
         while vif_max >= c:
             vif = pd.DataFrame()
-            with np.errstate(divide='ignore'):
+            with np.errstate(divide="ignore"):
                 vif["VIF Factor"] = [variance_inflation_factor(dataset.values, i)
                                      for i in range(dataset.shape[1])]
             vif["features"] = dataset.columns
@@ -93,8 +93,8 @@ class TornadoDataModule():
             if vif_max >= c:
                 dataset.drop(columns=vif["features"][vif_max_idx], inplace=True)
                 vif_max = vif["VIF Factor"].drop(vif_max_idx).max()
-        self.train = self.train.loc[:, dataset.columns.tolist() + ['date', self.target]]
-        self.valid = self.valid.loc[:, dataset.columns.tolist() + ['date', self.target]]
+        self.train = self.train.loc[:, dataset.columns.tolist() + ["date", self.target]]
+        self.valid = self.valid.loc[:, dataset.columns.tolist() + ["date", self.target]]
 
     def remove_features(self) -> None:
         if not self.features:
@@ -130,9 +130,9 @@ class TornadoDataModule():
                          f"{n_features_preprocessed} -> {n_features_selected}\n")
             _logger.info(f"{self.features}\n")
             self.preprocessors = preprocess.get_preprocessors()
-            with open(self.log_path, 'wb') as p:
-                log = {'preprocessors': self.preprocessors,
-                       'features': self.features}
+            with open(self.log_path, "wb") as p:
+                log = {"preprocessors": self.preprocessors,
+                       "features": self.features}
                 pickle.dump(log, p)
         else:
             self.train, self.valid = train_test_split(
