@@ -99,6 +99,14 @@ CB_est.fit(X_train, y)
 yhat = CB_est.predict(X_test)
 ```
 
+There is also some functionality for interaction term selection, exploiting
+feature binning:
+```python
+from cyclic_boosting.interaction_selection import select_interaction_terms_anova
+
+best_interaction_term_features = select_interaction_terms_anova(X_train, y, fp, 3, 5)
+```
+
 ## Manual Binning
 Behind the scenes, Cyclic Boosting works by combining a binning method (e.g.,
 [BinNumberTransformer](https://github.com/Blue-Yonder-OSS/cyclic-boosting/blob/main/cyclic_boosting/binning/bin_number_transformer.py))
@@ -175,7 +183,7 @@ There is also a ready-made end-to-end practical training chain, employing
 quantile transformations to impose constraints on the target range (for bound
 or semi-bound scenarios) and maintain the order of symmetric-percentile triplet
 predictions (from an arbitrary quantile regression method, not restricted to
-Cyclic Boosting) used for J-QPD:
+Cyclic Boosting) used for J-QPD (and its [extensions](https://github.com/Blue-Yonder-OSS/cyclic-boosting/blob/main/docs/JQPDregression.pdf)):
 ```python
 from cyclic_boosting.pipelines import pipeline_CBAdditiveQuantileRegressor
 from cyclic_boosting.quantile_matching import QPD_RegressorChain
