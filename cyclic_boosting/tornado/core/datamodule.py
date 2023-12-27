@@ -55,10 +55,17 @@ class TornadoDataModule():
                 self.features = []
         else:
             self.log_path = self.path_ds[:self.path_ds.rfind(".")] + ".pickle"
+            self.preprocessors = {}
+            self.features = []
 
     def corr_based_removal(self) -> None:
         dataset = pd.concat([self.train.copy(), self.valid.copy()])
-        dataset = dataset.drop(columns=["date"])
+        try:
+            dataset = dataset.drop(columns=["date"])
+            has_date = True
+        except KeyError:
+            has_date = False
+
         corr_rl = 0.1
         corr_ul = 0.9
         corr = self.dataset.corr()
@@ -77,12 +84,18 @@ class TornadoDataModule():
                     droped_features.append(feature)
         dataset = dataset[features]
 
-        self.train = self.train.loc[:, dataset.columns.tolist() + ["date"]]
-        self.valid = self.valid.loc[:, dataset.columns.tolist() + ["date"]]
+        if has_date:
+            self.train = self.train.loc[:, dataset.columns.tolist() + ["date"]]
+            self.valid = self.valid.loc[:, dataset.columns.tolist() + ["date"]]
 
     def vif_based_removal(self) -> None:
         dataset = pd.concat([self.train.copy(), self.valid.copy()])
-        dataset = dataset.drop(columns=["date", self.target])
+        try:
+            dataset = dataset.drop(columns=["date"])
+            has_date = True
+        except KeyError:
+            has_date = False
+        dataset = dataset.drop(columns=[self.target])
         dataset = dataset.astype("float").dropna()
 
         c = 10
@@ -96,11 +109,16 @@ class TornadoDataModule():
             vif_max_idx = vif["VIF Factor"].idxmax()
             vif_max = vif["VIF Factor"].max()
             if vif_max >= c:
-                dataset.drop(columns=vif["features"][vif_max_idx], inplace=True)
+                dataset.drop(columns=vif["features"][vif_max_idx],
+                             inplace=True)
                 vif_max = vif["VIF Factor"].drop(vif_max_idx).max()
 
-        self.train = self.train.loc[:, dataset.columns.tolist() + ["date", self.target]]
-        self.valid = self.valid.loc[:, dataset.columns.tolist() + ["date", self.target]]
+        if has_date:
+            self.train = self.train.loc[:, dataset.columns.tolist() + ["date", self.target]]
+            self.valid = self.valid.loc[:, dataset.columns.tolist() + ["date", self.target]]
+        else:
+            self.train = self.train.loc[:, dataset.columns.tolist() + [self.target]]
+            self.valid = self.valid.loc[:, dataset.columns.tolist() + [self.target]]
 
     def remove_features(self) -> None:
         if not self.features:
@@ -131,7 +149,9 @@ class TornadoDataModule():
                 test_size=test_size,
                 random_state=seed)
 
-            self.train, self.valid = preprocess.apply(self.train, self.valid, self.target)
+            self.train, self.valid = preprocess.apply(self.train,
+                                                      self.valid,
+                                                      self.target)
 
             n_features_preprocessed = len(self.train.columns) - 1
             _logger.info(f"\rn_features: {n_features_original} -> "
@@ -141,7 +161,8 @@ class TornadoDataModule():
 
             n_features_selected = len(self.features) - 1
             _logger.info(f"\rn_features: {n_features_original} -> "
-                         f"{n_features_preprocessed} -> {n_features_selected}\n")
+                         f"{n_features_preprocessed} -> "
+                         f"{n_features_selected}\n")
             _logger.info(f"{self.features}\n")
 
             self.preprocessors = preprocess.get_preprocessors()
@@ -156,7 +177,11 @@ class TornadoDataModule():
                 test_size=test_size,
                 random_state=seed)
 
-            self.train["date"] = pd.to_datetime(self.train["date"])
-            self.valid["date"] = pd.to_datetime(self.valid["date"])
+            if self.is_time_series:
+                self.preprocessors["todatetime"] = {}
+                preprocess.set_preprocessors(self.preprocessors)
+                self.train, self.valid = preprocess.apply(self.train,
+                                                          self.valid,
+                                                          self.target)
 
         return self.train, self.valid

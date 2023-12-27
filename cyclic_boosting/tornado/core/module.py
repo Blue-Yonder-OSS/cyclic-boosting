@@ -39,37 +39,17 @@ class TornadoModuleBase():
         self.max_interaction = 0
         self.experiment = 0
 
-    def gen_base_feature_property(self) -> None:
-        cols = self.X.select_dtypes(include=['int', 'float', 'object'])
-        print('is a categorical or continuous variable?')
-        for col in cols:
-            fp_str = input(f"please enter {col} is [cat/con] ")
-            if fp_str == 'cat':
-                self.feature_properties[col] = flags.IS_UNORDERED
-            elif fp_str == 'con':
-                self.feature_properties[col] = flags.IS_CONTINUOUS
-            else:
-                raise ValueError("please type 'cat' or 'con'")
-
-    # FIXME
-    # この関数は入力の手間をなくすためだけのものであり本質的に自動化を行っているわけではない.修正の必要あり
-    def int_or_float_feature_property(self) -> None:
-        cols = self.X.select_dtypes(include=['int', 'float', 'object'])
-        for col in cols:
-            if isinstance(self.X[col][0], np.int64):
-                self.feature_properties[col] = flags.IS_UNORDERED
-            elif isinstance(self.X[col][0], np.float64):
-                self.feature_properties[col] = flags.IS_CONTINUOUS
-            else:
-                raise ValueError("整数または小数ではない")
-
     def set_feature_property(self) -> None:
         if self.mfp is None:
-            # self.gen_base_feature_property()
-            self.int_or_float_feature_property()
             analyzer = TornadoAnalysisModule(self.X, is_time_series=self.is_ts,
                                              data_interval=self.data_interval)
             self.report = analyzer.analyze()
+
+            for col in self.report['is_unordered']:
+                self.feature_properties[col] = flags.IS_UNORDERED
+            for col in self.report['is_continuous']:
+                self.feature_properties[col] = flags.IS_CONTINUOUS
+
             for key, cols in self.report.items():
                 if key == 'has_seasonality':
                     flag = flags.IS_SEASONAL
@@ -95,7 +75,8 @@ class TornadoModuleBase():
     def drop_unused_features(self) -> None:
         for col in self.X.columns:
             if col not in self.feature_properties.keys():
-                self.X = self.X.drop(col, axis=1)
+                self.X.drop(columns=col, inplace=True)
+        self.X.drop(columns="date", inplace=True, errors="ignore")
 
     @abc.abstractmethod
     def set_feature(self) -> None:
@@ -109,8 +90,6 @@ class TornadoModuleBase():
         self.target = target.lower()
         self.y = np.asarray(dataset[self.target])
         self.X = dataset.drop(self.target, axis=1)
-        if not self.is_ts:
-            self.X = self.X.drop('date', axis=1)
         self.set_feature_property()
         self.drop_unused_features()
         self.create_interaction_term()

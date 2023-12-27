@@ -55,26 +55,27 @@ class Preprocess():
             return
         col_names = dataset.columns.to_list()
 
-        self.preprocessors["encode_category"] = {}
+        self.preprocessors["encode_category"] = {"label_encoding": {}}
         self.preprocessors["check_dtype"] = {}
         self.preprocessors["check_cardinality"] = {}
 
-        if is_time_series:
-            if "date" in col_names:
-                self.preprocessors["todatetime"] = {}
+        if "date" in col_names:
+            self.preprocessors["todatetime"] = {}
+            if "dayofweek" not in col_names:
+                self.preprocessors["dayofweek"] = {}
+
+            if "dayofyear" not in col_names:
+                self.preprocessors["dayofyear"] = {}
+
+            if is_time_series:
                 self.preprocessors["lag"] = {}
                 self.preprocessors["rolling"] = {}
                 self.preprocessors["expanding"] = {}
-            else:
-                _logger.error("If this is a forecast of time-series data,\n"
-                              " a 'date' column is required to identify\n"
-                              " the datetime of the data.")
 
-            if "dayofweek" not in col_names and "date" in col_names:
-                self.preprocessors["dayofweek"] = {}
-
-            if "dayofyear" not in col_names and "date" in col_names:
-                self.preprocessors["dayofyear"] = {}
+        elif is_time_series:
+            _logger.error("If this is a forecast of time-series data,\n"
+                          " a 'date' column is required to identify\n"
+                          " the datetime of the data.")
 
         self.preprocessors["standardization"] = {}
         self.preprocessors["minmax"] = {}
@@ -239,11 +240,11 @@ class Preprocess():
                     high_cardinality_cols.append(col)
 
             if len(high_cardinality_cols) > 0:
-                _logger.warn(f"The cardinality of the {high_cardinality_cols} "
-                             "column is very high.\n    By using methods such "
-                             "as hierarchical grouping,\n    the cardinality "
-                             "can be reduced, leading to an improvement\n    "
-                             "in inference accuracy.")
+                _logger.warning(f"The cardinality of the {high_cardinality_cols} "
+                                "column is very high.\n    By using methods such "
+                                "as hierarchical grouping,\n    the cardinality "
+                                "can be reduced, leading to an improvement\n    "
+                                "in inference accuracy.")
 
             self.set_preprocessors({"check_cardinality": {}})
 
@@ -260,10 +261,10 @@ class Preprocess():
                     float_integer_cols.append(col)
 
             if len(float_integer_cols) > 0:
-                _logger.warn(f"Please check the columns {float_integer_cols}."
-                             "\n    Ensure that categorical variables are of "
-                             "'int' type\n    and continuous variables are of "
-                             "'float' type.")
+                _logger.warning(f"Please check the columns {float_integer_cols}."
+                                "\n    Ensure that categorical variables are of "
+                                "'int' type\n    and continuous variables are of "
+                                "'float' type.")
 
             self.set_preprocessors({"check_dtype": {}})
 
@@ -363,6 +364,7 @@ class Preprocess():
             opt.setdefault("encode", "ordinal")
             opt.setdefault("strategy", "uniform")
             opt.setdefault("random_state", 0)
+            opt.setdefault("subsample", 200000)
             binner = KBinsDiscretizer(**opt)
 
             if params_exist:
@@ -384,6 +386,7 @@ class Preprocess():
 
         if len(float_train.columns) > 0:
             opt = self.get_opt("rank")
+            opt.setdefault("n_quantiles", min(1000, float_train.shape[0]))
             opt.setdefault("output_distribution", "uniform")
             opt.setdefault("random_state", 0)
             qt = QuantileTransformer(**opt)
@@ -407,7 +410,7 @@ class Preprocess():
 
         if len(float_train.columns) > 0:
             opt = self.get_opt("rankgauss")
-            # opt.setdefault("n_quantiles", float_train.shape[0])
+            opt.setdefault("n_quantiles", min(1000, float_train.shape[0]))
             opt.setdefault("output_distribution", "normal")
             opt.setdefault("random_state", 0)
             qt = QuantileTransformer(**opt)
@@ -426,44 +429,50 @@ class Preprocess():
 
         return train, valid
 
-    def onehot_encording(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def onehot_encoding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         dataset = pd.concat([train, valid])
         object_dataset = dataset.drop(columns=["date", target], errors="ignore").select_dtypes("object")
 
         if len(object_dataset.columns) > 0:
-            opt = self.get_opt("onehot_encording")
+            opt = self.get_opt("onehot_encoding")
             opt.setdefault("handle_unknown", "ignore")
             opt.setdefault("sparse_output", False)
+            opt.setdefault("dtype", np.int64)
             ohe = OneHotEncoder(**opt)
 
             if params_exist:
-                attr = self.get_preprocessors()["onehot_encording"]["attr"]
+                attr = self.get_preprocessors()["encode_category"]["onehot_encoding"]["attr"]
                 setattr(ohe, "__dict__", attr)
             else:
                 ohe.fit(dataset[object_dataset.columns])
                 attr = getattr(ohe, "__dict__")
-                self.set_preprocessors({"onehot_encording": {"attr": attr}})
+                self.set_preprocessors({"encode_category": {"onehot_encoding": {"attr": attr}}})
 
             columns = []
             for i, c in enumerate(object_dataset.columns):
                 columns += [f"{c}_{v}" for v in ohe.categories_[i]]
-            train_ohe = pd.DataFrame(ohe.transform(train[object_dataset.columns]), columns=columns)
-            valid_ohe = pd.DataFrame(ohe.transform(valid[object_dataset.columns]), columns=columns)
 
-            train = pd.concat([train.drop[object_dataset.columns], train_ohe], axis=1)
-            valid = pd.concat([valid.drop[object_dataset.columns], valid_ohe], axis=1)
+            train_ohe = pd.DataFrame(ohe.transform(train[object_dataset.columns]),
+                                     index=train.index, columns=columns)
+            valid_ohe = pd.DataFrame(ohe.transform(valid[object_dataset.columns]),
+                                     index=valid.index, columns=columns)
+
+            train = pd.concat([train.drop(object_dataset.columns, axis=1),
+                               train_ohe], axis=1)
+            valid = pd.concat([valid.drop(object_dataset.columns, axis=1),
+                               valid_ohe], axis=1)
 
             self.train.drop(object_dataset.columns, axis=1, inplace=True)
             self.valid.drop(object_dataset.columns, axis=1, inplace=True)
 
         return train, valid
 
-    def label_encording(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def label_encoding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         dataset = pd.concat([train, valid])
         object_dataset = dataset.drop(columns=["date", target], errors="ignore").select_dtypes("object")
 
         if len(object_dataset.columns) > 0:
-            opt = self.get_opt("label_encording")
+            opt = self.get_opt("label_encoding")
             opt.setdefault("handle_unknown", "use_encoded_value")
             opt.setdefault("unknown_value", -1)
             opt.setdefault("encoded_missing_value", -2)
@@ -471,15 +480,15 @@ class Preprocess():
             oe = OrdinalEncoder(**opt)
 
             if params_exist:
-                attr = self.get_preprocessors()["label_encording"]["attr"]
+                attr = self.get_preprocessors()["encode_category"]["label_encoding"]["attr"]
                 setattr(oe, "__dict__", attr)
             else:
                 oe.fit(dataset[object_dataset.columns])
                 attr = getattr(oe, "__dict__")
-                self.set_preprocessors({"label_encording": {"attr": attr}})
+                self.set_preprocessors({"encode_category": {"label_encoding": {"attr": attr}}})
 
-            train[object_dataset.columns + "label_encording"] = oe.transform(train[object_dataset.columns])
-            valid[object_dataset.columns + "label_encording"] = oe.transform(valid[object_dataset.columns])
+            train[object_dataset.columns + "_label_encoding"] = oe.transform(train[object_dataset.columns])
+            valid[object_dataset.columns + "_label_encoding"] = oe.transform(valid[object_dataset.columns])
 
             train.drop(object_dataset.columns, axis=1, inplace=True)
             valid.drop(object_dataset.columns, axis=1, inplace=True)
@@ -496,21 +505,24 @@ class Preprocess():
         if len(object_train.columns) > 0:
             opt = self.get_opt("feature_hashing")
             if params_exist:
-                opt.setdefault("n_features", self.get_preprocessors()["feature_hashing"]["n_features"])
+                opt.setdefault("n_features", self.get_preprocessors()["encode_category"]["feature_hashing"]["n_features"])
             else:
                 opt.setdefault("n_features", 10)
             opt.setdefault("input_type", "string")
+            opt.setdefault("dtype", np.int64)
             n_features = opt["n_features"]
 
             for col in object_train.columns:
                 fh = FeatureHasher(**opt)
-                hash_train = fh.transform(object_train[col].astype(str).values)
-                hash_valid = fh.transform(object_valid[col].astype(str).values)
-                hash_train = pd.DataFrame(hash_train.todense(), columns=[f"{col}_{i}" for i in range(n_features)])
-                hash_valid = pd.DataFrame(hash_valid.todense(), columns=[f"{col}_{i}" for i in range(n_features)])
+                hash_train = fh.transform(object_train[col].astype(str).values[:, np.newaxis].tolist())
+                hash_valid = fh.transform(object_valid[col].astype(str).values[:, np.newaxis].tolist())
+                hash_train = pd.DataFrame(hash_train.todense(), index=train.index,
+                                          columns=[f"{col}_{i}" for i in range(n_features)])
+                hash_valid = pd.DataFrame(hash_valid.todense(), index=valid.index,
+                                          columns=[f"{col}_{i}" for i in range(n_features)])
                 train = pd.concat([train, hash_train], axis=1)
                 valid = pd.concat([valid, hash_valid], axis=1)
-            self.set_preprocessors({"feature_hashing": {"n_features": n_features}})
+            self.set_preprocessors({"encode_category": {"feature_hashing": {"n_features": n_features}}})
 
             train.drop(object_train.columns, axis=1, inplace=True)
             valid.drop(object_valid.columns, axis=1, inplace=True)
@@ -520,39 +532,39 @@ class Preprocess():
 
         return train, valid
 
-    def freqency_encording(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def freqency_encoding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         object_train = train.drop(columns=["date", target], errors="ignore").select_dtypes("object")
 
         if len(object_train.columns) > 0:
-            opt = self.get_opt("freqency_encording")
+            opt = self.get_opt("freqency_encoding")
             if params_exist:
-                opt.setdefault("freqs", self.get_preprocessors()["freqency_encording"]["freqs"])
+                opt.setdefault("freqs", self.get_preprocessors()["encode_category"]["freqency_encoding"]["freqs"])
             else:
                 freqs = {}
                 for col in object_train.columns:
                     freqs[col] = train[col].value_counts()
                 opt.setdefault("freqs", freqs)
-                self.set_preprocessors({"freqency_encording": {"freqs": freqs}})
+                self.set_preprocessors({"encode_category": {"freqency_encoding": {"freqs": freqs}}})
             freqs = opt["freqs"]
 
             for col in object_train.columns:
                 train[col] = train[col].map(freqs[col])
                 valid[col] = valid[col].map(freqs[col])
-                train.rename(columns={col: col + "_freqency_encording"}, inplace=True)
-                valid.rename(columns={col: col + "_freqency_encording"}, inplace=True)
+                train.rename(columns={col: col + "_freqency_encoding"}, inplace=True)
+                valid.rename(columns={col: col + "_freqency_encoding"}, inplace=True)
 
             self.train.drop(object_train.columns, axis=1, inplace=True)
             self.valid.drop(object_train.columns, axis=1, inplace=True)
 
         return train, valid
 
-    def target_encording(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def target_encoding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         object_train = train.drop(columns=["date", target], errors="ignore").select_dtypes("object")
 
         if len(object_train.columns) > 0:
 
             if params_exist:
-                attrs = self.get_preprocessors()["freqency_encording"]["attrs"]
+                attrs = self.get_preprocessors()["encode_category"]["target_encoding"]["attrs"]
                 for col in object_train.columns:
                     te = TargetEncoder()
                     attr = attrs[col]
@@ -561,11 +573,12 @@ class Preprocess():
                     X_valid = np.array([valid[col].values]).T
                     train[col] = te.transform(X_train)
                     valid[col] = te.transform(X_valid)
-                    train.rename(columns={col: col + "_target_encording"}, inplace=True)
-                    valid.rename(columns={col: col + "_target_encording"}, inplace=True)
+                    train.rename(columns={col: col + "_target_encoding"}, inplace=True)
+                    valid.rename(columns={col: col + "_target_encoding"}, inplace=True)
 
             else:
-                opt = self.get_opt("target_encording")
+                opt = self.get_opt("target_encoding")
+                opt.setdefault("random_state", 0)
                 attrs = {}
                 for col in object_train.columns:
                     te = TargetEncoder(**opt)
@@ -576,9 +589,9 @@ class Preprocess():
                     valid[col] = te.transform(X_valid)
                     attr = getattr(te, "__dict__")
                     attrs[col] = attr
-                    train.rename(columns={col: col + "_target_encording"}, inplace=True)
-                    valid.rename(columns={col: col + "_target_encording"}, inplace=True)
-                self.set_preprocessors({"target_encording": {"attrs": attrs}})
+                    train.rename(columns={col: col + "_target_encoding"}, inplace=True)
+                    valid.rename(columns={col: col + "_target_encoding"}, inplace=True)
+                self.set_preprocessors({"encode_category": {"target_encoding": {"attrs": attrs}}})
 
             self.train.drop(columns=object_train.columns, inplace=True)
             self.valid.drop(columns=object_train.columns, inplace=True)
@@ -604,10 +617,16 @@ class Preprocess():
             # NOTE: check unknown_value and encoded_missing_value's behaivier
             # NOTE: and check CB's missing feature processing
             # it might be better than this process
-            train, valid = self.label_encording(train,
-                                                valid,
-                                                target,
-                                                params_exist)
+
+            encoders = self.get_preprocessors().copy()["encode_category"]
+            if len(encoders) != 1:
+                raise RuntimeError("Single encoding method should be used for "
+                                   "categorical variables.")
+            for enc, params in encoders.items():
+                train, valid = eval(f"self.{enc}")(train,
+                                                   valid,
+                                                   target,
+                                                   any(params))
 
             self.train_raw = train
             self.valid_raw = valid

@@ -23,6 +23,8 @@ class TornadoAnalysisModule():
         self.dataset = dataset
         self.targets = []
         self.report = {
+            'is_unordered': [],
+            'is_continuous': [],
             'has_trend': [],
             'has_seasonality': [],
             'has_up_monotonicity': [],
@@ -37,25 +39,54 @@ class TornadoAnalysisModule():
         self.data_interval = data_interval
 
     def analyze(self) -> dict:
-        if self.is_time_series:
-            if 'date' not in self.dataset.columns:
-                raise ValueError("Dataset must be included 'date' column on \
-                                 time-series prediction")
-            cols = self.dataset.select_dtypes(include=['float']).columns
-            self.targets = [c for c in cols]
-            targets = [c for c in cols]
-            print(f"Auto analysis target {targets}")
+        # self.gen_base_feature_property()
+        self.int_or_float_feature_property()
+        self.check_missing()
+
+        cols = self.dataset.select_dtypes(include=['float']).columns
+        self.targets = [c for c in cols]
+        targets = [c for c in cols]
+        _logger.info(f"Auto analysis target {targets}")
+        if 'date' in self.dataset.columns:
             self.dataset.index = self.dataset["date"].values
             self.dataset = self.dataset[targets]
-            self.check_missing()
             self.calc_daily_average()
             self.check_data_interval()
             self.check_trend()
             self.check_monotonicity()
             self.check_seasonality()
             self.check_linearity()
+        else:
+            if self.is_time_series:
+                raise ValueError("Dataset must have 'date' column on "
+                                 "time-series prediction")
+            self.dataset = self.dataset[targets]
 
         return self.report
+
+    def gen_base_feature_property(self) -> None:
+        cols = self.dataset.select_dtypes(include=['int', 'float', 'object'])
+        _logger.info('is a categorical or continuous variable?')
+        for col in cols:
+            fp_str = input(f"please enter {col} is [cat/con] ")
+            if fp_str == 'cat':
+                self.report['is_unordered'].append(col)
+            elif fp_str == 'con':
+                self.report['is_continuous'].append(col)
+            else:
+                raise ValueError("please type 'cat' or 'con'")
+
+    # FIXME
+    # この関数は入力の手間をなくすためだけのものであり本質的に自動化を行っているわけではない.修正の必要あり
+    def int_or_float_feature_property(self) -> None:
+        cols = self.dataset.select_dtypes(include=['int', 'float', 'object'])
+        for col in cols:
+            if isinstance(self.dataset[col][0], np.int64):
+                self.report['is_unordered'].append(col)
+            elif isinstance(self.dataset[col][0], np.float64):
+                self.report['is_continuous'].append(col)
+            else:
+                raise ValueError("整数または小数ではない")
 
     def calc_daily_average(self) -> None:
         self.dataset = self.dataset.groupby(level=0).mean()
