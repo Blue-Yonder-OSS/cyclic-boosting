@@ -1,6 +1,8 @@
 """
-Loading and checking data necessary for preprocessing, as well as various
-feature engineering methods.
+Data preprocessing and feature engineering techniques.
+
+Processing necessary for data loading, checking, and other preprocessing
+tasks, as well as various feature engineering methods.
 """
 import logging
 
@@ -20,9 +22,11 @@ _logger = logging.getLogger(__name__)
 
 class Preprocess():
     """
-    Preprocess is a class for performing data preprocessing and contains a
-    series of procedures and various feature engineering methods as functions
-    that are necessary for handling preprocessing inside a datamodule.
+    Preprocess is a class for performing data preprocessing.
+
+    It contains a series of procedures and various feature engineering methods
+    as functions that are necessary for handling preprocessing inside a
+    datamodule.
 
     This class takes preprocessing history and options, and performs
     preprocessing accordingly, returning the preprocessed training and

@@ -1,6 +1,4 @@
-"""
-Preparation (handling preprocessing) of data for the Tornado module
-"""
+"""Preparation (handling preprocessing) of data for the Tornado module."""
 import logging
 
 import abc
@@ -26,9 +24,10 @@ _logger.addHandler(handler)
 # @six.add_metaclass(abc.ABCMeta)
 class TornadoDataModule():
     """
-    TornadoDataModule is a class that handles data preprocessing.This class
-    accepts the file path of a dataset and returns preprocessed training and
-    validation data.
+    TornadoDataModule is a class that handles data preprocessing.
+
+    This class accepts the file path of a dataset and returns preprocessed
+    training and validation data.
 
     By default, it automatically applies multiple preprocessing steps to each
     feature, creating new feature columns. Subsequently, it reduces features
@@ -97,7 +96,6 @@ class TornadoDataModule():
         Indicates whether the data is time series data or not.
 
     """
-    # some comments
 
     def __init__(self, path, save_dir=None, auto_preprocess=True,
                  log_path=None, params={}) -> None:
