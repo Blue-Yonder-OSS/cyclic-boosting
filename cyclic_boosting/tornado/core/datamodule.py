@@ -68,7 +68,7 @@ class TornadoDataModule():
 
         corr_rl = 0.1
         corr_ul = 0.9
-        corr = self.dataset.corr()
+        corr = dataset.corr()
         features = corr.index
 
         for feature in features:
