@@ -1,7 +1,7 @@
-# Add some comments
-#
-#
-#
+"""
+Loading and checking data necessary for preprocessing, as well as various
+feature engineering methods.
+"""
 import logging
 
 import pandas as pd
@@ -19,6 +19,65 @@ _logger = logging.getLogger(__name__)
 
 
 class Preprocess():
+    """
+    Preprocess is a class for performing data preprocessing and contains a
+    series of procedures and various feature engineering methods as functions
+    that are necessary for handling preprocessing inside a datamodule.
+
+    This class takes preprocessing history and options, and performs
+    preprocessing accordingly, returning the preprocessed training and
+    validation data. If no preprocessing history or options are given, it
+    determines and applies preprocessing methods that can be applied to each
+    feature of the dataset.
+
+    Some methods generate new features while others transform original
+    features. As a result, the number of features usually increases compared
+    to before processing.
+
+    Parameters
+    ----------
+    opt: str
+        A dictionary for setting special options for various feature
+        engineering procedures that are performed as preprocessing. Defaults
+        to {}. The dictionary should have feature engineering process names as
+        keys and dictionaries specifying options as values.
+        These option-specifying dictionaries should have option names as keys
+        and the values to set for the options as values.
+        (Refer to the 'params' argument and Notes of the TornadoDataModule
+         class in datamodule)
+
+    Notes
+    -----
+    For encoding categorical variables, label encoding is selected by default.
+    It can be changed by editing the 'encode_category' part of the pickle file
+    provided to the check_data function or the TornadoDataModule class in
+    datamodule.
+
+    Example:
+        To use target encoding, edit the check_data function:
+            self.preprocessors["encode_category"] = {"label_encoding": {}}
+            ->
+            self.preprocessors["encode_category"] = {"target_encoding": {}}
+
+    Attributes
+    ----------
+    preprocessors: dict
+        The history of preprocessing.
+
+    train_raw: pandas.DataFrame
+        The data used for training.
+
+    valid_raw: pandas.DataFrame
+        The data used for validation.
+
+    train: pandas.DataFrame
+        The raw training data before preprocessing.
+
+    valid: pandas.DataFrame
+        The raw validation data before preprocessing.
+
+    """
+
     def __init__(self, opt) -> None:
         self.preprocessors = {}
         self.opt = opt
