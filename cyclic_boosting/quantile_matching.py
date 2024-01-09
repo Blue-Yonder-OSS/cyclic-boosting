@@ -1,10 +1,12 @@
 import numpy as np
 from numpy import exp, log, sinh, arcsinh, arccosh
-from scipy.optimize import curve_fit
-from scipy.stats import norm, gamma, nbinom, logistic
+import pandas as pd
+from scipy.optimize import curve_fit, minimize_scalar
+from scipy.stats import norm, gamma, nbinom, logistic, mstats
 from scipy.interpolate import InterpolatedUnivariateSpline
+from sklearn.base import BaseEstimator
 
-from typing import Optional
+from typing import Optional, Union, Tuple
 
 
 class J_QPD_S:
@@ -71,12 +73,12 @@ class J_QPD_S:
 
         self.kappa = 1.0 / (self.delta * self.c) * min(self.H - self.B, self.B - self.L)
 
-    def ppf(self, x):
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.l + self.theta * exp(
             self.kappa * sinh(arcsinh(self.delta * self.phi.ppf(x)) + arcsinh(self.n * self.c * self.delta))
         )
 
-    def cdf(self, x):
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.phi.cdf(
             1.0
             / self.delta
@@ -126,6 +128,9 @@ class J_QPD_B:
         else:
             raise Exception("Invalid version.")
 
+        if (qv_low > qv_median) or (qv_high < qv_median):
+            raise ValueError("The SPT values need to be monotonically increasing.")
+
         self.l = l
         self.u = u
 
@@ -149,16 +154,581 @@ class J_QPD_B:
 
         self.kappa = (self.H - self.L) / sinh(2 * self.delta * self.c)
 
-    def ppf(self, x):
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.l + (self.u - self.l) * self.phi.cdf(
             self.xi + self.kappa * sinh(self.delta * (self.phi.ppf(x) + self.n * self.c))
         )
 
-    def cdf(self, x):
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         return self.phi.cdf(
             1.0 / self.delta * arcsinh(1.0 / self.kappa * (self.phi.ppf((x - self.l) / (self.u - self.l)) - self.xi))
             - self.n * self.c
         )
+
+
+class SinhLogistic:
+    """
+    sinh/arcsinh-modified logistic distribution for smooth interpolation
+    between logistic and t2 distribution.
+
+    Parameters
+    ----------
+    shape: float
+        parameter modifying the logistic base distribution via
+        sinh/arcsinh-scaling
+    """
+
+    def __init__(self, shape: float):
+        self.shape = shape
+
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        # ppf of natural logistic distribution
+        xlog = 0.25 * np.log(x / (1.0 - x))
+
+        # sinh or arcsinh scaling
+        if self.shape > 0:
+            x = np.arcsinh(self.shape * xlog) / self.shape
+        elif self.shape < 0:
+            x = np.sinh(self.shape * xlog) / self.shape
+        else:
+            x = xlog
+        return x
+
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        # sinh or arcsinh scaling
+        if self.shape > 0:
+            xlog = np.sinh(self.shape * x) / self.shape
+        elif self.shape < 0:
+            xlog = np.arcsinh(self.shape * x) / self.shape
+        else:
+            xlog = x
+
+        # natural logistic cdf
+        return 1.0 / (1 + np.exp(-4 * xlog))
+
+    def pdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        if self.shape > 0:
+            return np.cosh(self.shape * x) / (np.cosh(2.0 / self.shape * np.sinh(self.shape * x))) ** 2
+        elif self.shape < 0:
+            return (
+                1.0 / np.sqrt((self.shape * x) ** 2 + 1) / (np.cosh(2.0 / self.shape * np.arcsinh(self.shape * x))) ** 2
+            )
+        else:
+            return 1.0 / (np.cosh(2 * x)) ** 2
+
+
+class BaseDist:
+    """
+    Scaling of base ppfs such that ppf(1 - alpha) = 1. A detailed description
+    can be found in the presentation JQPDregression.pdf in the docs folder of
+    this repository.
+    """
+
+    def __init__(self, dist, alpha: float):
+        self.dist = dist
+        self.alpha = alpha
+        self.width = self.dist.ppf(1 - self.alpha)
+
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        return self.dist.ppf(x) / self.width
+
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        return self.dist.cdf(x * self.width)
+
+    def pdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        return self.dist.pdf(x * self.width) * self.width
+
+
+def unconstrained_calc(L: float, B: float, H: float) -> Tuple[float, float, float, float]:
+    gamma = -np.sign(L + H - 2 * B)
+
+    if gamma == 0:
+        xi = B
+        kappa = H - B
+        delta = 1
+    else:
+        if gamma < 0:
+            xi = L
+            theta = (B - L) / (H - L)
+        else:
+            xi = H
+            theta = (H - B) / (H - L)
+        delta = 1.0 / arccosh(1 / (2.0 * theta))
+        kappa = (H - L) / sinh(2.0 / delta)
+
+    return gamma, xi, kappa, delta
+
+
+class J_QPD_extended_U:
+    """
+    Unbounded version of J-QPDs (see bounded and semi-bounded versions above),
+    including an additional shape parameter to enable flexible tail behavior.
+    Again, a distribution is parameterized by a symmetric-percentile triplet
+    (SPT).
+
+    Parameters
+    ----------
+    alpha : float
+        lower quantile of SPT (upper is ``1 - alpha``)
+    qv_low : float
+        quantile function value of ``alpha``
+    qv_median : float
+        quantile function value of quantile 0.5
+    qv_high : float
+        quantile function value of quantile ``1 - alpha``
+    version: str
+        options are ``normal`` (sinhlogistic), ``normal`, or ``logistic``
+    shape: float
+        parameter modifying the logistic base distribution via
+        sinh/arcsinh-scaling (only active in sinhlogistic version)
+    """
+
+    def __init__(
+        self,
+        alpha: float,
+        qv_low: float,
+        qv_median: float,
+        qv_high: float,
+        version: Optional[str] = "sinhlogistic",
+        shape: Optional[float] = 0,
+    ):
+        self.shape = shape
+        self.alpha = alpha
+
+        if version == "normal":
+            self.phi = norm()
+        elif version == "logistic":
+            self.phi = logistic()
+        elif version == "sinhlogistic":
+            self.phi = SinhLogistic(shape=self.shape)
+        else:
+            raise Exception("Invalid version.")
+
+        if (qv_low > qv_median) or (qv_high < qv_median):
+            raise ValueError("The SPT values need to be monotonically increasing.")
+
+        # identity transformation
+        self.gamma, self.xi, self.kappa, self.delta = unconstrained_calc(qv_low, qv_median, qv_high)
+
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        basequantiles = BaseDist(self.phi, self.alpha).ppf(x)
+
+        # internal unconstrained quantiles from Johnson transform
+        # back transformatiaon into physical space (identity here)
+        return self.xi + self.kappa * sinh((basequantiles - self.gamma) / self.delta)
+
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        # transform from physical to internal space (identity here)
+        # internal unconstrained quantiles from Johnson transform
+        basequantiles = self.gamma + self.delta * arcsinh((x - self.xi) / self.kappa)
+
+        # cdf of base distribution
+        return BaseDist(self.phi, self.alpha).cdf(basequantiles)
+
+
+class J_QPD_extended_S:
+    """
+    Semi-bounded version of J-QPDs, extended by a shape parameter to enable
+    flexible tail behavior. A distribution is parameterized by a
+    symmetric-percentile triplet (SPT).
+
+    Parameters
+    ----------
+    alpha : float
+        lower quantile of SPT (upper is ``1 - alpha``)
+    qv_low : float
+        quantile function value of ``alpha``
+    qv_median : float
+        quantile function value of quantile 0.5
+    qv_high : float
+        quantile function value of quantile ``1 - alpha``
+    l : float
+        lower bound of semi-bounded range (default is 0)
+    version: str
+        options are ``normal`` (sinhlogistic), ``normal`, or ``logistic``
+    shape: float
+        parameter modifying the logistic base distribution via
+        sinh/arcsinh-scaling (only active in sinhlogistic version)
+    """
+
+    def __init__(
+        self,
+        alpha: float,
+        qv_low: float,
+        qv_median: float,
+        qv_high: float,
+        l: Optional[float] = 0,
+        version: Optional[str] = "sinhlogistic",
+        shape: Optional[float] = 0,
+    ):
+        self.shape = shape
+        self.alpha = alpha
+
+        if version == "normal":
+            self.phi = norm()
+        elif version == "logistic":
+            self.phi = logistic()
+        elif version == "sinhlogistic":
+            self.phi = SinhLogistic(shape=self.shape)
+        else:
+            raise Exception("Invalid version.")
+
+        if (qv_low > qv_median) or (qv_high < qv_median):
+            raise ValueError("The SPT values need to be monotonically increasing.")
+
+        self.l = l
+
+        # transform input quantiles from semi-(lower-)bounded physical space to unconstrained internal space
+        self.L = transform_from_semibound_lower(qv_low, self.l)
+        self.H = transform_from_semibound_lower(qv_high, self.l)
+        self.B = transform_from_semibound_lower(qv_median, self.l)
+
+        # now handle like unconstrained
+        self.gamma, self.xi, self.kappa, self.delta = unconstrained_calc(self.L, self.B, self.H)
+
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        basequantiles = BaseDist(self.phi, self.alpha).ppf(x)
+
+        # internal unconstrained quantiles from Johnson transform
+        z = self.xi + self.kappa * sinh((basequantiles - self.gamma) / self.delta)
+
+        # back transformation into physical space
+        return back_transform_in_semibound_lower(z, self.l)
+
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        # transform from physical to internal space
+        z = transform_from_semibound_lower(x, self.l)
+
+        # internal unconstrained quantiles from Johnson transform
+        basequantiles = self.gamma + self.delta * arcsinh((z - self.xi) / self.kappa)
+
+        return BaseDist(self.phi, self.alpha).cdf(basequantiles)
+
+
+class J_QPD_extended_B:
+    """
+    Bounded version of J-QPDs, extended by a shape parameter to enable flexible
+    tail behavior. A distribution is parameterized by a symmetric-percentile
+    triplet (SPT).
+
+    Parameters
+    ----------
+    alpha : float
+        lower quantile of SPT (upper is ``1 - alpha``)
+    qv_low : float
+        quantile function value of ``alpha``
+    qv_median : float
+        quantile function value of quantile 0.5
+    qv_high : float
+        quantile function value of quantile ``1 - alpha``
+    l : float
+        lower bound of supported range
+    u : float
+        upper bound of supported range
+    version: str
+        options are ``normal`` (sinhlogistic), ``normal`, or ``logistic``
+    shape: float
+        parameter modifying the logistic base distribution via
+        sinh/arcsinh-scaling (only active in sinhlogistic version)
+    """
+
+    def __init__(
+        self,
+        alpha: float,
+        qv_low: float,
+        qv_median: float,
+        qv_high: float,
+        l: Optional[float] = 0,
+        u: Optional[float] = 1,
+        version: Optional[str] = "sinhlogistic",
+        shape: Optional[float] = 0,
+    ):
+        self.shape = shape
+        self.alpha = alpha
+
+        if version == "normal":
+            self.phi = norm()
+        elif version == "logistic":
+            self.phi = logistic()
+        elif version == "sinhlogistic":
+            self.phi = SinhLogistic(shape=self.shape)
+        else:
+            raise Exception("Invalid version.")
+
+        if (qv_low > qv_median) or (qv_high < qv_median):
+            raise ValueError("The SPT values need to be monotonically increasing.")
+
+        self.l = l
+        self.u = u
+
+        # transform input quantiles from bounded physical space to unconstrained internal space
+        self.L = transform_from_bounds(qv_low, self.l, self.u)
+        self.H = transform_from_bounds(qv_high, self.l, self.u)
+        self.B = transform_from_bounds(qv_median, self.l, self.u)
+
+        # now handle like unconstrained
+        self.gamma, self.xi, self.kappa, self.delta = unconstrained_calc(self.L, self.B, self.H)
+
+    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        basequantiles = BaseDist(self.phi, self.alpha).ppf(x)
+
+        # internal unconstrained quantiles from Johnson transform
+        z = self.xi + self.kappa * sinh((basequantiles - self.gamma) / self.delta)
+
+        # back transformation into [l, u]
+        return back_transform_in_bounds(z, self.l, self.u)
+
+    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+        # transform from bounded physical space to unconstrained internal space
+        z = transform_from_bounds(x, self.l, self.u)
+
+        # internal unconstrained quantiles from Johnson transform
+        basequantiles = self.gamma + self.delta * arcsinh((z - self.xi) / self.kappa)
+
+        # cdf of base distribution
+        p = BaseDist(self.phi, self.alpha).cdf(basequantiles)
+
+        return p
+
+
+def transform_from_bounds(x: np.ndarray, l: float, u: float) -> np.ndarray:
+    # transform from bounded physical space to [0, 1]
+    z = (x - l) / (u - l)
+
+    # transfer to unconstrained internal space by logit
+    z = z / (1 - z)
+    z = np.where(z == 0, 1e-12, z)
+    return np.log(z)
+
+
+def back_transform_in_bounds(z: np.ndarray, l: float, u: float) -> np.ndarray:
+    # back transformation into [0, 1]
+    x = 1.0 / (1.0 + np.exp(-z))
+
+    # back transformation into [l, u]
+    return l + (u - l) * x
+
+
+def transform_from_semibound_lower(x: np.ndarray, l: float) -> np.ndarray:
+    z = x - l
+    z = np.where(z == 0, 1e-12, z)
+
+    # transfer to unconstrained internal space
+    return np.log(z)
+
+
+def back_transform_in_semibound_lower(z: np.ndarray, l: float) -> np.ndarray:
+    return l + np.exp(z)
+
+
+def transform_from_semibound_upper(x: np.ndarray, u: float) -> np.ndarray:
+    z = u - x
+    z = np.where(z == 0, 1e-12, z)
+
+    # transfer to unconstrained internal space
+    return np.log(z)
+
+
+def back_transform_in_semibound_upper(z: np.ndarray, u: float) -> np.ndarray:
+    return u - np.exp(z)
+
+
+def fit_sinhlogistic_shape(alpha: float, l: float, u: float, bound: str, y: np.ndarray) -> float:
+    """
+    Fit of the shape parameter of our extended versions of the J-QPD mechanism,
+    which modifies the logistic base distribution by sinh/arcsinh-scaling, on
+    the empirical quantile function of the observations.
+    """
+
+    if bound not in ["S", "B", "U"]:
+        raise Exception("Invalid version.")
+
+    qlowincl = np.quantile(y, alpha)
+    qmedincl = np.quantile(y, 0.5)
+    qhighincl = np.quantile(y, 1 - alpha)
+
+    if bound == "S":
+        jqpd_inclusive = J_QPD_extended_S(alpha, qlowincl, qmedincl, qhighincl, l)
+    elif bound == "B":
+        jqpd_inclusive = J_QPD_extended_B(alpha, qlowincl, qmedincl, qhighincl, l, u)
+    else:
+        jqpd_inclusive = J_QPD_extended_U(alpha, qlowincl, qmedincl, qhighincl)
+
+    def fit_shape(shape, p, q):
+        jqpd_inclusive.shape = shape
+        jqpd_inclusive.phi = SinhLogistic(shape=jqpd_inclusive.shape)
+
+        q_fit = jqpd_inclusive.ppf(p)
+
+        emd = (np.abs(q - q_fit)).mean()
+        return emd
+
+    stepsize = 0.001
+    p = np.arange(stepsize / 2.0, 1 - stepsize / 2.0, stepsize)
+    q = mstats.mquantiles(y, p)
+    param = minimize_scalar(fit_shape, args=(p, q))
+    return param.x
+
+
+class QPD_RegressorChain(BaseEstimator):
+    """
+    Constrained conditional density estimation by means of quantile regression
+    and quantile-parameterized distributions (QPD).
+
+    The training chain consists of several steps:
+
+    First, the median is trained and predicted in-sample by means of an
+    arbitrary method (e.g., an ML regressor using a pinball loss, like Cyclic
+    Boosting). External (and also internal ones, see below) constraints on the
+    target range can be taken into account by non-linear transformations,
+    exploiting the bijectivity of quantile transformations (Quantile of
+    transformed variable equals transformation of quantile of original
+    variable.).
+
+    Next, the lower quantile of the QPD symmetric-percentile triplet (SPT) is
+    trained and predicted in-sample by means of an arbitrary method (again
+    taking into account external constraints on the target range), which is
+    independent, and therefore can be completely different, to the median model
+    above. Due to the internal constraint to train only on samples with target
+    value lower than the in-sample-predicted median, the quantile that must
+    actually be used in the quantile regression method is ``2 * alpha``.
+
+    Next, the upper quantile of the QPD SPT triplet is trained by means of an
+    arbitrary method (again taking into account external constraints on the
+    target range), which is independent, and therefore can be completely
+    different, to the median and lower quantile models above. Due to the
+    internal constraint to train only on samples with target value higher than
+    the in-sample-predicted median, the quantile that must actually be used in
+    the quantile regression method is ``2 * (1 - alpha) - 1``.
+
+    The prediction chain is then executed accordingly, and finally, a QPD is
+    calculated for each sample by means of the predicted SPT. For this,
+    extended versions of the J-QPD mechanism are used, which include a shape
+    parameter modifying the logistic base distribution by sinh/arcsinh-scaling.
+    This shape parameter is independently fitted on the empirical quantile
+    function of the training targets.
+
+    Parameters
+    ----------
+    est_median : BaseEstimator
+        estimator to be used predict the median
+    est_lowq : BaseEstimator
+        estimator to be used predict the lower quantile ``alpha`` (must be
+        trained with quantile ``2 * alpha``, e.g., median for ``alpha = 0.25``)
+    est_highq : BaseEstimator
+        estimator to be used predict the upper quantile ``1 - alpha`` (must be
+        trained with quantile ``2 * (1 - alpha) - 1``, e.g., median for
+        ``alpha = 0.25``)
+    bound: str
+        Different modes defined by supported target range, options are ``S``
+        (semi-bound), ``B`` (bound), and ``U`` (unbound).
+    alpha : float
+        lower quantile of SPT (upper is ``1 - alpha``)
+    l : float
+        lower bound of supported range (only active for bound and semi-bound
+        modes)
+    u : float
+        upper bound of supported range (only active for bound mode)
+    """
+
+    def __init__(
+        self,
+        est_median: BaseEstimator,
+        est_lowq: BaseEstimator,
+        est_highq: BaseEstimator,
+        bound: str,
+        alpha: Optional[float] = 0.25,
+        l: Optional[float] = 0,
+        u: Optional[float] = 1,
+    ):
+        self.est_median = est_median
+        self.est_lowq = est_lowq
+        self.est_highq = est_highq  # trained with quantile 2 * (1 - alpha) - 1 (e.g., median for 0.75)
+
+        self.alpha = alpha
+
+        self.l = l
+        self.u = u
+
+        self.bound = bound
+        if self.bound not in ["S", "B", "U"]:
+            raise Exception("Invalid version.")
+
+        self.shape = 0
+
+    def fit(self, X: Union[pd.DataFrame, np.ndarray], y: np.ndarray) -> BaseEstimator:
+        # fit sinhlogistic shape parameter
+        self.shape = fit_sinhlogistic_shape(self.alpha, self.l, self.u, self.bound, y)
+
+        # median model
+        if self.bound == "S":
+            y_trans = transform_from_semibound_lower(y, self.l)
+        elif self.bound == "B":
+            y_trans = transform_from_bounds(y, self.l, self.u)
+        else:
+            y_trans = y
+        self.est_median.fit(X, y_trans)
+        z = self.est_median.predict(X)
+        if self.bound == "S":
+            pred_median = back_transform_in_semibound_lower(z, self.l)
+        elif self.bound == "B":
+            pred_median = back_transform_in_bounds(z, self.l, self.u)
+        else:
+            pred_median = z
+
+        # lower quantile model
+        y_trans = y / pred_median
+        mask = y_trans < 1
+        y_trans = y_trans[mask]
+        if self.bound in ["S", "B"]:
+            y_trans = transform_from_bounds(y_trans, self.l / pred_median[mask], 1)
+        else:
+            y_trans = transform_from_semibound_upper(y_trans, 1)
+        self.est_lowq.fit(X[mask], y_trans)
+        z = self.est_lowq.predict(X)
+        if self.bound in ["S", "B"]:
+            pred_lowq = back_transform_in_bounds(z, self.l, pred_median)
+        else:
+            pred_lowq = back_transform_in_semibound_upper(z, pred_median)
+
+        # upper quantile model
+        y_trans = (y - pred_median) / (pred_median - pred_lowq)
+        mask = y_trans > 0
+        y_trans = y_trans[mask]
+        if self.bound in ["S", "U"]:
+            y_trans = transform_from_semibound_lower(y_trans, 0)
+        else:
+            y_trans = transform_from_bounds(y_trans, 0, (self.u - pred_median) / (pred_median - pred_lowq))
+        self.est_highq.fit(X[mask], y_trans)
+
+        return self
+
+    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+        if self.bound == "S":
+            pred_median = back_transform_in_semibound_lower(self.est_median.predict(X), self.l)
+            pred_lowq = back_transform_in_bounds(self.est_lowq.predict(X), self.l, pred_median)
+            pred_highq = back_transform_in_semibound_lower(self.est_highq.predict(X), pred_median)
+        elif self.bound == "B":
+            pred_median = back_transform_in_bounds(self.est_median.predict(X), self.l, self.u)
+            pred_lowq = back_transform_in_bounds(self.est_lowq.predict(X), self.l, pred_median)
+            pred_highq = back_transform_in_bounds(self.est_highq.predict(X), pred_median, self.u)
+        else:
+            pred_median = self.est_median.predict(X)
+            pred_lowq = back_transform_in_semibound_upper(self.est_lowq.predict(X), pred_median)
+            pred_highq = back_transform_in_semibound_lower(self.est_lowq.predict(X), pred_median)
+
+        qpd = []
+        for i in range(len(X)):
+            if self.bound == "S":
+                qpd.append(
+                    J_QPD_extended_S(self.alpha, pred_lowq[i], pred_median[i], pred_highq[i], self.l, shape=self.shape)
+                )
+            elif self.bound == "B":
+                qpd.append(J_QPD_extended_B(self.alpha, pred_lowq[i], pred_median[i], pred_highq[i], self.l, self.u))
+            else:
+                qpd.append(J_QPD_extended_U(self.alpha, pred_lowq[i], pred_median[i], pred_highq[i]))
+
+        return pred_lowq, pred_median, pred_highq, qpd
 
 
 def quantile_fit_gaussian(quantiles: np.ndarray, quantile_values: np.ndarray, mode: Optional[str] = "ppf") -> callable:
