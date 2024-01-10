@@ -292,7 +292,7 @@ def test_dayofyear():
     pd.testing.assert_frame_equal(valid, desired_valid)
 
 
-def test_create_daily_data():
+def test_create_time_based_average_data():
     preprocessor = preprocess.Preprocess(opt={})
     start_date = datetime.datetime.today().date()
     dates = pd.date_range(start=start_date, periods=5, freq='D')
@@ -302,7 +302,8 @@ def test_create_daily_data():
     desired = test_data_time_series.groupby("date")["target"].mean()
     desired = pd.DataFrame(desired).sort_index()
 
-    dataset = preprocessor.create_daily_data(test_data_time_series, "target")
+    dataset = preprocessor.create_time_based_average_data(
+        test_data_time_series, "target")
 
     pd.testing.assert_frame_equal(dataset, desired)
 
@@ -384,8 +385,8 @@ def test_check_cardinality(caplog):
 
     msg = ("The cardinality of the ['int_1'] column is very high.\n"
            "    By using methods such as hierarchical grouping,\n"
-           "    the cardinality can be reduced, leading to an improvement\n"
-           "    in inference accuracy.")
+           "    the cardinality can be reduced,\n"
+           "    leading to an improvement in inference accuracy.")
     logger_name = 'cyclic_boosting.tornado.core.preprocess'
     assert [(logger_name, WARNING, msg)] == caplog.record_tuples
 
@@ -684,7 +685,7 @@ def test_feature_hashing():
     pd.testing.assert_frame_equal(preprocessor.valid, desired_valid_raw)
 
 
-def test_freqency_encoding():
+def test_frequency_encoding():
     preprocessor = preprocess.Preprocess(opt={})
     test_data_categorical = create_categorical_data(10, 2)
     train, valid = split_dataset(test_data_categorical)
@@ -692,8 +693,8 @@ def test_freqency_encoding():
 
     desired_train = train.copy()
     desired_valid = valid.copy()
-    desired_train["cat_freqency_encoding"] = [2, 2, 1, 1, 1, 1, 1, 1]
-    desired_valid["cat_freqency_encoding"] = [np.nan, np.nan]
+    desired_train["cat_frequency_encoding"] = [2, 2, 1, 1, 1, 1, 1, 1]
+    desired_valid["cat_frequency_encoding"] = [np.nan, np.nan]
     desired_train.drop(columns="cat", inplace=True)
     desired_valid.drop(columns="cat", inplace=True)
     desired_train_raw = train.drop(columns="cat")
@@ -701,10 +702,10 @@ def test_freqency_encoding():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.freqency_encoding(train,
-                                                  valid,
-                                                  "target",
-                                                  False)
+    train, valid = preprocessor.frequency_encoding(train,
+                                                   valid,
+                                                   "target",
+                                                   False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)

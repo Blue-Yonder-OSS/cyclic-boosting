@@ -205,7 +205,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training data and validation data after applying preprocessing
 
         Notes
@@ -263,7 +264,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with "date" column of type datetime.
         """
         train["date"] = pd.to_datetime(train["date"])
@@ -314,7 +316,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with "dayofweek" column.
         """
         train["dayofweek"] = train["date"].dt.dayofweek
@@ -344,7 +347,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with "dayofyear" column.
         """
         train["dayofyear"] = train["date"].dt.dayofyear
@@ -425,7 +429,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with "lag" features.
 
         Notes
@@ -481,7 +486,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with "rolling" features.
 
         Notes
@@ -552,7 +558,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with "expanding" features.
 
         Notes
@@ -611,7 +618,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data
         """
         if not params_exist:
@@ -657,7 +665,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data
         """
         if not params_exist:
@@ -700,7 +709,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with standardized features.
         """
         float_train = train.drop(columns=target).select_dtypes("float")
@@ -745,7 +755,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with min-max scaled features.
         """
         float_train = train.drop(columns=target).select_dtypes("float")
@@ -790,7 +801,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with log-transformed features.
         """
         float_train = train.drop(columns=target).select_dtypes("float")
@@ -836,7 +848,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data including features clipped at the
             upper and lower limits.
         """
@@ -883,7 +896,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with binned features.
         """
         float_train = train.drop(columns=target).select_dtypes("float")
@@ -933,7 +947,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with features converted to ranks.
         """
         float_train = train.drop(columns=target).select_dtypes("float")
@@ -981,7 +996,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with features transformed by
             Rank Gauss normalization.
         """
@@ -1030,7 +1046,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with categorical features encoded
             using one-hot encoding.
         """
@@ -1093,7 +1110,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with categorical features encoded
             using label encoding.
         """
@@ -1149,7 +1167,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with categorical features encoded
             using feature hashing.
         """
@@ -1205,7 +1224,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with categorical features encoded
             using frequency encoding.
         """
@@ -1252,7 +1272,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with categorical features encoded
             using target encoding.
         """
@@ -1314,7 +1335,8 @@ class Preprocess():
 
         Returns
         -------
-        tuple of two :class:`pandas.DataFrame`
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
             Training and validation data with encoded categorical features.
         """
         dataset = pd.concat([train, valid])

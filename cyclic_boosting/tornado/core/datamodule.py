@@ -95,6 +95,12 @@ class TornadoDataModule():
     is_time_series: bool
         Indicates whether the data is time series data or not.
 
+    preprocessors: dict
+        The history of preprocessing.
+
+    features: dict
+        Unremoved features
+
     """
 
     def __init__(self, path, save_dir=None, auto_preprocess=True,
@@ -253,7 +259,8 @@ class TornadoDataModule():
 
         Returns
         -------
-        tuple[pd.DataFrame, pd.DataFrame]
+        tuple
+            (pd.DataFrame, pd.DataFrame)
             The training and validation datasets as a tuple of pandas
             DataFrames.
         """
