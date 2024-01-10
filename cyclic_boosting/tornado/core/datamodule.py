@@ -112,6 +112,16 @@ class TornadoDataModule():
         self.set_log()
 
     def set_log(self) -> None:
+        """Check and apply preprocessing log settings.
+
+        If the path to the pickle file containing preprocessing logs,
+        `log_path`, is not provided, `self.log_path` is set to the same
+        directory as the dataset, and `self.preprocessors` and `self.features`
+        are initialized. If `log_path` is provided and the file exists, its
+        contents are assigned to `self.preprocessors` and `self.features`. If
+        the file does not exist, `self.preprocessors` and `self.features` are
+        initialized.
+        """
         if self.log_path:
             try:
                 with open(self.log_path, "rb") as p:
@@ -127,6 +137,14 @@ class TornadoDataModule():
             self.features = []
 
     def corr_based_removal(self) -> None:
+        """Remove unnecessary features based on correlation coefficients.
+
+        This function removes features based on two criteria: having a low
+        absolute correlation coefficient with the target variable (default
+        threshold: 0.1) and a high inter-feature absolute correlation
+        coefficient (default threshold: 0.9). Among highly correlated pairs,
+        the feature with the lower correlation to the target is discarded.
+        """
         dataset = pd.concat([self.train.copy(), self.valid.copy()])
         try:
             dataset = dataset.drop(columns=["date"])
@@ -157,6 +175,14 @@ class TornadoDataModule():
             self.valid = self.valid.loc[:, dataset.columns.tolist() + ["date"]]
 
     def vif_based_removal(self) -> None:
+        """Remove unnecessary features based on VIF.
+
+        This function calculates the Variance Inflation Factor (VIF) for all
+        features and removes the feature with the highest VIF
+        value. This process is repeated until the maximum VIF among the
+        features drops below the threshold of 10, suggesting a reduction of
+        multicollinearity in the dataset.
+        """
         dataset = pd.concat([self.train.copy(), self.valid.copy()])
         try:
             dataset = dataset.drop(columns=["date"])
@@ -171,15 +197,15 @@ class TornadoDataModule():
         while vif_max >= c:
             vif = pd.DataFrame()
             with np.errstate(divide="ignore"):
-                vif["VIF Factor"] = [variance_inflation_factor(dataset.values, i)
-                                     for i in range(dataset.shape[1])]
+                vif["VIF"] = [variance_inflation_factor(dataset.values, i)
+                              for i in range(dataset.shape[1])]
             vif["features"] = dataset.columns
-            vif_max_idx = vif["VIF Factor"].idxmax()
-            vif_max = vif["VIF Factor"].max()
+            vif_max_idx = vif["VIF"].idxmax()
+            vif_max = vif["VIF"].max()
             if vif_max >= c:
                 dataset.drop(columns=vif["features"][vif_max_idx],
                              inplace=True)
-                vif_max = vif["VIF Factor"].drop(vif_max_idx).max()
+                vif_max = vif["VIF"].drop(vif_max_idx).max()
 
         if has_date:
             self.train = self.train.loc[:, dataset.columns.tolist() + ["date", self.target]]
@@ -189,6 +215,12 @@ class TornadoDataModule():
             self.valid = self.valid.loc[:, dataset.columns.tolist() + [self.target]]
 
     def remove_features(self) -> None:
+        """Remove unnecessary features.
+
+        By default, features are removed based on Variance Inflation Factor.
+        However, the method can be changed to one based on Correlation
+        Coefficient by editing the function call section.
+        """
         if not self.features:
             self.vif_based_removal()
             self.features = self.train.columns.tolist()
@@ -197,6 +229,34 @@ class TornadoDataModule():
             self.valid = self.valid.loc[:, self.features]
 
     def generate(self, target, is_time_series, test_size, seed) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Generate a dataset for prediction.
+
+        This function loads a dataset from a specified path, applies
+        appropriate preprocessing steps, and allows the dropping of non-
+        essential variables. The preprocessing log is output as a pickle
+        file, which can be referenced later.
+
+        Parameters
+        ----------
+        target : str
+            The name of the target variable.
+
+        is_time_series : bool
+            Whether the data is a time series dataset or not.
+
+        test_size : float
+            The proportion of the data to allocate as test data.
+
+        seed : int
+            The random seed used for splitting the data into training and
+            validation sets.
+
+        Returns
+        -------
+        tuple[pd.DataFrame, pd.DataFrame]
+            The training and validation datasets as a tuple of pandas
+            DataFrames.
+        """
         self.target = target
         self.is_time_series = is_time_series
 
