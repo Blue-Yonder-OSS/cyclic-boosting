@@ -4,7 +4,6 @@ import abc
 import six
 import os
 import pickle
-import numpy as np
 import copy
 
 from cyclic_boosting import flags
@@ -154,13 +153,13 @@ class Logger(LoggerBase):
         for f, p in mng.feature_properties.items():
             feature_properties[f] = flags.flags_to_string(p)
 
-        smoothers = {}
+        smoothers = dict()
         for f, sm in mng.smoothers.items():
             smoothers[f] = sm.name
 
-        metrics = {}
+        metrics = dict()
         for name, value in eval.result.items():
-            metrics[name] = copy.copy(value)  # copyいる?
+            metrics[name] = value
 
         self.log_data = {
             "iter": self.iter,
@@ -265,17 +264,6 @@ class BFForwardLogger(LoggerBase):
         self.log_data = dict()
         self.bench_mark = dict()
         self.valid_interactions = list()
-
-    def save_plot(self, est, name):
-        plobs = [est[-1].observers[-1]]
-        binner = est[-2]
-        for p in plobs:
-            plot_analysis(
-                plot_observer=p,
-                file_obj=name,
-                use_tightlayout=False,
-                binners=[binner],
-            )
 
     def output(self, eval, mng):
         policy = self.policy

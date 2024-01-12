@@ -69,7 +69,9 @@ class Evaluator(EvaluatorBase):
 class QuantileEvaluator(EvaluatorBase):
     def __init__(self) -> None:
         self.result = dict()
-        self.eval_funcs = {"PINBALL": mean_pinball_loss, "COD": coefficient_of_determination}
+        self.eval_funcs = {"PINBALL": mean_pinball_loss,
+                           "COD": coefficient_of_determination,
+                           }
 
     def eval(self, y, yhat, q, est, verbose=True, digit=5):
         for metrics, func in self.eval_funcs.items():

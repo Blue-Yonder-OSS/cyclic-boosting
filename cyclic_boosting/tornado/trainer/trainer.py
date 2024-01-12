@@ -9,9 +9,9 @@ from sklearn.model_selection import train_test_split
 
 from .evaluator import Evaluator, QuantileEvaluator
 from .logger import Logger, BFForwardLogger
-from cyclic_boosting.quantile_matching import J_QPD_S, J_QPD_B
+from cyclic_boosting.quantile_matching import J_QPD_S
 
-from typing import List, Dict, Union
+from typing import List, Union
 
 
 _logger = logging.getLogger(__name__)
@@ -29,14 +29,58 @@ class TornadoBase:
         self.manager = TornadoModule
 
     @abc.abstractmethod
-    def fit(self, target, test_size=0.2, seed=0, save_dir="./models", log_policy="COD", verbose=True):
+    def fit(self,
+            target,
+            test_size=0.2,
+            seed=0, save_dir="./models",
+            log_policy="COD",
+            verbose=True,
+            ):
+        # write main fitting steps using Estimator, Evaluator, Logger, DataModule
+        pass
+
+    @abc.abstractmethod
+    def tornado(self, X):
+        # write cyclic model training steps with handling by TornadoModule
         pass
 
     @abc.abstractmethod
     def predict(self, X):
+        # write prediction steps
         pass
 
-    def train(self, target, valid_data, logger, evaluator, verbose):
+
+class Tornado(TornadoBase):
+    def __init__(self, DataModule, TornadoModule):
+        super().__init__(DataModule, TornadoModule)
+        self.estimator = None
+
+    def fit(self,
+            target,
+            test_size=0.2,
+            seed=0,
+            save_dir="./models",
+            log_policy="COD",
+            verbose=True,
+            ):
+        # build logger and evaluator
+        evaluator = Evaluator()
+        logger = Logger(save_dir, log_policy)
+
+        # create dataset
+        dataset = self.data_deliveler.generate()
+        train, validation = train_test_split(dataset,
+                                             test_size=test_size,
+                                             random_state=seed,
+                                             )
+
+        # initialize model setting
+        self.manager.init(train, target)
+
+        # train
+        self.estimator = self.tornado(target, validation, logger, evaluator, verbose)
+
+    def tornado(self, target, valid_data, logger, evaluator, verbose):
         while self.manager.manage():
             estimator = self.manager.build()
 
@@ -48,32 +92,13 @@ class TornadoBase:
             # validation
             y_valid = np.asarray(valid_data[target])
             X_valid = valid_data.drop(target, axis=1)
-            yhat = estimator.predict(X_valid)
-            evaluator.eval(y_valid, yhat, estimator, verbose)
+            y_pred = estimator.predict(X_valid)
+            evaluator.eval(y_valid, y_pred, estimator, verbose)
 
             # log
             logger.log(estimator, evaluator, self.manager)
 
-
-class Tornado(TornadoBase):
-    def __init__(self, DataModule, TornadoModule):
-        super().__init__(DataModule, TornadoModule)
-        self.estimator = None
-
-    def fit(self, target, test_size=0.2, seed=0, save_dir="./models", log_policy="COD", verbose=True):
-        # build logger and evaluator
-        evaluator = Evaluator()
-        logger = Logger(save_dir, log_policy)
-
-        # create dataset
-        dataset = self.data_deliveler.generate()
-        train, validation = train_test_split(dataset, test_size=test_size, random_state=seed)
-
-        # initialize model setting
-        self.manager.init(train, target)
-
-        # train
-        self.estimator = self.train(target, validation, logger, evaluator, verbose)
+        return estimator
 
     def predict(self, X):
         X = self.data_deliveler.generate(X)
@@ -87,7 +112,14 @@ class ForwardTrainer(TornadoBase):
         super().__init__(DataModule, TornadoModule)
         self.estimator = None
 
-    def fit(self, target, test_size=0.2, seed=0, save_dir="./models", log_policy="COD", verbose=True):
+    def fit(self,
+            target,
+            test_size=0.2,
+            seed=0,
+            save_dir="./models",
+            log_policy="COD",
+            verbose=True,
+            ):
         # build logger and evaluator
         mng_params = self.manager.get_params()
         round1 = mng_params["first_round"]
@@ -97,14 +129,17 @@ class ForwardTrainer(TornadoBase):
 
         # create dataset
         dataset = self.data_deliveler.generate()
-        train, validation = train_test_split(dataset, test_size=test_size, random_state=seed)
+        train, validation = train_test_split(dataset,
+                                             test_size=test_size,
+                                             random_state=seed,
+                                             )
 
         # initialize training setting
         self.manager.init(train, target)
 
-        # sigle variable regression analysis to search valid features
+        # single variable regression analysis to search valid features
         _logger.info(f"\n=== [ROUND] {round1} ===\n")
-        _ = self.train(target, validation, logger, evaluator, verbose)
+        _ = self.tornado(target, validation, logger, evaluator, verbose)
 
         # pick up
         threshold = 2  # basically, 2 would be better for threshold
@@ -134,9 +169,9 @@ class ForwardTrainer(TornadoBase):
 
         # multiple variable regression (main training)
         _logger.info(f"\n=== [ROUND] {round2} ===\n")
-        self.estimator = self.train(target, validation, logger, evaluator, verbose)
+        self.estimator = self.tornado(target, validation, logger, evaluator, verbose)
 
-    def train(self, target, valid_data, logger, evaluator, verbose):
+    def tornado(self, target, valid_data, logger, evaluator, verbose):
         while self.manager.manage():
             estimator = self.manager.build()
 
@@ -146,8 +181,8 @@ class ForwardTrainer(TornadoBase):
 
             y_valid = np.asarray(valid_data[target])
             X_valid = valid_data.drop(target, axis=1)
-            yhat = estimator.predict(X_valid)
-            evaluator.eval(y_valid, yhat, estimator, verbose)
+            y_pred = estimator.predict(X_valid)
+            evaluator.eval(y_valid, y_pred, estimator, verbose)
 
             logger.log(estimator, evaluator, self.manager)
 
@@ -174,12 +209,19 @@ class QPDForwardTrainer(TornadoBase):
         self.quantile = quantile
         self.alpha = [quantile, 0.5, 1 - quantile]
         self.loss = 0.0
-        self.estimators = []
+        self.estimators = list()
 
         if self.quantile >= 0.5:
             raise ValueError("quantile must be quantile < 0.5")
 
-    def fit(self, target, test_size=0.2, seed=0, save_dir="./models", log_policy="PINBALL", verbose=True):
+    def fit(self,
+            target,
+            test_size=0.2,
+            seed=0,
+            save_dir="./models",
+            log_policy="PINBALL",
+            verbose=True,
+            ):
         # build logger and evaluator
         mng_params = self.manager.get_params()
         round1 = mng_params["first_round"]
@@ -189,7 +231,9 @@ class QPDForwardTrainer(TornadoBase):
 
         # create dataset
         dataset = self.data_deliveler.generate()
-        train, validation = train_test_split(dataset, test_size=test_size, random_state=seed)
+        train, validation = train_test_split(dataset,
+                                             test_size=test_size,
+                                             random_state=seed)
 
         # initialize training setting
         combination = 2
@@ -198,7 +242,7 @@ class QPDForwardTrainer(TornadoBase):
         # sigle variables model for interaction search
         _logger.info(f"\n=== [ROUND] {round1} ===\n")
         args = {"quantile": 0.5}
-        base_model = self.train(target, validation, logger, evaluator, verbose, args)
+        base_model = self.tornado(target, validation, logger, evaluator, verbose, args)
 
         #  prediction with base sigle features
         X_original = copy.deepcopy(mng_params["init_model_attr"]["X"])
@@ -212,7 +256,11 @@ class QPDForwardTrainer(TornadoBase):
         X_original[col] = pred_train
         model_params_new = mng_params["model_params"]
         model_params_new["prior_prediction_column"] = col
-        update_params = {"mode": round2, "experiment": 0, "X": X_original, "model_params": model_params_new}
+        update_params = {"mode": round2,
+                         "experiment": 0,
+                         "X": X_original,
+                         "model_params": model_params_new,
+                         }
         self.manager.set_params(update_params)
         validation[col] = pred_valid
 
@@ -222,7 +270,7 @@ class QPDForwardTrainer(TornadoBase):
 
         # brute force model search
         _logger.info(f"\n=== [ROUND] {round2} ===\n")
-        _ = self.train(target, validation, logger, evaluator, verbose, args)
+        _ = self.tornado(target, validation, logger, evaluator, verbose, args)
         _logger.info(f"\nDetect {len(logger.valid_interactions)} interactions\n")
 
         # model setting for QPD estimation
@@ -251,7 +299,7 @@ class QPDForwardTrainer(TornadoBase):
             _logger.info(f"\n=== {names[i]} model ===\n")
             _ = est.fit(X.copy(), y)
 
-    def train(self, target, valid_data, logger, evaluator, verbose, args):
+    def tornado(self, target, valid_data, logger, evaluator, verbose, args):
         while self.manager.manage():
             estimator = self.manager.build()
 
@@ -291,8 +339,13 @@ class QPDForwardTrainer(TornadoBase):
 
         # handling for cross switching
         if (np.any(low > median)) or np.any((high < median)):
-            _logger.warning("The SPT values are not monotonically increasing, each SPT will be replaced by mean value")
-            idx = np.where((low > median), True, False) + np.where((high < median), True, False)
+            _logger.warning(
+                "The SPT values are not monotonically increasing,"
+                "  each SPT will be replaced by mean value")
+            idx = (
+                np.where((low > median), True, False) +
+                np.where((high < median), True, False)
+            )
             low[idx] = np.nanmean(low)
             median[idx] = np.nanmean(median)
             high[idx] = np.nanmean(high)
