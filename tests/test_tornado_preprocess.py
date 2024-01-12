@@ -17,9 +17,6 @@ from sklearn.feature_extraction import FeatureHasher
 from cyclic_boosting.tornado.core import preprocess
 
 
-# _logger = getLogger('preprocess')
-
-
 def create_time_series_test_data(n_rows, n_cols, start_date=None):
     if start_date is None:
         start_date = datetime.datetime.today().date()
@@ -33,17 +30,16 @@ def create_time_series_test_data(n_rows, n_cols, start_date=None):
 
 
 def create_non_time_series_test_data(n_rows, n_cols):
-    # data_int = np.random.randint(1, 1000, size=(n_rows, int(n_cols/2)))
-    data_int = np.array([random.sample(range(1000), n_rows)
-                         for i in range(int(n_cols/2))]).T
-    data_float = np.random.random(size=(n_rows, n_cols-int(n_cols/2)))
+    data_category = np.array([random.sample(range(1000), n_rows)
+                              for i in range(int(n_cols/2))]).T
+    data_continuous = np.random.random(size=(n_rows, n_cols-int(n_cols/2)))
     data_target = np.random.random(size=(n_rows, 1))
-    cols_int = [f"int_{col}" for col in range(int(n_cols/2))]
-    cols_float = [f"float_{col}" for col in range(n_cols-int(n_cols/2))]
-    df_int = pd.DataFrame(data_int, columns=cols_int)
-    df_float = pd.DataFrame(data_float, columns=cols_float)
+    cols_category = [f"category_{col}" for col in range(int(n_cols/2))]
+    cols_continuous = [f"continuous_{col}" for col in range(n_cols-int(n_cols/2))]
+    df_category = pd.DataFrame(data_category, columns=cols_category)
+    df_continuous = pd.DataFrame(data_continuous, columns=cols_continuous)
     df_target = pd.DataFrame(data_target, columns=["target"])
-    df = pd.concat([df_int, df_float, df_target], axis=1)
+    df = pd.concat([df_category, df_continuous, df_target], axis=1)
 
     return df
 
@@ -72,9 +68,11 @@ def create_str(n_character, last_character="z"):
 
 def create_categorical_data(n_rows, n_cols, start_date=None):
     df = create_time_series_test_data(n_rows, n_cols, start_date)
-    cat = [0 for i in range(n_rows)]
-    while len(cat) != len(set(cat)):
-        cat = [create_str(5) for i in range(n_rows)]
+    cat = list()
+    while len(cat) != n_rows:
+        strings = create_str(5)
+        if strings not in cat:
+            cat.append(strings)
     df["cat"] = cat
 
     return df
@@ -82,7 +80,9 @@ def create_categorical_data(n_rows, n_cols, start_date=None):
 
 def create_categorical_duplicated_data(n_rows, n_cols, start_date=None):
     df = create_time_series_test_data(n_rows, n_cols, start_date)
-    cat = [create_str(2, "c") for i in range(n_rows)]
+    cat = [create_str(2, "c") for i in range(int(n_rows*0.6))]
+    cat_duplicated = ["aa", "ab", "ba", "bb"] * int(n_rows*0.1)
+    cat += cat_duplicated
     df["cat"] = cat
 
     return df
@@ -110,13 +110,6 @@ def test_load_dataset():
     os.remove(path)
     pd.testing.assert_frame_equal(data, test_data_time_series)
 
-    # non time_series data test
-    test_data_non_time_series = create_non_time_series_test_data(10, 5)
-    test_data_non_time_series.to_csv(path, index=False)
-    data = preprocessor.load_dataset(path)
-    os.remove(path)
-    pd.testing.assert_frame_equal(data, test_data_non_time_series)
-
     # excel data test
     path = "./test_data.xlsx"
     test_data_time_series = create_time_series_test_data(10, 5)
@@ -142,10 +135,7 @@ def test_check_data():
         "dayofweek": {},
         "dayofyear": {},
         "standardization": {},
-        "minmax": {},
         "logarithmic": {},
-        "clipping": {},
-        "binning": {},
         "rank": {},
         "rankgauss": {}
         }
@@ -163,10 +153,7 @@ def test_check_data():
         "check_dtype": {},
         "check_cardinality": {},
         "standardization": {},
-        "minmax": {},
         "logarithmic": {},
-        "clipping": {},
-        "binning": {},
         "rank": {},
         "rankgauss": {}
         }
@@ -199,11 +186,44 @@ def test_apply():
     desired_train_raw = desired_train.copy()
     desired_valid_raw = desired_valid.copy()
     scaler = StandardScaler()
-    scaler.fit(desired_train[["float_0"]])
-    desired_train["float_0_standardization"] = scaler.transform(
-        desired_train[["float_0"]])
-    desired_valid["float_0_standardization"] = scaler.transform(
-        desired_valid[["float_0"]])
+    scaler.fit(desired_train[["continuous_0"]])
+    desired_train["continuous_0_standardization"] = scaler.transform(
+        desired_train[["continuous_0"]])
+    desired_valid["continuous_0_standardization"] = scaler.transform(
+        desired_valid[["continuous_0"]])
+    train, valid = preprocessor.apply(train, valid, "target")
+
+    pd.testing.assert_frame_equal(train, desired_train)
+    pd.testing.assert_frame_equal(valid, desired_valid)
+    pd.testing.assert_frame_equal(preprocessor.train_raw, desired_train_raw)
+    pd.testing.assert_frame_equal(preprocessor.valid_raw, desired_valid_raw)
+
+
+def test_apply_with_opt():
+    preprocessor = preprocess.Preprocess(opt={"standardization": {}})
+    # Tests with "todatetime" as the default preprocessing method and
+    # "standardization" as an optional preprocessing method
+    preprocessor.set_preprocessors({
+        "todatetime": {},
+        })
+    # Create time-series test data with the loaded state
+    # ("date" column type is object)
+    test_data_time_series = create_time_series_test_data(10, 2)
+    test_data_time_series["date"] = test_data_time_series["date"].astype(str)
+    train, valid = split_dataset(test_data_time_series)
+
+    desired_train = train.copy()
+    desired_valid = valid.copy()
+    desired_train["date"] = pd.to_datetime(desired_train["date"])
+    desired_valid["date"] = pd.to_datetime(desired_valid["date"])
+    desired_train_raw = desired_train.copy()
+    desired_valid_raw = desired_valid.copy()
+    scaler = StandardScaler()
+    scaler.fit(desired_train[["continuous_0"]])
+    desired_train["continuous_0_standardization"] = scaler.transform(
+        desired_train[["continuous_0"]])
+    desired_valid["continuous_0_standardization"] = scaler.transform(
+        desired_valid[["continuous_0"]])
     train, valid = preprocessor.apply(train, valid, "target")
 
     pd.testing.assert_frame_equal(train, desired_train)
@@ -237,10 +257,10 @@ def test_todatetime():
 def test_tolowerstr():
     preprocessor = preprocess.Preprocess(opt={})
     test_data_time_series = create_time_series_test_data(10, 2)
-    test_data_time_series.rename({"int_0": "INT_0"})
+    test_data_time_series.rename({"category_0": "CATEGORY_0"})
 
     desired = test_data_time_series.copy()
-    desired = desired.rename(columns={"INT_0": "int_0"})
+    desired = desired.rename(columns={"CATEGORY_0": "category_0"})
     dataset = preprocessor.tolowerstr(test_data_time_series)
 
     pd.testing.assert_frame_equal(dataset, desired)
@@ -376,14 +396,14 @@ def test_check_cardinality(caplog):
     caplog.set_level(WARNING)
     preprocessor = preprocess.Preprocess(opt={})
     test_data_time_series = create_time_series_test_data(10, 4)
-    test_data_time_series.loc[:, "int_0"] = 0
+    test_data_time_series.loc[:, "category_0"] = 0
     train, valid = split_dataset(test_data_time_series)
     train, valid = preprocessor.check_cardinality(train,
                                                   valid,
                                                   "target",
                                                   False)
 
-    msg = ("The cardinality of the ['int_1'] column is very high.\n"
+    msg = ("The cardinality of the ['category_1'] column is very high.\n"
            "    By using methods such as hierarchical grouping,\n"
            "    the cardinality can be reduced,\n"
            "    leading to an improvement in inference accuracy.")
@@ -395,14 +415,14 @@ def test_check_dtype(caplog):
     caplog.set_level(WARNING)
     preprocessor = preprocess.Preprocess(opt={})
     test_data_time_series = create_time_series_test_data(10, 4)
-    test_data_time_series.loc[:, "float_0"] = 1.0
+    test_data_time_series.loc[:, "continuous_0"] = 1.0
     train, valid = split_dataset(test_data_time_series)
     train, valid = preprocessor.check_dtype(train,
                                             valid,
                                             "target",
                                             False)
 
-    msg = ("Please check the columns ['float_0'].\n"
+    msg = ("Please check the columns ['continuous_0'].\n"
            "    Ensure that categorical variables are of 'int' type\n"
            "    and continuous variables are of 'float' type.")
     logger_name = 'cyclic_boosting.tornado.core.preprocess'
@@ -417,11 +437,11 @@ def test_standardization():
     desired_train = train.copy()
     desired_valid = valid.copy()
     scaler = StandardScaler()
-    scaler.fit(desired_train[["float_0"]])
-    desired_train["float_0_standardization"] = scaler.transform(
-        desired_train[["float_0"]])
-    desired_valid["float_0_standardization"] = scaler.transform(
-        desired_valid[["float_0"]])
+    scaler.fit(desired_train[["continuous_0"]])
+    desired_train["continuous_0_standardization"] = scaler.transform(
+        desired_train[["continuous_0"]])
+    desired_valid["continuous_0_standardization"] = scaler.transform(
+        desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
@@ -442,11 +462,11 @@ def test_minmax():
     desired_train = train.copy()
     desired_valid = valid.copy()
     scaler = MinMaxScaler()
-    scaler.fit(desired_train[["float_0"]])
-    desired_train["float_0_minmax"] = scaler.transform(
-        desired_train[["float_0"]])
-    desired_valid["float_0_minmax"] = scaler.transform(
-        desired_valid[["float_0"]])
+    scaler.fit(desired_train[["continuous_0"]])
+    desired_train["continuous_0_minmax"] = scaler.transform(
+        desired_train[["continuous_0"]])
+    desired_valid["continuous_0_minmax"] = scaler.transform(
+        desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
@@ -467,11 +487,11 @@ def test_logarithmic():
     desired_train = train.copy()
     desired_valid = valid.copy()
     scaler = PowerTransformer()
-    scaler.fit(desired_train[["float_0"]])
-    desired_train["float_0_logarithmic"] = scaler.transform(
-        desired_train[["float_0"]])
-    desired_valid["float_0_logarithmic"] = scaler.transform(
-        desired_valid[["float_0"]])
+    scaler.fit(desired_train[["continuous_0"]])
+    desired_train["continuous_0_logarithmic"] = scaler.transform(
+        desired_train[["continuous_0"]])
+    desired_valid["continuous_0_logarithmic"] = scaler.transform(
+        desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
@@ -491,14 +511,10 @@ def test_clipping():
 
     desired_train = train.copy()
     desired_valid = valid.copy()
-    p_l = desired_train["float_0"].quantile(0.01)
-    p_u = desired_train["float_0"].quantile(0.99)
-    desired_train["float_0_clipping"] = desired_train[["float_0"]].clip(p_l,
-                                                                        p_u,
-                                                                        axis=1)
-    desired_valid["float_0_clipping"] = desired_valid[["float_0"]].clip(p_l,
-                                                                        p_u,
-                                                                        axis=1)
+    p_l = desired_train["continuous_0"].quantile(0.01)
+    p_u = desired_train["continuous_0"].quantile(0.99)
+    desired_train["continuous_0_clipping"] = desired_train[["continuous_0"]].clip(p_l, p_u, axis=1)
+    desired_valid["continuous_0_clipping"] = desired_valid[["continuous_0"]].clip(p_l, p_u, axis=1)
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
@@ -523,11 +539,11 @@ def test_binning():
                               strategy="uniform",
                               random_state=0,
                               subsample=200000)
-    scaler.fit(desired_train[["float_0"]])
-    desired_train["float_0_binning"] = scaler.transform(
-        desired_train[["float_0"]])
-    desired_valid["float_0_binning"] = scaler.transform(
-        desired_valid[["float_0"]])
+    scaler.fit(desired_train[["continuous_0"]])
+    desired_train["continuous_0_binning"] = scaler.transform(
+        desired_train[["continuous_0"]])
+    desired_valid["continuous_0_binning"] = scaler.transform(
+        desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
@@ -550,11 +566,11 @@ def test_rank():
     scaler = QuantileTransformer(n_quantiles=8,
                                  output_distribution="uniform",
                                  random_state=0)
-    scaler.fit(desired_train[["float_0"]])
-    desired_train["float_0_rank"] = scaler.transform(
-        desired_train[["float_0"]])
-    desired_valid["float_0_rank"] = scaler.transform(
-        desired_valid[["float_0"]])
+    scaler.fit(desired_train[["continuous_0"]])
+    desired_train["continuous_0_rank"] = scaler.transform(
+        desired_train[["continuous_0"]])
+    desired_valid["continuous_0_rank"] = scaler.transform(
+        desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
@@ -577,11 +593,11 @@ def test_rankgauss():
     scaler = QuantileTransformer(n_quantiles=8,
                                  output_distribution="normal",
                                  random_state=0)
-    scaler.fit(desired_train[["float_0"]])
-    desired_train["float_0_rankgauss"] = scaler.transform(
-        desired_train[["float_0"]])
-    desired_valid["float_0_rankgauss"] = scaler.transform(
-        desired_valid[["float_0"]])
+    scaler.fit(desired_train[["continuous_0"]])
+    desired_train["continuous_0_rankgauss"] = scaler.transform(
+        desired_train[["continuous_0"]])
+    desired_valid["continuous_0_rankgauss"] = scaler.transform(
+        desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()

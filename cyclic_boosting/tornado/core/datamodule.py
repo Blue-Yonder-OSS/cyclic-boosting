@@ -1,8 +1,6 @@
 """Preparation (handling preprocessing) of data for the Tornado module."""
 import logging
 
-import abc
-import six
 import numpy as np
 import pandas as pd
 import pickle
@@ -21,7 +19,6 @@ handler.terminator = ""
 _logger.addHandler(handler)
 
 
-# @six.add_metaclass(abc.ABCMeta)
 class TornadoDataModule():
     """
     TornadoDataModule is a class that handles data preprocessing.
@@ -72,10 +69,15 @@ class TornadoDataModule():
     engineering process names as keys and options as values.
     These options should be provided as dictionaries with option names as keys
     and the values for each option as values.
+    By default, "minmax", "binning", and "clipping", which are not important
+    considering the algorithmic characteristics of cyclic boosting, are not
+    performed. You can perform these preprocessing optionally by adding them
+    to the parameter `params`.
 
     Example:
         params =
-            {"clipping": {"q_l": 0.10, "q_u": 0.90},
+            {"binning": {},
+            "clipping": {"q_l": 0.10, "q_u": 0.90},
             "label_encoding": {"unknown_value": 0}}
 
     For details on what options are available for each technique, refer to the

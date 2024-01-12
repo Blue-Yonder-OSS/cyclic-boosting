@@ -42,11 +42,11 @@ def test_set_log():
     # load failure
     path = "./test_data.csv"
     log_path = "./test_data.pickle"
-    data_deliverler = datamodule.TornadoDataModule(path)
-    data_deliverler.set_log()
-    assert data_deliverler.log_path == log_path
-    assert data_deliverler.preprocessors == {}
-    assert data_deliverler.features == []
+    data_deliverer = datamodule.TornadoDataModule(path)
+    data_deliverer.set_log()
+    assert data_deliverer.log_path == log_path
+    assert data_deliverer.preprocessors == {}
+    assert data_deliverer.features == []
 
     # load success
     path = "./test_data.csv"
@@ -55,19 +55,19 @@ def test_set_log():
         log = {"preprocessors": {"test": {}},
                "features": ["test"]}
         pickle.dump(log, p)
-    data_deliverler = datamodule.TornadoDataModule(path)
-    data_deliverler.log_path = log_path
-    data_deliverler.set_log()
-    assert data_deliverler.log_path == log_path
-    assert data_deliverler.preprocessors == {"test": {}}
-    assert data_deliverler.features == ["test"]
+    data_deliverer = datamodule.TornadoDataModule(path)
+    data_deliverer.log_path = log_path
+    data_deliverer.set_log()
+    assert data_deliverer.log_path == log_path
+    assert data_deliverer.preprocessors == {"test": {}}
+    assert data_deliverer.features == ["test"]
     os.remove(log_path)
 
 
 def test_corr_based_removal():
     # time series
     path = "./test_data.csv"
-    data_deliverler = datamodule.TornadoDataModule(path)
+    data_deliverer = datamodule.TornadoDataModule(path)
     correlated_data = create_correlated_data(10, True)
     correlated_data["y0_drop"] = (correlated_data["y0"] +
                                   np.random.random(10) * 0.5)
@@ -77,20 +77,20 @@ def test_corr_based_removal():
     desired.drop(columns="y0_drop", inplace=True)
     desired_train, desired_valid = split_dataset(desired)
 
-    data_deliverler.train = train
-    data_deliverler.valid = valid
-    data_deliverler.target = "target"
-    data_deliverler.corr_based_removal()
-    data_deliverler.train = data_deliverler.train.reindex(
+    data_deliverer.train = train
+    data_deliverer.valid = valid
+    data_deliverer.target = "target"
+    data_deliverer.corr_based_removal()
+    data_deliverer.train = data_deliverer.train.reindex(
         columns=desired_train.columns)
-    data_deliverler.valid = data_deliverler.valid.reindex(
+    data_deliverer.valid = data_deliverer.valid.reindex(
         columns=desired_valid.columns)
-    pd.testing.assert_frame_equal(data_deliverler.train, desired_train)
-    pd.testing.assert_frame_equal(data_deliverler.valid, desired_valid)
+    pd.testing.assert_frame_equal(data_deliverer.train, desired_train)
+    pd.testing.assert_frame_equal(data_deliverer.valid, desired_valid)
 
     # non time series
     path = "./test_data.csv"
-    data_deliverler = datamodule.TornadoDataModule(path)
+    data_deliverer = datamodule.TornadoDataModule(path)
     correlated_data = create_correlated_data(10, False)
     correlated_data["y0_drop"] = (correlated_data["y0"] +
                                   np.random.random(10) * 0.5)
@@ -100,22 +100,22 @@ def test_corr_based_removal():
     desired.drop(columns="y0_drop", inplace=True)
     desired_train, desired_valid = split_dataset(desired)
 
-    data_deliverler.train = train
-    data_deliverler.valid = valid
-    data_deliverler.target = "target"
-    data_deliverler.corr_based_removal()
-    data_deliverler.train = data_deliverler.train.reindex(
+    data_deliverer.train = train
+    data_deliverer.valid = valid
+    data_deliverer.target = "target"
+    data_deliverer.corr_based_removal()
+    data_deliverer.train = data_deliverer.train.reindex(
         columns=desired_train.columns)
-    data_deliverler.valid = data_deliverler.valid.reindex(
+    data_deliverer.valid = data_deliverer.valid.reindex(
         columns=desired_valid.columns)
-    pd.testing.assert_frame_equal(data_deliverler.train, desired_train)
-    pd.testing.assert_frame_equal(data_deliverler.valid, desired_valid)
+    pd.testing.assert_frame_equal(data_deliverer.train, desired_train)
+    pd.testing.assert_frame_equal(data_deliverer.valid, desired_valid)
 
 
 def test_vif_based_removal():
     # time series
     path = "./test_data.csv"
-    data_deliverler = datamodule.TornadoDataModule(path)
+    data_deliverer = datamodule.TornadoDataModule(path)
     correlated_data = create_correlated_data(100, True)
     t = np.arange(0, 100 * 0.1, 0.1)
     correlated_data["y0_drop"] = (np.sin(2 * np.pi * t + 0.5) +
@@ -126,20 +126,20 @@ def test_vif_based_removal():
     desired.drop(columns="y0_drop", inplace=True)
     desired_train, desired_valid = split_dataset(desired)
 
-    data_deliverler.train = train
-    data_deliverler.valid = valid
-    data_deliverler.target = "target"
-    data_deliverler.vif_based_removal()
-    data_deliverler.train = data_deliverler.train.reindex(
+    data_deliverer.train = train
+    data_deliverer.valid = valid
+    data_deliverer.target = "target"
+    data_deliverer.vif_based_removal()
+    data_deliverer.train = data_deliverer.train.reindex(
         columns=desired_train.columns)
-    data_deliverler.valid = data_deliverler.valid.reindex(
+    data_deliverer.valid = data_deliverer.valid.reindex(
         columns=desired_valid.columns)
-    pd.testing.assert_frame_equal(data_deliverler.train, desired_train)
-    pd.testing.assert_frame_equal(data_deliverler.valid, desired_valid)
+    pd.testing.assert_frame_equal(data_deliverer.train, desired_train)
+    pd.testing.assert_frame_equal(data_deliverer.valid, desired_valid)
 
     # non time series
     path = "./test_data.csv"
-    data_deliverler = datamodule.TornadoDataModule(path)
+    data_deliverer = datamodule.TornadoDataModule(path)
     correlated_data = create_correlated_data(100, False)
     t = np.arange(0, 100 * 0.1, 0.1)
     correlated_data["y0_drop"] = (np.sin(2 * np.pi * t + 0.5) +
@@ -150,22 +150,22 @@ def test_vif_based_removal():
     desired.drop(columns="y0_drop", inplace=True)
     desired_train, desired_valid = split_dataset(desired)
 
-    data_deliverler.train = train
-    data_deliverler.valid = valid
-    data_deliverler.target = "target"
-    data_deliverler.vif_based_removal()
-    data_deliverler.train = data_deliverler.train.reindex(
+    data_deliverer.train = train
+    data_deliverer.valid = valid
+    data_deliverer.target = "target"
+    data_deliverer.vif_based_removal()
+    data_deliverer.train = data_deliverer.train.reindex(
         columns=desired_train.columns)
-    data_deliverler.valid = data_deliverler.valid.reindex(
+    data_deliverer.valid = data_deliverer.valid.reindex(
         columns=desired_valid.columns)
-    pd.testing.assert_frame_equal(data_deliverler.train, desired_train)
-    pd.testing.assert_frame_equal(data_deliverler.valid, desired_valid)
+    pd.testing.assert_frame_equal(data_deliverer.train, desired_train)
+    pd.testing.assert_frame_equal(data_deliverer.valid, desired_valid)
 
 
 def test_remove_features():
     # without preprocessing log
     path = "./test_data.csv"
-    data_deliverler = datamodule.TornadoDataModule(path)
+    data_deliverer = datamodule.TornadoDataModule(path)
     correlated_data = create_correlated_data(100, True)
     t = np.arange(0, 100 * 0.1, 0.1)
     correlated_data["y0_drop"] = (np.sin(2 * np.pi * t + 0.5) +
@@ -176,21 +176,21 @@ def test_remove_features():
     desired.drop(columns="y0_drop", inplace=True)
     desired_train, desired_valid = split_dataset(desired)
 
-    data_deliverler.train = train
-    data_deliverler.valid = valid
-    data_deliverler.target = "target"
-    data_deliverler.features = []
-    data_deliverler.remove_features()
-    data_deliverler.train = data_deliverler.train.reindex(
+    data_deliverer.train = train
+    data_deliverer.valid = valid
+    data_deliverer.target = "target"
+    data_deliverer.features = []
+    data_deliverer.remove_features()
+    data_deliverer.train = data_deliverer.train.reindex(
         columns=desired_train.columns)
-    data_deliverler.valid = data_deliverler.valid.reindex(
+    data_deliverer.valid = data_deliverer.valid.reindex(
         columns=desired_valid.columns)
-    pd.testing.assert_frame_equal(data_deliverler.train, desired_train)
-    pd.testing.assert_frame_equal(data_deliverler.valid, desired_valid)
+    pd.testing.assert_frame_equal(data_deliverer.train, desired_train)
+    pd.testing.assert_frame_equal(data_deliverer.valid, desired_valid)
 
     # with preprocessing log
     path = "./test_data.csv"
-    data_deliverler = datamodule.TornadoDataModule(path)
+    data_deliverer = datamodule.TornadoDataModule(path)
 
     correlated_data = create_correlated_data(100, True)
     correlated_data["y0_drop"] = np.random.random(100)
@@ -200,17 +200,17 @@ def test_remove_features():
     desired.drop(columns="y0_drop", inplace=True)
     desired_train, desired_valid = split_dataset(desired)
 
-    data_deliverler.train = train
-    data_deliverler.valid = valid
-    data_deliverler.target = "target"
-    data_deliverler.features = ["y0", "y1", "date", "target"]
-    data_deliverler.remove_features()
-    data_deliverler.train = data_deliverler.train.reindex(
+    data_deliverer.train = train
+    data_deliverer.valid = valid
+    data_deliverer.target = "target"
+    data_deliverer.features = ["y0", "y1", "date", "target"]
+    data_deliverer.remove_features()
+    data_deliverer.train = data_deliverer.train.reindex(
         columns=desired_train.columns)
-    data_deliverler.valid = data_deliverler.valid.reindex(
+    data_deliverer.valid = data_deliverer.valid.reindex(
         columns=desired_valid.columns)
-    pd.testing.assert_frame_equal(data_deliverler.train, desired_train)
-    pd.testing.assert_frame_equal(data_deliverler.valid, desired_valid)
+    pd.testing.assert_frame_equal(data_deliverer.train, desired_train)
+    pd.testing.assert_frame_equal(data_deliverer.valid, desired_valid)
 
 
 def test_generate(caplog):
@@ -218,7 +218,7 @@ def test_generate(caplog):
     # without parameter
     path = "./test_data.csv"
     log_path = "./test_data.pickle"
-    data_deliverler = datamodule.TornadoDataModule(path)
+    data_deliverer = datamodule.TornadoDataModule(path)
     correlated_data = create_correlated_data(100, True)
     t = np.arange(0, 100 * 0.1, 0.1)
     correlated_data["y0_drop"] = (np.sin(2 * np.pi * t + 0.5) +
@@ -226,27 +226,27 @@ def test_generate(caplog):
     correlated_data.to_csv(path, index=False)
 
     desired_n_features_original = [4]
-    desired_n_features_preprocessed = [30]
-    desired_n_features_selected = [7, 8, 9, 10, 11]
+    desired_n_features_preprocessed = [21]
+    desired_n_features_selected = [7, 8, 9]
     desired_n_features = [desired_n_features_original,
                           desired_n_features_preprocessed,
                           desired_n_features_selected]
 
-    train, valid = data_deliverler.generate("target", True, 0.2, 0)
+    train, valid = data_deliverer.generate("target", True, 0.2, 0)
 
     for logger_name, log_level, message in caplog.record_tuples:
         if 'datamodule' in logger_name and "->" in message:
             n_features = re.findall(r"\d+", message)
             for i, n in enumerate(n_features):
                 assert int(n) in desired_n_features[i]
-    assert data_deliverler.log_path == log_path
+    assert data_deliverer.log_path == log_path
     with open(log_path, "rb") as p:
         log = pickle.load(p)
     os.remove(path)
     os.remove(log_path)
 
-    assert all(k in data_deliverler.preprocessors.keys()
+    assert all(k in data_deliverer.preprocessors.keys()
                for k in log["preprocessors"].keys())
     assert all(k in log["preprocessors"].keys()
-               for k in data_deliverler.preprocessors.keys())
-    assert data_deliverler.features == log["features"]
+               for k in data_deliverer.preprocessors.keys())
+    assert data_deliverer.features == log["features"]

@@ -38,6 +38,11 @@ class Preprocess():
     features. As a result, the number of features usually increases compared
     to before processing.
 
+    By default, "minmax", "binning", and "clipping", which are not important
+    considering the methodological characteristics of cyclic boosting, are not
+    performed. You can perform these preprocessing optionally by adding them
+    to the parameter `opt`.
+
     Parameters
     ----------
     opt: str
@@ -133,7 +138,6 @@ class Preprocess():
         pandas.DataFrame
             dataset
         """
-        # transfrom column name to lower
         if path_ds.endswith(".csv"):
             dataset = self.tolowerstr(pd.read_csv(path_ds))
         elif path_ds.endswith(".xlsx"):
@@ -154,7 +158,6 @@ class Preprocess():
         is_time_series : bool
             Whether the data is a time series dataset or not.
         """
-        # datasetに対してどんな前処理を施す必要があるかを調べて返す
         if self.preprocessors:
             return
         col_names = dataset.columns.to_list()
@@ -182,10 +185,7 @@ class Preprocess():
                           " the datetime of the data.")
 
         self.preprocessors["standardization"] = {}
-        self.preprocessors["minmax"] = {}
         self.preprocessors["logarithmic"] = {}
-        self.preprocessors["clipping"] = {}
-        self.preprocessors["binning"] = {}
         self.preprocessors["rank"] = {}
         self.preprocessors["rankgauss"] = {}
 
@@ -226,13 +226,16 @@ class Preprocess():
             Temporary datasets for holding interim results between
             preprocessing steps.
         """
-        # 特徴量エンジニアリングを実行
         self.train_raw = train.copy()
         self.valid_raw = valid.copy()
         self.train = train.copy()
         self.valid = valid.copy()
 
+        for prep in self.opt.keys():
+            if prep not in self.get_preprocessors().keys():
+                self.set_preprocessors({prep: {}})
         preprocessors = self.get_preprocessors().copy()
+
         for prep, params in preprocessors.items():
             train, valid = eval(f"self.{prep}")(self.train_raw.copy(),
                                                 self.valid_raw.copy(),
@@ -401,14 +404,15 @@ class Preprocess():
         """
         nlags = int(len(time_based_average_data)/2-1)
         nlags = min(nlags, 500)
-        acf = sm.tsa.stattools.acf(time_based_average_data, nlags=nlags)
-        pacf = sm.tsa.stattools.pacf(time_based_average_data,
-                                     method="ywm",
-                                     nlags=nlags)
-        argmax_acf = np.argmax(acf[1:])+1
-        argmax_pacf = np.argmax(pacf[1:])+1
+        autocorrelation = sm.tsa.stattools.acf(time_based_average_data,
+                                               nlags=nlags)
+        partial_autocorrelation = sm.tsa.stattools.pacf(time_based_average_data,
+                                                        method="ywm",
+                                                        nlags=nlags)
+        idx_autocorrelation = np.argmax(autocorrelation[1:])+1
+        idx_partial_autocorrelation = np.argmax(partial_autocorrelation[1:])+1
 
-        return argmax_acf, argmax_pacf
+        return idx_autocorrelation, idx_partial_autocorrelation
 
     def lag(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate lag feature from date feature.
@@ -1353,10 +1357,6 @@ class Preprocess():
                 raise RuntimeError("The dataset has differenct dtype in same col")
 
         if len(category) > 0:
-            # NOTE: check unknown_value and encoded_missing_value's behaivier
-            # NOTE: and check CB's missing feature processing
-            # it might be better than this process
-
             encoders = self.get_preprocessors().copy()["encode_category"]
             if len(encoders) != 1:
                 raise RuntimeError("Single encoding method should be used for categorical variables.")
