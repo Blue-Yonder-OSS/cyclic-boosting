@@ -12,11 +12,15 @@ Multiplicative Regression
 - :class:`~.CBPoissonRegressor`
 - :class:`~.CBNBinomRegressor`
 - :class:`~.CBExponential`
+- :class:`~.CBMultiplicativeQuantileRegressor`
+- :class:`~.CBMultiplicativeGenericCRegressor`
 
 Additive Regression
 
 - :class:`~.CBLocationRegressor`
 - :class:`~.CBLocPoissonRegressor`
+- :class:`~.CBAdditiveQuantileRegressor`
+- :class:`~.CBAdditiveGenericCRegressor`
 
 PDF Prediction
 
@@ -25,6 +29,7 @@ PDF Prediction
 Classification
 
 - :class:`~.CBClassifier`
+- :class:`~.CBGenericClassifier`
 
 Background Subtraction
 
@@ -41,6 +46,13 @@ from cyclic_boosting.location import CBLocationRegressor, CBLocPoissonRegressor
 from cyclic_boosting.nbinom import CBNBinomC
 from cyclic_boosting.classification import CBClassifier
 from cyclic_boosting.GBSregression import CBGBSRegressor
+from cyclic_boosting.generic_loss import (
+    CBMultiplicativeQuantileRegressor,
+    CBAdditiveQuantileRegressor,
+    CBMultiplicativeGenericCRegressor,
+    CBAdditiveGenericCRegressor,
+    CBGenericClassifier,
+)
 from cyclic_boosting.pipelines import (
     pipeline_CBPoissonRegressor,
     pipeline_CBNBinomRegressor,
@@ -50,6 +62,11 @@ from cyclic_boosting.pipelines import (
     pipeline_CBLocPoissonRegressor,
     pipeline_CBNBinomC,
     pipeline_CBGBSRegressor,
+    pipeline_CBMultiplicativeQuantileRegressor,
+    pipeline_CBAdditiveQuantileRegressor,
+    pipeline_CBMultiplicativeGenericCRegressor,
+    pipeline_CBAdditiveGenericCRegressor,
+    pipeline_CBGenericClassifier,
 )
 
 __all__ = [
@@ -62,6 +79,11 @@ __all__ = [
     "CBNBinomC",
     "CBClassifier",
     "CBGBSRegressor",
+    "CBMultiplicativeQuantileRegressor",
+    "CBAdditiveQuantileRegressor",
+    "CBMultiplicativeGenericCRegressor",
+    "CBAdditiveGenericCRegressor",
+    "CBGenericClassifier",
     "pipeline_CBPoissonRegressor",
     "pipeline_CBNBinomRegressor",
     "pipeline_CBClassifier",
@@ -70,6 +92,11 @@ __all__ = [
     "pipeline_CBLocPoissonRegressor",
     "pipeline_CBNBinomC",
     "pipeline_CBGBSRegressor",
+    "pipeline_CBMultiplicativeQuantileRegressor",
+    "pipeline_CBAdditiveQuantileRegressor",
+    "pipeline_CBMultiplicativeGenericCRegressor",
+    "pipeline_CBAdditiveGenericCRegressor",
+    "pipeline_CBGenericClassifier",
 ]
 
 __version__ = "1.0"

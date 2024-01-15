@@ -8,6 +8,10 @@ import numpy as np
 import pandas as pd
 import six
 
+from typing import Iterable, List, Optional
+
+from dataclasses import dataclass
+
 _logger = logging.getLogger(__name__)
 
 
@@ -163,7 +167,6 @@ def nans(shape):
 def multidim_binnos_to_lexicographic_binnos(binnos, n_bins=None, binsteps=None):
     """Map index-tuples of ``M``-dimensional features to integers.
 
-
     In the cyclic boosting algorithm there is a one-dimensional array of
     factors for each one-dimensional feature. For processing of
     multi-dimensional variables (i.e. combinations of several one-dimensional
@@ -200,7 +203,6 @@ def multidim_binnos_to_lexicographic_binnos(binnos, n_bins=None, binsteps=None):
         ordinal numbers of the bins in lexicographic order as
         :class:`numpy.ndarray` of type `int64` and maximal bin numbers as
         :class:`numpy.ndarray` of shape ``(M,)``
-
 
     Examples
     --------
@@ -293,7 +295,7 @@ def bin_steps(n_bins: nb.int64[:]):
 
 
 @nb.njit()
-def arange_multi(stops):
+def arange_multi(stops) -> np.ndarray:
     """
     Multidimensional generalization of :func:`numpy.arange`
 
@@ -496,6 +498,11 @@ def calc_means_medians(binnumbers, y, weights=None):
             return _calc_means_medians_evenly_weighted(binnumbers, y)
         else:
             return _calc_means_medians_with_weights(binnumbers, y, weights)
+
+
+def calc_weighted_quantile(binnumbers, y, weights, quantile):
+    df = pd.DataFrame({"y": y, "weights": weights, "binnumbers": binnumbers})
+    return df.groupby("binnumbers").apply(_weighted_quantile_of_dataframe(quantile))
 
 
 def _calc_means_medians_evenly_weighted(binnumbers, y):
@@ -747,13 +754,13 @@ def regularize_to_prior_expectation(values, uncertainties, prior_expectation, th
     significance = (values - prior_expectation) / uncertainties
     return prior_expectation + uncertainties * np.where(
         np.abs(significance) > threshold,
-        np.sign(significance) * np.sqrt(significance**2.0 - threshold**2.0),
+        np.sign(significance) * np.sqrt(np.abs(significance**2.0 - threshold**2.0)),
         0,
     )
 
 
 def regularize_to_error_weighted_mean(values, uncertainties, prior_prediction=None):
-    r"""Regularize values with uncertainties to the error weighted mean.
+    r"""Regularize values with uncertainties to its error-weighted mean.
 
     :param values: measured values
     :type values: :class:`numpy.ndarray` (float64, dim=1)
@@ -819,7 +826,7 @@ def regularize_to_error_weighted_mean(values, uncertainties, prior_prediction=No
     ValueError: <values> and <uncertainties> must have the same shape
     """
     if values.shape != uncertainties.shape:
-        raise ValueError("<values> and <uncertainties> " "must have the same shape")
+        raise ValueError("values and uncertainties must have the same shape")
     if len(values) < 1 or (prior_prediction is None and len(values) == 1):
         return values
 
@@ -831,14 +838,56 @@ def regularize_to_error_weighted_mean(values, uncertainties, prior_prediction=No
             # if all values are the same,
             # regularizing to the mean makes no sense
             return x
-        x_mean = np.sum(wx * x) / np.sum(wx)
+        x_mean = np.sum(wx * x) / sum_wx
     else:
         if np.allclose(x, prior_prediction):
             return x
         x_mean = prior_prediction
     wx_incl = 1.0 / (np.sum(wx * np.square(x - x_mean)) / sum_wx)
     res = (wx * x + wx_incl * x_mean) / (wx + wx_incl)
+    return res
 
+
+def regularize_to_error_weighted_mean_neighbors(
+    values: np.ndarray, uncertainties: np.ndarray, window_size: Optional[int] = 3
+) -> np.ndarray:
+    """
+    Regularize values with uncertainties to its error-weighted mean, using a
+    sliding window.
+
+    Parameters
+    ----------
+    values : np.ndarray
+        data (`float` type) to be regularized
+    uncertainties : np.ndarray
+        uncertainties (`float` type) of values
+    window_size : int
+        size of the sliding window to be used (e.g., 3 means include direct
+        left and right neighbors)
+
+    Returns
+    -------
+    np.ndarray
+        regularized values
+    """
+    if values.shape != uncertainties.shape:
+        raise ValueError("values and uncertainties must have the same shape")
+
+    if len(values) < 3:
+        return regularize_to_error_weighted_mean(values, uncertainties)
+
+    window_arr = np.ones(window_size)
+    x = values
+    wx = np.where(uncertainties > 0, 1.0 / np.square(uncertainties), 0.0)
+
+    sum_wx = np.convolve(wx, window_arr, "same")
+    x_mean = np.convolve(wx * x, window_arr, "same") / sum_wx
+
+    wx_incl = np.ones(len(x))
+    for i in range(len(x)):
+        wx_incl[i] = (sum_wx / np.convolve(wx * np.square(x - x_mean[i]), window_arr, "same"))[i]
+
+    res = (wx * x + wx_incl * x_mean) / (wx + wx_incl)
     return res
 
 
@@ -974,3 +1023,86 @@ def get_feature_column_names(X, exclude_columns=[]):
         if col in features:
             features.remove(col)
     return features
+
+
+def continuous_quantile_from_discrete_pdf(y, quantile, weights):
+    """
+    Calculates a continous quantile value approximation for a given quantile
+    from an array of potentially discrete values.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        containing data with `float` type (potentially discrete)
+    quantile : float
+        desired quantile
+
+    Returns
+    -------
+    float
+        calculated quantile value
+    """
+    y = np.asarray(y)
+    weights = np.asarray(weights)
+
+    sorting = y.argsort()
+    sorted_y = y[sorting]
+    cumsum = weights[sorting].cumsum()
+    quantile_index = weights.sum() * quantile
+    quantile_y = sorted_y[cumsum >= quantile_index][0]
+
+    all_quantile_y = np.where(sorted_y == quantile_y)[0]
+    index_low = all_quantile_y[0]
+    index_high = all_quantile_y[-1]
+    if index_high > index_low:
+        quantile_y += (int(quantile_index) - index_low) / (index_high - index_low)
+
+    return quantile_y
+
+
+@dataclass
+class ConvergenceParameters:
+    """Class for registering the convergence parameters"""
+
+    loss_change: float = 1e20
+    delta: float = 100.0
+
+    def set_loss_change(self, updated_loss_change: float) -> None:
+        self.loss_change = updated_loss_change
+
+    def set_delta(self, updated_delta: float) -> None:
+        self.delta = updated_delta
+
+
+def get_normalized_values(values: Iterable) -> List[float]:
+    values_total = sum(values)
+    if round(values_total, 6) != 0.0:
+        return [value / values_total for value in values]
+    return [value for value in values]
+
+
+def smear_discrete_cdftruth(cdf_func: callable, y: int) -> float:
+    """
+    Smearing of the CDF value of a sample from a discrete random variable. Main
+    usage is for a histogram of CDF values to check an estimated individual
+    probability distribution (should be flat).
+
+    Parameters
+    ----------
+    y : int
+        value from discrete random variable
+    cdf_func : callable
+        cumulative distribution function
+
+    Returns
+    -------
+    float
+        smeared CDF value for y
+    """
+    cdf_high = cdf_func(y)
+    if y >= 1:
+        cdf_low = cdf_func(y - 1)
+    else:
+        cdf_low = 0.0
+    cdf_truth = cdf_low + np.random.uniform(0, 1) * (cdf_high - cdf_low)
+    return cdf_truth

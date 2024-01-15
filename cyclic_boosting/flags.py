@@ -1,10 +1,7 @@
-"""
-Handling of flags for the ``fit_mode`` argument in estimators. Flags are
-bit-fields that can be handeld by binary operations.
-"""
 from __future__ import absolute_import, division, print_function
 
 from enum import Enum
+from typing import Optional, Union
 
 
 class _FeatureProbBit(Enum):
@@ -53,7 +50,7 @@ _FLAG_LIST = [
 ]
 
 
-def is_continuous_set(feature_prop):
+def is_continuous_set(feature_prop: int) -> bool:
     """Is IS_CONTINUOUS included in the feature properties?
 
     :param feature_prop: feature properties for one feature
@@ -78,7 +75,7 @@ def is_continuous_set(feature_prop):
     return feature_prop & IS_CONTINUOUS == IS_CONTINUOUS
 
 
-def is_ordered_set(feature_prop):
+def is_ordered_set(feature_prop: int) -> bool:
     """Is IS_ORDERED included in the feature properties?
 
     :param feature_prop: feature properties for one feature
@@ -98,7 +95,7 @@ def is_ordered_set(feature_prop):
     return feature_prop & IS_ORDERED == IS_ORDERED
 
 
-def is_unordered_set(feature_prop):
+def is_unordered_set(feature_prop: int) -> bool:
     """Is IS_UNORDERED included in the feature properties?
 
     :param feature_prop: feature properties for one feature
@@ -120,7 +117,7 @@ def is_unordered_set(feature_prop):
     return feature_prop & IS_UNORDERED == IS_UNORDERED
 
 
-def is_monotonic_set(feature_prop):
+def is_monotonic_set(feature_prop: int) -> bool:
     """Is IS_MONOTONIC included in the feature properties?
 
     :param feature_prop: feature properties for one feature
@@ -146,7 +143,7 @@ def is_monotonic_set(feature_prop):
     return feature_prop & IS_MONOTONIC == IS_MONOTONIC
 
 
-def increasing_set(feature_prop):
+def increasing_set(feature_prop: int) -> bool:
     """Is INCREASING included in the feature properties?
 
     :param feature_prop: feature properties for one feature
@@ -166,7 +163,7 @@ def increasing_set(feature_prop):
     return feature_prop & INCREASING == INCREASING
 
 
-def decreasing_set(feature_prop):
+def decreasing_set(feature_prop: int) -> bool:
     """Is DECREASING included in the feature properties?
 
     :param feature_prop: feature properties for one feature
@@ -186,11 +183,11 @@ def decreasing_set(feature_prop):
     return feature_prop & DECREASING == DECREASING
 
 
-def has_magic_missing_set(feature_property):
-    return feature_property & HAS_MAGIC_INT_MISSING == HAS_MAGIC_INT_MISSING
+def has_magic_missing_set(feature_prop: int) -> bool:
+    return feature_prop & HAS_MAGIC_INT_MISSING == HAS_MAGIC_INT_MISSING
 
 
-def has_missing_set(feature_prop):
+def has_missing_set(feature_prop: int) -> bool:
     """Is HAS_MISSING included in the feature properties?
 
     :param feature_prop: feature properties for one feature
@@ -215,7 +212,7 @@ def has_missing_set(feature_prop):
     return feature_prop & HAS_MISSING == HAS_MISSING
 
 
-def missing_not_learned_set(feature_prop):
+def missing_not_learned_set(feature_prop: int) -> bool:
     """Is MISSING_NOT_LEARNED included in the feature properties?
 
     :param feature_prop: feature properties for one feature
@@ -237,22 +234,22 @@ def missing_not_learned_set(feature_prop):
     return feature_prop & MISSING_NOT_LEARNED == MISSING_NOT_LEARNED
 
 
-def is_linear_set(feature_prop):
+def is_linear_set(feature_prop: int) -> bool:
     return feature_prop & IS_LINEAR == IS_LINEAR
 
 
-def is_seasonal_set(feature_prop):
+def is_seasonal_set(feature_prop: int) -> bool:
     return feature_prop & IS_SEASONAL == IS_SEASONAL
 
 
-def check_flags_consistency(flags_value):
+def check_flags_consistency(feature_prop: int) -> None:
     """Check that exactly one of ``IS_CONTINUOUS, IS_ORDERED, IS_UNORDERED``
     has been set.
 
     Parameters
     ----------
-    flags_value: int
-        flag value to check for consistency
+    feature_prop: int
+        value to check for consistency
 
     Examples
     --------
@@ -288,17 +285,20 @@ def check_flags_consistency(flags_value):
     Traceback (most recent call last):
     ValueError: One feature can either be ...
     """
-    if int(is_continuous_set(flags_value)) + int(is_ordered_set(flags_value)) + int(is_unordered_set(flags_value)) != 1:
+    if (
+        int(is_continuous_set(feature_prop)) + int(is_ordered_set(feature_prop)) + int(is_unordered_set(feature_prop))
+        != 1
+    ):
         raise ValueError(
             "Exactly one of IS_CONTINUOUS, IS_ORDERED, "
             "IS_UNORDERED must be set in a "
             "flags value for the feature properties."
         )
-    if int(increasing_set(flags_value)) + int(decreasing_set(flags_value)) == 2:
+    if int(increasing_set(feature_prop)) + int(decreasing_set(feature_prop)) == 2:
         raise ValueError("One feature can either be INCREASING" " or DECREASING")
 
 
-def flags_to_string(flags_value):
+def flags_to_string(flags_value: Union[int, tuple]) -> Union[tuple, str]:
     """
     This function converts the numeric flags to the corresponding strings
     that are defined in the flag list.
@@ -351,7 +351,9 @@ def flags_to_string(flags_value):
         return _convert_flags_to_string(flags_value)
 
 
-def _convert_flags_to_string(flags_value, alternative_flag_list=None, alternative_flags=None):
+def _convert_flags_to_string(
+    flags_value: int, alternative_flag_list: Optional[int] = None, alternative_flags: Optional[dict] = None
+) -> str:
     """
     This function converts the numeric flags to the corresponding strings
     that are defined in the flag list.
@@ -375,11 +377,14 @@ def _convert_flags_to_string(flags_value, alternative_flag_list=None, alternativ
     """
     if alternative_flag_list is None:
         alternative_flag_list = _FLAG_LIST
+
     lst = []
     flags1 = flags_value
     glob_vars = globals()
+
     if alternative_flags is not None:
         glob_vars.update(alternative_flags)
+
     for flag_name in alternative_flag_list:
         flag = glob_vars[flag_name]
         if flag & flags_value == flag:
@@ -390,7 +395,9 @@ def _convert_flags_to_string(flags_value, alternative_flag_list=None, alternativ
     return " | ".join(lst)
 
 
-def read_feature_property(feature_properties, feature_group, default):
+def read_feature_property(
+    feature_properties: dict, feature_group: Union[tuple, str], default: int
+) -> Union[tuple, int]:
     """Read a feature property out of the ``feature_properties`` dict which may
     be None. If no value is found, return ``default`` as the default value.
 

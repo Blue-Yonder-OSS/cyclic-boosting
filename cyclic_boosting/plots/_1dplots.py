@@ -196,11 +196,10 @@ def plot_factor_1d(
     plot_yp: bool
         Show deviation between truth and prediction in last iteration.
     """
-    try:
-        y = feature.y
-        p = feature.prediction
-    except AttributeError:
+    y = feature.y
+    if y is None:
         plot_yp = False
+    p = feature.prediction
 
     if plot_yp:
         factors = feature.mean_dev

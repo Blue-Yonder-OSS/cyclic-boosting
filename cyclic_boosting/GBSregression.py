@@ -8,9 +8,11 @@ import logging
 
 import numpy as np
 from sklearn.base import RegressorMixin
+import pandas as pd
 
-from cyclic_boosting.base import CyclicBoostingBase
+from cyclic_boosting.base import CyclicBoostingBase, Feature, CBLinkPredictionsFactors
 from cyclic_boosting.link import IdentityLinkMixin
+from typing import Tuple, Union
 
 _logger = logging.getLogger(__name__)
 
@@ -35,6 +37,7 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
     def __init__(
         self,
         feature_groups=None,
+        hierarchical_feature_groups=None,
         feature_properties=None,
         weight_column=None,
         minimal_loss_change=1e-10,
@@ -50,6 +53,7 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
         CyclicBoostingBase.__init__(
             self,
             feature_groups=feature_groups,
+            hierarchical_feature_groups=hierarchical_feature_groups,
             feature_properties=feature_properties,
             weight_column=weight_column,
             minimal_loss_change=minimal_loss_change,
@@ -64,7 +68,9 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
 
         self.regalpha = regalpha
 
-    def calc_parameters(self, feature, y, pred, prefit_data):
+    def calc_parameters(
+        self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors, prefit_data
+    ) -> Tuple[np.ndarray, np.ndarray]:
         lex_binnumbers = feature.lex_binned_data
         minlength = feature.n_bins
         prediction = pred.predict_link()
@@ -72,15 +78,9 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
         n = (y - prediction) * self.weights
         d = self.weights * (1 + self.regalpha)
 
-        sum_n = np.bincount(lex_binnumbers, weights=n, minlength=minlength)
-
-        sum_d = np.bincount(lex_binnumbers, weights=d, minlength=minlength)
-
-        sum_nd = np.bincount(lex_binnumbers, weights=n * d, minlength=minlength)
-
-        sum_n2 = np.bincount(lex_binnumbers, weights=n * n, minlength=minlength)
-
-        sum_d2 = np.bincount(lex_binnumbers, weights=d * d, minlength=minlength)
+        sum_n, sum_d, sum_nd, sum_n2, sum_d2 = (
+            np.bincount(lex_binnumbers, weights=w, minlength=minlength) for w in [n, d, n * d, n * n, d * d]
+        )
 
         sum_d += 1
         sum_d2 += 1**2
@@ -90,19 +90,20 @@ class CBGBSRegressor(RegressorMixin, CyclicBoostingBase, IdentityLinkMixin):
 
         return summand, np.sqrt(variance_summand)
 
-    def _check_y(self, y):
+    def _check_y(self, y: np.ndarray):
         pass
 
-    def _init_global_scale(self, X, y):
+    def _init_global_scale(self, X: Union[pd.DataFrame, np.ndarray], y: np.ndarray) -> None:
         if self.weights is None:
             raise RuntimeError("The weights have to be initialized.")
         self.global_scale_link_ = (y * self.weights).sum() / self.weights.sum()
 
-    def loss(self, prediction, y, weights):
+    def loss(self, prediction: np.ndarray, y: np.ndarray, weights: np.ndarray) -> float:
         wvisitsum = ((y != 0).astype(int) * weights).sum()
-        return (weights * (prediction - y) ** 2).sum() / wvisitsum
+        loss = (weights * (prediction - y) ** 2).sum() / wvisitsum
+        return loss
 
-    def precalc_parameters(self, feature, y, pred):
+    def precalc_parameters(self, feature: Feature, y: np.ndarray, pred: CBLinkPredictionsFactors) -> None:
         return None
 
 

@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 from cyclic_boosting import utils
 
@@ -36,3 +37,53 @@ def test_get_feature_column_names():
     np.testing.assert_equal(features, ["a", "b", "c"])
     features = utils.get_feature_column_names(X, exclude_columns=["a"])
     np.testing.assert_equal(features, ["b", "c"])
+
+
+def continuous_quantile_from_discrete_pdf():
+    y = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+    quantile_value = utils.continuous_quantile_from_discrete(y, 0.8)
+    assert quantile_value == 8.0
+    quantile_value = utils.continuous_quantile_from_discrete(y, 0.35)
+    assert quantile_value == 3.0
+    y = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] * 2)
+    quantile_value = utils.continuous_quantile_from_discrete(y, 0.35)
+    assert quantile_value == 3.5
+
+
+def test_convergence_parameters():
+    cp = utils.ConvergenceParameters()
+    assert cp.loss_change == 1e20
+    assert cp.delta == 100.0
+
+
+@pytest.mark.parametrize(
+    "values, expected_result",
+    [
+        ([1, 2, 3], [0.16666666666666666, 0.3333333333333333, 0.5]),
+        ([0.0001, 0.000005, 0.000001], [0.9433962264150944, 0.04716981132075472, 0.009433962264150943]),
+        ([0.00, 0.00, 0.00], [0.00, 0.00, 0.00]),
+    ],
+)
+def test_get_normalized_values(values, expected_result):
+    normalized_values = utils.get_normalized_values(values)
+
+    assert normalized_values == expected_result
+
+    if int(sum(normalized_values)):
+        np.testing.assert_almost_equal(sum(normalized_values), 1.0, 6)
+    else:
+        np.testing.assert_almost_equal(sum(normalized_values), 0.0, 6)
+
+
+def test_regularize_to_error_weighted_mean_neighbors():
+    values = np.array([0.5, 2.0, 0.5])
+    uncertainties = np.array([1.0, 1.0, 1.0])
+    res = utils.regularize_to_error_weighted_mean_neighbors(values, uncertainties)
+    ref = np.array(
+        [
+            (0.5 + 1.0 / (0.75 * 0.75) * 1.25) / (1 + 1.0 / (0.75 * 0.75)),
+            (2.0 + 1.0 / ((2 * 0.5 * 0.5 + 1) / 3.0)) / (1 + 1.0 / ((2 * 0.5 * 0.5 + 1) / 3.0)),
+            (0.5 + 1.0 / (0.75 * 0.75) * 1.25) / (1 + 1.0 / (0.75 * 0.75)),
+        ]
+    )
+    np.testing.assert_allclose(res, ref)

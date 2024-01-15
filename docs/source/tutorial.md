@@ -129,3 +129,43 @@ CB_est.fit(X_train, y)
 
 yhat = CB_est.predict(X_test)
 ```
+
+## Feature Importances
+To get a dictionary with the relative importances of the different model
+features in the training:
+```python
+CB_est.get_feature_importances()
+```
+
+## Individual Explainability
+To get a dictionary with the contributions of the different model features to
+the individual predictions of a given data set:
+```python
+CB_est.get_feature_contributions(X_test)
+```
+
+
+## Quantile Regression
+Below you can find an example of a quantile regression model for three
+different quantiles, with a subsequent quantile matching (to get a full
+individual probability distribution from the estimated quantiles) by means of a
+quantile-parameterized distribution for an arbitrary test sample:
+```python
+from cyclic_boosting.pipelines import pipeline_CBMultiplicativeQuantileRegressor
+from cyclic_boosting.quantile_matching import J_QPD_S
+
+CB_est_qlow = pipeline_CBMultiplicativeQuantileRegressor(quantile=0.2)
+CB_est_qlow.fit(X_train.copy(), y)
+yhat_qlow = CB_est_qlow.predict(X_test.copy())
+
+CB_est_qmedian = pipeline_CBMultiplicativeQuantileRegressor(quantile=0.5)
+CB_est_qmedian.fit(X_train.copy(), y)
+yhat_qmedian = CB_est_qmedian.predict(X_test.copy())
+
+CB_est_qhigh = pipeline_CBMultiplicativeQuantileRegressor(quantile=0.8)
+CB_est_qhigh.fit(X_train.copy(), y)
+yhat_qhigh = CB_est_qhigh.predict(X_test.copy())
+
+j_qpd_s_42 = J_QPD_S(0.2, yhat_qlow[42], yhat_qmedian[42], yhat_qhigh[42])
+yhat_42_percentile95 = j_qpd_s_42.ppf(0.95)
+```

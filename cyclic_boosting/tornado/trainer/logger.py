@@ -1,89 +1,100 @@
 import logging
 
+import abc
+import six
 import os
 import pickle
-import numpy as np
 import copy
 
 from cyclic_boosting import flags
 from cyclic_boosting.plots import plot_analysis
-from cyclic_boosting.tornado.core.module import TornadoVariableSelectionModule
 
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-handler.terminator = ''
+handler.terminator = ""
 _logger.addHandler(handler)
 
 
-class Logger():
+@six.add_metaclass(abc.ABCMeta)
+class LoggerBase:
     def __init__(self, save_dir, policy):
-        # super().__init__()
         self.iter = 0
         self.save_dir = save_dir
-        self.model_dir = None
         self.policy = policy
+        self.log_data = dict()
+        self.model_dir = None
         self.make_dir()
-        self.CODs = {}
-        self.sorted_CODs = {}
-        self.best = {}
 
-        # for vote
-        self.counter = 0
+    def get_params(self) -> dict:
+        class_vars = dict()
+        for attr_name, value in self.__dict__.items():
+            if not callable(value) and not attr_name.startswith("__"):
+                class_vars[attr_name] = value
+
+        return class_vars
+
+    def set_params(self, params: dict) -> None:
+        class_vars = dict()
+        for attr_name, value in self.__dict__.items():
+            if not callable(value) and not attr_name.startswith("__"):
+                class_vars[attr_name] = value
+
+        for attr_name, value in params.items():
+            class_vars[attr_name] = value
 
     def make_dir(self) -> None:
         if not os.path.isdir(self.save_dir):
             os.mkdir(self.save_dir)
 
     def make_model_dir(self) -> None:
-        self.model_dir = os.path.join(self.save_dir,
-                                      f'model_{self.best["iter"]}')
+        file_name = f"model_{self.log_data['iter']}"
+        self.model_dir = os.path.join(self.save_dir, file_name)
         if not os.path.isdir(self.model_dir):
             os.mkdir(self.model_dir)
 
     def save_model(self, est, name):
-        pickle.dump(est, open(name, 'wb'))
+        pickle.dump(est, open(name, "wb"))
 
     def save_metrics(self, name):
-        with open(name, 'w') as f:
-            for k, v in self.best["metrics"].items():
-                f.write(f"[{k}]: {v} \n")
+        with open(name, "w") as f:
+            for name, value in self.log_data["metrics"].items():
+                f.write(f"[{name}]: {value} \n")
 
     def save_setting(self, name):
-        fp = self.best["feature_properties"]
+        fp = self.log_data["feature_properties"]
+        s = self.log_data["smoothers"]
 
-        s = self.best["smoothers"]
-
-        with open(name, 'w') as f:
+        with open(name, "w") as f:
             # feature property
             f.write("=== Feature property ===\n")
-            for k, v in fp.items():
-                f.write(f"[{k}]: {v} \n")
+            for feature, property in fp.items():
+                f.write(f"[{feature}]: {property} \n")
             f.write("\n")
 
             # feature
             f.write("=== Feature ===\n")
-            f.write(f"{self.best['features']}\n")
+            f.write(f"{self.log_data['features']}\n")
             f.write("\n")
 
             # smoother
             f.write("=== Explicit Smoother ===\n")
-            for k, v in s.items():
-                f.write(f"[{k}]: {v} \n")
+            for feature, smoother in s.items():
+                f.write(f"[{feature}]: {smoother} \n")
             f.write("\n")
 
             # interaction term
             f.write("=== Interaction term ===\n")
-            for term in self.best["features"]:
+            for term in self.log_data["features"]:
                 if isinstance(term, tuple):
                     f.write(f"{term}\n")
 
     def save_plot(self, est, name):
         plobs = [est[-1].observers[-1]]
         binner = est[-2]
-        for i, p in enumerate(plobs):
+        for p in plobs:
             plot_analysis(
                 plot_observer=p,
                 file_obj=name,
@@ -91,113 +102,137 @@ class Logger():
                 binners=[binner],
             )
 
-    def save_best(self):
-        with open(os.path.join(self.save_dir,
-                               'temp.pkl'), 'rb') as f:
-            est = pickle.load(f)
-            self.make_model_dir()
-            self.save_metrics(os.path.join(self.model_dir,
-                                           f'metrics_{self.best["iter"]}.txt'))
-            self.save_setting(os.path.join(self.model_dir,
-                                           f'setting_{self.best["iter"]}.txt'))
-            self.save_model(est,
-                            os.path.join(self.model_dir,
-                                         f'model_{self.best["iter"]}.pkl'))
-            self.save_plot(est,
-                           os.path.join(self.model_dir,
-                                        f'plot_{self.best["iter"]}'))
+    def save(self, est):
+        self.make_model_dir()
+        # metrics
+        file_name = f"metrics_{self.log_data['iter']}.txt"
+        self.save_metrics(os.path.join(self.model_dir, file_name))
 
-    def output(self, evt, mng):
-        _logger.info(f"  ---- The best model was updated in iter {self.iter} ----\n")
-        _logger.info(f"    best_features{mng.features}\n    ")
-        for keys in evt.result.keys():
-            _logger.info(f"{keys}: {evt.result[keys][-1]}, ")
-        _logger.info("\n")
+        # setting
+        file_name = f"setting_{self.log_data['iter']}.txt"
+        self.save_setting(os.path.join(self.model_dir, file_name))
 
-    def update_best(self, est, evt, mng):
-        best_feature_properties = {}
-        for f, p in mng.feature_properties.items():
-            best_feature_properties[f] = flags.flags_to_string(p)
-
-        best_smoothers = {}
-        for f, sm in mng.smoothers.items():
-            best_smoothers[f] = sm.__class__.__name__
-
-        best_metrics = {}
-        for metrics, value in evt.result.items():
-            best_metrics[metrics] = copy.copy(value[-1])
-        self.best = {
-            "iter": self.iter,
-            "features": mng.features,
-            "feature_properties": best_feature_properties,
-            "smoothers": best_smoothers,
-            "metrics": best_metrics,
-            }
-
-        self.save_model(est,
-                        os.path.join(self.save_dir,
-                                     'temp.pkl'))
-
-        self.output(evt, mng)
-
-    def is_best(self, evt) -> bool:
-        if self.policy == "compute_COD":
-            result = evt.result['COD']
-            best = self.best["metrics"]["COD"]
-            is_best = result[self.iter] > best
-        else:
-            # NOTE: 小さい値を持つほうがよい指標ばかりであるのが前提
-            best = {k: v for k, v in self.best["metrics"].items()
-                    if k != "MD" and k != "COD" and k != "F"}
-            result = {k: v for k, v in evt.result.items()
-                      if k != "MD" and k != "COD" and k != "F"}
-            if self.policy == "vote":
-                cnt = 0
-                for metrics, value in result.items():
-                    before = best[metrics]
-                    after = np.nanmean(value)
-                    if abs(before) > abs(after):
-                        cnt += 1
-                is_best = self.counter < cnt
-                if is_best:
-                    self.counter = cnt
-            elif self.policy == "vote_by_num":
-                cnt = 0
-                for metrics, value in result.items():
-                    if value[self.iter] < best[metrics]:
-                        cnt += 1
-                is_best = cnt > len(evt.result.items().mapping) / 2
-
-        return is_best
+        # plot
+        file_name = f'plot_{self.log_data["iter"]}'
+        self.save_plot(est, os.path.join(self.model_dir, file_name))
 
     def reset_count(self) -> None:
         self.iter = 0
 
-    def log_single(self, est, evt, is_last_iter) -> None:
-        self.CODs[est['CB'].feature_groups[0]] = {
-            'COD': evt.result['COD'][self.iter],
-            'F': evt.result['F'][self.iter]
-            }
-        if is_last_iter:
-            self.sorted_CODs = sorted(self.CODs.items(),
-                                      key=lambda x: x[1]['COD'], reverse=True)
+    @abc.abstractmethod
+    def log(self, est, eval, mng, verbose=True) -> None:
+        pass
 
-    def log_multiple(self, est, evt, mng, is_first_iter, is_last_iter) -> None:
-        if is_first_iter:
+
+class Logger(LoggerBase):
+    def __init__(self, save_dir, policy, round_names=["first", "second"]):
+        super().__init__(save_dir, policy)
+        self.iter = 0
+        self.save_dir = save_dir
+        self.policy = policy
+        self.first_round = round_names[0]
+        self.second_round = round_names[1]
+        self.log_data = dict()
+        self.CODs = dict()
+        self.model_dir = None
+        self.make_dir()
+
+    def output(self, eval, mng):
+        log = f"\n  ---- The best model was updated in iter {self.iter + 1} ----\n"
+        _logger.info(log)
+
+        # log = f"    best_features{mng.features}\n    "
+        # _logger.info(log)
+
+        for metrics in eval.result.keys():
+            _logger.info(f"{metrics}: {eval.result[metrics]}, ")
+        _logger.info("\n")
+
+    def hold(self, est, eval, mng, verbose=True, save=False):
+        feature_properties = dict()
+        for f, p in mng.feature_properties.items():
+            feature_properties[f] = flags.flags_to_string(p)
+
+        smoothers = dict()
+        for f, sm in mng.smoothers.items():
+            smoothers[f] = sm.name
+
+        metrics = dict()
+        for name, value in eval.result.items():
+            metrics[name] = value
+
+        self.log_data = {
+            "iter": self.iter,
+            "features": mng.features,
+            "feature_properties": feature_properties,
+            "smoothers": smoothers,
+            "metrics": metrics,
+        }
+
+        if save:
+            self.save_model(est, os.path.join(self.save_dir, "temp.pkl"))
+
+        if verbose:
+            self.output(eval, mng)
+
+    def validate(self, eval) -> bool:
+        result = eval.result[self.policy]
+        bench_mark = self.bench_mark["metrics"][self.policy]
+
+        if self.policy == "COD":
+            is_detect = result > bench_mark
+        elif self.policy == "PINBALL":
+            is_detect = result < bench_mark
+        else:
+            raise ValueError(f"{self.policy} doesn't not exist")
+
+        return is_detect
+
+    def save(self, est):
+        self.make_model_dir()
+        # metrics
+        file_name = f"metrics_{self.log_data['iter']}.txt"
+        self.save_metrics(os.path.join(self.model_dir, file_name))
+
+        # setting
+        file_name = f"setting_{self.log_data['iter']}.txt"
+        self.save_setting(os.path.join(self.model_dir, file_name))
+
+        # plot
+        file_name = f'plot_{self.log_data["iter"]}'
+        self.save_plot(est, os.path.join(self.model_dir, file_name))
+
+        # model
+        file_name = f'model_{self.log_data["iter"]}'
+        self.save_model(est, os.path.join(self.model_dir, file_name))
+
+    def log_single(self, est, eval, mng, last_iter) -> None:
+        self.CODs[mng.features[0]] = {
+            "COD": eval.result["COD"],
+            "F": eval.result["F"],
+        }
+        if last_iter:
+            self.hold(None, eval, mng, verbose=False)
+            self.bench_mark = copy.deepcopy(self.log_data)
+
+    def log_multiple(self, est, eval, mng, first_iter, last_iter, verbose=True) -> None:
+        # check
+        if first_iter:
             is_best = True
         else:
-            is_best = self.is_best(evt)
+            is_best = self.validate(eval)
+
+        # update
         if is_best:
-            self.update_best(est, evt, mng)
-        if not is_last_iter:
-            if isinstance(mng, TornadoVariableSelectionModule):
-                next_features = copy.deepcopy(self.best["features"])
-                next_features.append(mng.sorted_features[self.iter])
-                mng.get_features(next_features)
-        else:
-            self.save_best()
-            os.remove(os.path.join(self.save_dir,
-                                   'temp.pkl'))
+            self.hold(est, eval, mng, verbose=True, save=True)
+            # for next validation
+            self.bench_mark = copy.deepcopy(self.log_data)
+
+        if last_iter:
+            with open(os.path.join(self.save_dir, "temp.pkl"), "rb") as f:
+                _est = pickle.load(f)
+            self.save(_est)
+            os.remove(os.path.join(self.save_dir, "temp.pkl"))
             _logger.info(
                 "\n\n"
                 "Now, you can make a forecasting analysis with the best model\n"
@@ -206,12 +241,104 @@ class Logger():
                 "    the examples/regression/tornado directory."
             )
 
-    def log(self, est, evt, mng) -> None:
-        _logger.info(f"\riter: {self.iter} / {mng.max_interaction-1} ")
+    def log(self, est, eval, mng, verbose=True) -> None:
+        mng_params = mng.get_params()
+        all = mng_params["end"]
+        self.iter = mng_params["experiment"] - 1
+        _logger.info(f"\riter: {self.iter + 1} / {all} ")
+
+        mode = mng_params["mode"]
         is_first_iter = self.iter == 0
-        is_last_iter = mng.max_interaction-1 <= self.iter
-        if mng.type == "single":
-            self.log_single(est, evt, is_last_iter)
-        elif mng.type == "multiple":
-            self.log_multiple(est, evt, mng, is_first_iter, is_last_iter)
-        self.iter += 1
+        is_last_iter = all - 1 <= self.iter
+        if mode == self.first_round:
+            self.log_single(est, eval, mng, is_last_iter)
+        elif mode == self.second_round:
+            self.log_multiple(est, eval, mng, is_first_iter, is_last_iter, verbose)
+
+
+class BFForwardLogger(LoggerBase):
+    def __init__(self, save_dir, policy, round_names=["first", "second"]):
+        super().__init__(save_dir, policy)
+        self.first_round = round_names[0]
+        self.second_round = round_names[1]
+        self.log_data = dict()
+        self.bench_mark = dict()
+        self.valid_interactions = list()
+
+    def output(self, eval, mng):
+        policy = self.policy
+        eval_result = eval.result[self.policy]
+        feature = mng.features[0]
+        _logger.info(f"[DETECT] {policy}: {eval_result}, {feature}\n")
+
+    def hold(self, est, eval, mng, verbose=True, save=True):
+        feature_properties = dict()
+        for f, p in mng.feature_properties.items():
+            feature_properties[f] = flags.flags_to_string(p)
+
+        smoothers = dict()
+        for f, sm in mng.smoothers.items():
+            smoothers[f] = sm.name
+
+        metrics = dict()
+        for name, value in eval.result.items():
+            metrics[name] = copy.copy(value)
+
+        self.log_data = {
+            "iter": self.iter,
+            "features": mng.features,
+            "feature_properties": feature_properties,
+            "smoothers": smoothers,
+            "metrics": metrics,
+        }
+
+        if save:
+            self.save_model(est, os.path.join(self.save_dir, "temp.pkl"))
+
+        if verbose:
+            self.output(eval, mng)
+
+    def validate(self, eval) -> bool:
+        result = eval.result[self.policy]
+        bench_mark = self.bench_mark["metrics"][self.policy]
+
+        if self.policy == "COD":
+            is_detect = result > bench_mark
+        elif self.policy == "PINBALL":
+            is_detect = result < bench_mark
+        else:
+            raise ValueError(f"{self.policy} is not existed option")
+
+        return is_detect
+
+    def log_single(self, est, eval, mng, last_iter) -> None:
+        if last_iter:
+            self.hold(est, eval, mng, save=False, verbose=False)
+            self.bench_mark = copy.deepcopy(self.log_data)
+
+    def log_multiple(self, est, eval, mng, first_iter, last_iter, verbose=True) -> None:
+        # check
+        if first_iter:
+            is_best = True
+        else:
+            is_best = self.validate(eval)
+
+        # update
+        if is_best:
+            self.hold(est, eval, mng, verbose)
+            interaction = self.log_data["features"][0]
+            self.valid_interactions.append(interaction)
+
+    def log(self, est, eval, mng, verbose=True) -> None:
+        mng_params = mng.get_params()
+        all = mng_params["end"]
+        self.iter = mng_params["experiment"] - 1
+        _logger.info(f"\riter: {self.iter + 1} / {all}\n")
+
+        mode = mng_params["mode"]
+        is_first_iter = self.iter == 0
+        is_last_iter = all - 1 <= self.iter
+        if mode == self.first_round:
+            self.log_single(est, eval, mng, is_last_iter)
+        elif mode == self.second_round:
+            self.log_multiple(est, eval, mng, is_first_iter, is_last_iter, verbose)
