@@ -374,9 +374,9 @@ class ForwardSelectionModule(TornadoModuleBase):
 
     def manage(self) -> bool:
         if self.mode == self.first_round:
-            sigle_size = len(self.init_model_attr["features"])
+            single_size = len(self.init_model_attr["features"])
             interaction_size = len(self.interaction_term)
-            self.end = sigle_size + interaction_size
+            self.end = single_size + interaction_size
         else:
             self.end = len(self.target_features)
 
@@ -396,7 +396,7 @@ class BFForwardSelectionModule(TornadoModuleBase):
                  dist="qpd",
                  ) -> None:
         super().__init__(manual_feature_property, is_time_series, dist=dist)
-        self.first_round = "prior_prediction_with_sigle_variables"
+        self.first_round = "prior_prediction_with_single_variables"
         self.second_round = "interaction_search"
         self.mode = self.first_round
         self.model_params = {"quantile": 0.5, "maximal_iterations": 1}
