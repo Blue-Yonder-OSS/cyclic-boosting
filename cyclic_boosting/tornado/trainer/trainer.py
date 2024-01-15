@@ -239,12 +239,12 @@ class QPDForwardTrainer(TornadoBase):
         combination = 2
         self.manager.init(train, target, n_comb=combination)
 
-        # sigle variables model for interaction search
+        # single variables model for interaction search
         _logger.info(f"\n=== [ROUND] {round1} ===\n")
         args = {"quantile": 0.5}
         base_model = self.tornado(target, validation, logger, evaluator, verbose, args)
 
-        #  prediction with base sigle features
+        #  prediction with base single features
         X_original = copy.deepcopy(mng_params["init_model_attr"]["X"])
         X_valid = validation.drop(target, axis=1)
         pred_train = base_model.predict(X_original.copy())
