@@ -158,6 +158,9 @@ class QuantileEvaluator(EvaluatorBase):
         yhat : numpy.nddary
             Predicted value
 
+        q : float
+            Quantile
+
         est : sklearn.pipeline.Pipeline
             The model to be saved.
 
