@@ -103,7 +103,10 @@ class TornadoModuleBase:
         if self.mfp is None and fp is None:
             # self.gen_base_feature_property()
             self.int_or_float_feature_property()
-            analyzer = TornadoAnalysisModule(self.X, is_time_series=self.is_ts, data_interval=self.data_interval)
+            analyzer = TornadoAnalysisModule(self.X,
+                                             is_time_series=self.is_ts,
+                                             data_interval=self.data_interval,
+                                             )
             self.report = analyzer.analyze()
             for check_point, analyzed_features in self.report.items():
                 if check_point == "has_seasonality":
@@ -251,9 +254,13 @@ class TornadoModuleBase:
 
 
 class TornadoModule(TornadoModuleBase):
-    def __init__(self, manual_feature_property=None, is_time_series=True, data_interval=None) -> None:
+    def __init__(self,
+                 manual_feature_property=None,
+                 is_time_series=True,
+                 data_interval=None,
+                 ) -> None:
         super().__init__(manual_feature_property, is_time_series, data_interval)
-        self.type = "multiple"
+        self.mode = "multiple"
 
     def set_feature(self) -> None:
         # single feature
@@ -295,12 +302,20 @@ class TornadoModule(TornadoModuleBase):
 
 
 class ForwardSelectionModule(TornadoModuleBase):
-    def __init__(self, manual_feature_property=None, is_time_series=True, data_interval=None, dist="poisson") -> None:
-        super().__init__(manual_feature_property, is_time_series, data_interval, dist=dist)
+    def __init__(self, manual_feature_property=None,
+                 is_time_series=True,
+                 data_interval=None,
+                 dist="poisson",
+                 ) -> None:
+        super().__init__(manual_feature_property,
+                         is_time_series,
+                         data_interval,
+                         dist=dist,
+                         )
         self.first_round = "single_regression_analysis"
         self.second_round = "multiple_regression_analysis"
         self.mode = self.first_round
-        self.hold_setting = {"features": [], "feature_properties": {}}
+        self.hold_setting = {"features": list(), "feature_properties": dict()}
         self.target_features = list()
         self.model_params = dict()
 
@@ -359,9 +374,9 @@ class ForwardSelectionModule(TornadoModuleBase):
 
     def manage(self) -> bool:
         if self.mode == self.first_round:
-            sigle_size = len(self.init_model_attr["features"])
+            single_size = len(self.init_model_attr["features"])
             interaction_size = len(self.interaction_term)
-            self.end = sigle_size + interaction_size
+            self.end = single_size + interaction_size
         else:
             self.end = len(self.target_features)
 
@@ -375,9 +390,13 @@ class ForwardSelectionModule(TornadoModuleBase):
 
 
 class BFForwardSelectionModule(TornadoModuleBase):
-    def __init__(self, manual_feature_property=None, is_time_series=True, dist="qpd") -> None:
+    def __init__(self,
+                 manual_feature_property=None,
+                 is_time_series=True,
+                 dist="qpd",
+                 ) -> None:
         super().__init__(manual_feature_property, is_time_series, dist=dist)
-        self.first_round = "prior_prediction_with_sigle_variables"
+        self.first_round = "prior_prediction_with_single_variables"
         self.second_round = "interaction_search"
         self.mode = self.first_round
         self.model_params = {"quantile": 0.5, "maximal_iterations": 1}
