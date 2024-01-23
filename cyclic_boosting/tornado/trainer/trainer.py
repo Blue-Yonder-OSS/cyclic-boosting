@@ -6,6 +6,8 @@ import six
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from scipy.stats import nbinom, poisson
+from scipy.stats._distn_infrastructure import rv_frozen     # 型ヒントのためにクラスをimportしている...
 
 from .evaluator import Evaluator, QuantileEvaluator
 from .logger import Logger, BFForwardLogger
@@ -106,6 +108,59 @@ class Tornado(TornadoBase):
 
         return pred
 
+    def predict_proba(self, target, output="proba") -> Union[rv_frozen, np.ndarray]:   # 型ヒントのためにクラスをimportしている...
+        X, _ = self.data_deliveler.generate(target, is_time_series=self.manager.is_ts, pred=True)
+        # X = self.data_deliveler.generate(X)
+        pred = self.estimator.predict(X.copy())
+
+        mng_params = self.manager.get_params()
+        dist = mng_params["dist"]
+
+        if dist == "poisson":
+            pd_func = poisson(pred)
+
+        elif dist == "nbinom":
+            X_train = copy.deepcopy(self.manager.X)
+            y_train = copy.deepcopy(self.manager.y)
+            self.manager.set_params({"dist": "nbinomc"})
+
+            features = self.estimator[1].feature_groups
+            tmp = list()
+            for feature in features:
+                if isinstance(feature, tuple):
+                    for f in feature:
+                        tmp.append(f)
+                else:
+                    tmp.append(feature)
+            unique_feature = list(set(tmp))
+            param = dict()
+            for feature in unique_feature:
+                property = mng_params["init_model_attr"]["feature_properties"][feature]
+                param[feature] = property
+            self.manager.set_feature_property(param, verbose=False)
+
+            nbinomc = self.manager.build()
+            X_train['yhat_mean'] = self.estimator.predict(X_train.copy())
+            X_train["yhat_mean_feature"] = X_train['yhat_mean']
+            X["yhat_mean"] = pred
+            X["yhat_mean_feature"] = X["yhat_mean"]
+            nbinomc.fit(X_train.copy(), np.float64(y_train))
+            c = nbinomc.predict(X)
+            var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
+
+            p = np.minimum(np.where(var > 0, pred / var, 1 - 1e-8), 1 - 1e-8)
+            n = np.where(var > 0, pred * p / (1 - p), 1)
+
+            pd_func = nbinom(n, p)
+
+        if output == "func":
+            return pd_func
+
+        elif output == "proba":
+            ix = np.arange(0.05, 1.0, 0.05)
+            proba = np.array([pd_func.ppf(i) for i in ix])
+            return proba
+
 
 class ForwardTrainer(TornadoBase):
     def __init__(self, DataModule, TornadoModule):
@@ -201,6 +256,61 @@ class ForwardTrainer(TornadoBase):
         pred = self.estimator.predict(X)
 
         return pred
+
+    def predict_proba(self, target, output="proba") -> Union[rv_frozen, np.ndarray]:   # 型ヒントのためにクラスをimportしている...
+        X, _ = self.data_deliveler.generate(target, is_time_series=self.manager.is_ts, pred=True)
+        # X = self.data_deliveler.generate(X)
+        pred = self.estimator.predict(X.copy())
+
+        mng_params = self.manager.get_params()
+        dist = mng_params["dist"]
+
+        if dist == "poisson":
+            pd_func = poisson(pred)
+
+        elif dist == "nbinom":
+            X_train = copy.deepcopy(self.manager.X)
+            y_train = copy.deepcopy(self.manager.y)
+            self.manager.set_params({"dist": "nbinomc"})
+
+            features = self.estimator[1].feature_groups
+            tmp = list()
+            for feature in features:
+                if isinstance(feature, tuple):
+                    for f in feature:
+                        tmp.append(f)
+                else:
+                    tmp.append(feature)
+            unique_feature = list(set(tmp))
+            param = dict()
+            for feature in unique_feature:
+                property = mng_params["init_model_attr"]["feature_properties"][feature]
+                param[feature] = property
+            self.manager.set_feature_property(param, verbose=False)
+
+            nbinomc = self.manager.build()
+            X_train['yhat_mean'] = self.estimator.predict(X_train.copy())
+            X_train["yhat_mean_feature"] = X_train['yhat_mean']
+            X["yhat_mean"] = pred
+            X["yhat_mean_feature"] = X["yhat_mean"]
+            nbinomc.fit(X_train.copy(), np.float64(y_train))
+            c = nbinomc.predict(X)
+            var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
+
+            p = np.minimum(np.where(var > 0, pred / var, 1 - 1e-8), 1 - 1e-8)
+            n = np.where(var > 0, pred * p / (1 - p), 1)
+
+            pd_func = nbinom(n, p)
+
+            self.manager.set_params({"dist": "nbinom"})
+
+        if output == "func":
+            return pd_func
+
+        elif output == "proba":
+            ix = np.arange(0.05, 1.0, 0.05)
+            proba = np.array([pd_func.ppf(i) for i in ix])
+            return proba
 
 
 class QPDForwardTrainer(TornadoBase):
