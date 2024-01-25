@@ -157,9 +157,16 @@ class Tornado(TornadoBase):
             return pd_func
 
         elif output == "proba":
-            ix = np.arange(0.05, 1.0, 0.05)
-            proba = np.array([pd_func.ppf(i) for i in ix])
-            return proba
+            args = np.array(pd_func.__dict__["args"]).T
+            pmfs = []
+            xs = []
+            for i in range(args.shape[0]):
+                x = np.linspace(nbinom.ppf(0.01, *args[i]),
+                                nbinom.ppf(0.99, *args[i])).astype(int)
+                pmf = nbinom.pmf(x, *args[i])
+                xs.append(x)
+                pmfs.append(pmf)
+            return pmfs, xs
 
 
 class ForwardTrainer(TornadoBase):
@@ -308,9 +315,16 @@ class ForwardTrainer(TornadoBase):
             return pd_func
 
         elif output == "proba":
-            ix = np.arange(0.05, 1.0, 0.05)
-            proba = np.array([pd_func.ppf(i) for i in ix])
-            return proba
+            args = np.array(pd_func.__dict__["args"]).T
+            pmfs = []
+            xs = []
+            for i in range(args.shape[0]):
+                x = np.linspace(nbinom.ppf(0.01, *args[i]),
+                                nbinom.ppf(0.99, *args[i])).astype(int)
+                pmf = nbinom.pmf(x, *args[i])
+                xs.append(x)
+                pmfs.append(pmf)
+            return pmfs, xs
 
 
 class QPDForwardTrainer(TornadoBase):

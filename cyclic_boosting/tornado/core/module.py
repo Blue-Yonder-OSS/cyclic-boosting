@@ -238,10 +238,8 @@ class TornadoModuleBase:
                 else:
                     raise ValueError(f"{self.mode} mode is not exist")
 
-            elif self.dist == "poisson":
+            elif self.dist in ["poisson", "nbinom"]:
                 self.regressor = PoissonRegressor(**param)
-            elif self.dist == "nbinom":
-                self.regressor = NBinomRegressor(**param)
             elif self.dist == "nbinomc":
                 param["mean_prediction_column"] = "yhat_mean"
                 param["feature_properties"]["yhat_mean_feature"] = flags.IS_CONTINUOUS | flags.HAS_MISSING | flags.MISSING_NOT_LEARNED
