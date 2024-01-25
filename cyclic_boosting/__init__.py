@@ -99,4 +99,4 @@ __all__ = [
     "pipeline_CBGenericClassifier",
 ]
 
-__version__ = "1.0"
+__version__ = "1.3.0"

@@ -360,7 +360,6 @@ class CyclicBoostingBase(
 
         X: np.ndarray
             samples features matrix
-
         """
         if self.weight_column is None:
             self.weights = np.ones(len(X))
