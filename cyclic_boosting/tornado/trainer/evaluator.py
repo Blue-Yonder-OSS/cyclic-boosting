@@ -42,6 +42,8 @@ class EvaluatorBase:
             if verbose:
                 _logger.info(f"[{metrics}]: {round(result, digit)}\n")
 
+        return self.result
+
     def mean_metrics(self, digit=5):
         for metrics, values in self.result.items():
             _logger.info(f"[{metrics}]: {round(np.mean(values), digit)}\n")
@@ -84,3 +86,5 @@ class QuantileEvaluator(EvaluatorBase):
 
             if verbose:
                 _logger.info(f"[{metrics}]: {round(result, digit)}\n")
+
+        return self.result
