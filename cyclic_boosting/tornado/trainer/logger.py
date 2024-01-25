@@ -37,13 +37,8 @@ class LoggerBase:
         return class_vars
 
     def set_params(self, params: dict) -> None:
-        class_vars = dict()
-        for attr_name, value in self.__dict__.items():
-            if not callable(value) and not attr_name.startswith("__"):
-                class_vars[attr_name] = value
-
         for attr_name, value in params.items():
-            class_vars[attr_name] = value
+            self.__dict__[attr_name] = value
 
     def make_dir(self) -> None:
         if not os.path.isdir(self.save_dir):
@@ -70,8 +65,8 @@ class LoggerBase:
         with open(name, "w") as f:
             # feature property
             f.write("=== Feature property ===\n")
-            for feature, property in fp.items():
-                f.write(f"[{feature}]: {property} \n")
+            for feature, prop in fp.items():
+                f.write(f"[{feature}]: {flags.flags_to_string(prop)} \n")
             f.write("\n")
 
             # feature
@@ -120,7 +115,7 @@ class LoggerBase:
         self.iter = 0
 
     @abc.abstractmethod
-    def log(self, est, eval, mng, verbose=True) -> None:
+    def log(self, est, eval_result, mng_attr, verbose=True) -> None:
         pass
 
 
@@ -137,33 +132,34 @@ class Logger(LoggerBase):
         self.model_dir = None
         self.make_dir()
 
-    def output(self, eval, mng):
-        log = f"\n  ---- The best model was updated in iter {self.iter + 1} ----\n"
+    def output(self, eval_result, _):
+        log = f"\n  ---- The best model was updated in iter {self.iter} ----\n"
         _logger.info(log)
 
-        # log = f"    best_features{mng.features}\n    "
+        # log = f"    best_features{mng_attr.features}\n    "
         # _logger.info(log)
 
-        for metrics in eval.result.keys():
-            _logger.info(f"{metrics}: {eval.result[metrics]}, ")
+        for metrics in eval_result.keys():
+            _logger.info(f"{metrics}: {eval_result[metrics]}, ")
         _logger.info("\n")
 
-    def hold(self, est, eval, mng, verbose=True, save=False):
+    def hold(self, est, eval_result, mng_attr, verbose=True, save=False):
         feature_properties = dict()
-        for f, p in mng.feature_properties.items():
-            feature_properties[f] = flags.flags_to_string(p)
+        for feature, prop in mng_attr["feature_properties"].items():
+            feature_properties[feature] = prop
 
         smoothers = dict()
-        for f, sm in mng.smoothers.items():
-            smoothers[f] = sm.name
+        for feature, smoother in mng_attr["smoothers"].items():
+            smoothers[feature] = smoother.__class__.__name__
 
         metrics = dict()
-        for name, value in eval.result.items():
+        for name, value in eval_result.items():
             metrics[name] = value
 
+        features = [x for x in mng_attr["features"]]
         self.log_data = {
             "iter": self.iter,
-            "features": mng.features,
+            "features": features,
             "feature_properties": feature_properties,
             "smoothers": smoothers,
             "metrics": metrics,
@@ -173,10 +169,10 @@ class Logger(LoggerBase):
             self.save_model(est, os.path.join(self.save_dir, "temp.pkl"))
 
         if verbose:
-            self.output(eval, mng)
+            self.output(eval_result, mng_attr)
 
-    def validate(self, eval) -> bool:
-        result = eval.result[self.policy]
+    def validate(self, eval_result) -> bool:
+        result = eval_result[self.policy]
         bench_mark = self.bench_mark["metrics"][self.policy]
 
         if self.policy == "COD":
@@ -206,25 +202,26 @@ class Logger(LoggerBase):
         file_name = f'model_{self.log_data["iter"]}'
         self.save_model(est, os.path.join(self.model_dir, file_name))
 
-    def log_single(self, est, eval, mng, last_iter) -> None:
-        self.CODs[mng.features[0]] = {
-            "COD": eval.result["COD"],
-            "F": eval.result["F"],
+    def log_single(self, _, eval_result, mng_attr, last_iter) -> None:
+        feature = mng_attr["features"][0]
+        self.CODs[feature] = {
+            "COD": eval_result["COD"],
+            "F": eval_result["F"],
         }
         if last_iter:
-            self.hold(None, eval, mng, verbose=False)
+            self.hold(None, eval_result, mng_attr, verbose=False)
             self.bench_mark = copy.deepcopy(self.log_data)
 
-    def log_multiple(self, est, eval, mng, first_iter, last_iter, verbose=True) -> None:
+    def log_multiple(self, est, eval_result, mng_attr, first_iter, last_iter, verbose=True) -> None:
         # check
         if first_iter:
             is_best = True
         else:
-            is_best = self.validate(eval)
+            is_best = self.validate(eval_result)
 
         # update
         if is_best:
-            self.hold(est, eval, mng, verbose=True, save=True)
+            self.hold(est, eval_result, mng_attr, verbose=True, save=True)
             # for next validation
             self.bench_mark = copy.deepcopy(self.log_data)
 
@@ -241,19 +238,29 @@ class Logger(LoggerBase):
                 "    the examples/regression/tornado directory."
             )
 
-    def log(self, est, eval, mng, verbose=True) -> None:
-        mng_params = mng.get_params()
-        all = mng_params["end"]
-        self.iter = mng_params["experiment"] - 1
-        _logger.info(f"\riter: {self.iter + 1} / {all} ")
+    def log(self, est, eval_result, mng_attr, verbose=True) -> None:
+        iter_all = mng_attr["end"]
+        self.iter = mng_attr["experiment"]
+        _logger.info(f"\riter: {self.iter} / {iter_all} ")
 
-        mode = mng_params["mode"]
-        is_first_iter = self.iter == 0
-        is_last_iter = all - 1 <= self.iter
-        if mode == self.first_round:
-            self.log_single(est, eval, mng, is_last_iter)
-        elif mode == self.second_round:
-            self.log_multiple(est, eval, mng, is_first_iter, is_last_iter, verbose)
+        is_first_iter = self.iter == 1
+        is_last_iter = iter_all <= self.iter
+        if mng_attr["mode"] == self.first_round:
+            self.log_single(
+                est,
+                eval_result,
+                mng_attr,
+                is_last_iter,
+                )
+        elif mng_attr["mode"] == self.second_round:
+            self.log_multiple(
+                est,
+                eval_result,
+                mng_attr,
+                is_first_iter,
+                is_last_iter,
+                verbose,
+                )
 
 
 class BFForwardLogger(LoggerBase):
@@ -265,28 +272,29 @@ class BFForwardLogger(LoggerBase):
         self.bench_mark = dict()
         self.valid_interactions = list()
 
-    def output(self, eval, mng):
+    def output(self, eval_result, mng_attr):
         policy = self.policy
-        eval_result = eval.result[self.policy]
-        feature = mng.features[0]
-        _logger.info(f"[DETECT] {policy}: {eval_result}, {feature}\n")
+        metrics = eval_result[self.policy]
+        feature = mng_attr["features"][0]
+        _logger.info(f"[DETECT] {policy}: {metrics}, {feature}\n")
 
-    def hold(self, est, eval, mng, verbose=True, save=True):
+    def hold(self, est, eval_result, mng_attr, verbose=True, save=True):
         feature_properties = dict()
-        for f, p in mng.feature_properties.items():
-            feature_properties[f] = flags.flags_to_string(p)
+        for feature, prop in mng_attr["feature_properties"].items():
+            feature_properties[feature] = prop
 
         smoothers = dict()
-        for f, sm in mng.smoothers.items():
-            smoothers[f] = sm.name
+        for f, smoother in mng_attr["smoothers"].items():
+            smoothers[f] = smoother.__class__.__name__
 
         metrics = dict()
-        for name, value in eval.result.items():
-            metrics[name] = copy.copy(value)
+        for name, value in eval_result.items():
+            metrics[name] = value
 
+        features = [x for x in mng_attr["features"]]
         self.log_data = {
             "iter": self.iter,
-            "features": mng.features,
+            "features": features,
             "feature_properties": feature_properties,
             "smoothers": smoothers,
             "metrics": metrics,
@@ -296,10 +304,10 @@ class BFForwardLogger(LoggerBase):
             self.save_model(est, os.path.join(self.save_dir, "temp.pkl"))
 
         if verbose:
-            self.output(eval, mng)
+            self.output(eval_result, mng_attr)
 
-    def validate(self, eval) -> bool:
-        result = eval.result[self.policy]
+    def validate(self, eval_result) -> bool:
+        result = eval_result[self.policy]
         bench_mark = self.bench_mark["metrics"][self.policy]
 
         if self.policy == "COD":
@@ -311,34 +319,44 @@ class BFForwardLogger(LoggerBase):
 
         return is_detect
 
-    def log_single(self, est, eval, mng, last_iter) -> None:
+    def log_single(self, est, eval_result, mng_attr, last_iter) -> None:
         if last_iter:
-            self.hold(est, eval, mng, save=False, verbose=False)
+            self.hold(est, eval_result, mng_attr, save=False, verbose=False)
             self.bench_mark = copy.deepcopy(self.log_data)
 
-    def log_multiple(self, est, eval, mng, first_iter, last_iter, verbose=True) -> None:
+    def log_multiple(self, est, eval_result, mng_attr, first_iter, _, verbose=True) -> None:
         # check
         if first_iter:
             is_best = True
         else:
-            is_best = self.validate(eval)
+            is_best = self.validate(eval_result)
 
         # update
         if is_best:
-            self.hold(est, eval, mng, verbose)
+            self.hold(est, eval_result, mng_attr, verbose, save=False)
             interaction = self.log_data["features"][0]
             self.valid_interactions.append(interaction)
 
-    def log(self, est, eval, mng, verbose=True) -> None:
-        mng_params = mng.get_params()
-        all = mng_params["end"]
-        self.iter = mng_params["experiment"] - 1
-        _logger.info(f"\riter: {self.iter + 1} / {all}\n")
+    def log(self, est, eval_result, mng_attr, verbose=True) -> None:
+        iter_all = mng_attr["end"]
+        self.iter = mng_attr["experiment"]
+        _logger.info(f"\riter: {self.iter} / {iter_all}\n")
 
-        mode = mng_params["mode"]
-        is_first_iter = self.iter == 0
-        is_last_iter = all - 1 <= self.iter
-        if mode == self.first_round:
-            self.log_single(est, eval, mng, is_last_iter)
-        elif mode == self.second_round:
-            self.log_multiple(est, eval, mng, is_first_iter, is_last_iter, verbose)
+        is_first_iter = self.iter == 1
+        is_last_iter = iter_all <= self.iter
+        if mng_attr["mode"] == self.first_round:
+            self.log_single(
+                est,
+                eval_result,
+                mng_attr,
+                is_last_iter,
+                )
+        elif mng_attr["mode"] == self.second_round:
+            self.log_multiple(
+                est,
+                eval_result,
+                mng_attr,
+                is_first_iter,
+                is_last_iter,
+                verbose,
+                )
