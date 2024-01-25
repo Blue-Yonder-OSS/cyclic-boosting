@@ -115,16 +115,16 @@ class TornadoModuleBase:
     def set_smoother(self, smoothers: dict = None) -> None:
         if smoothers is None:
             smoothers = dict()
-            for key, cols in self.report.items():
-                if len(cols) > 0:
+            for key, features in self.report.items():
+                if len(features) > 0:
                     if key == "has_seasonality":
-                        for col in cols:
+                        for col in features:
                             smoothers[(col,)] = SeasonalSmoother(order=3)
                     elif key == "has_up_monotonicity":
-                        for col in cols:
+                        for col in features:
                             smoothers[(col,)] = IsotonicRegressor(increasing=True)
                     elif key == "has_down_monotonicity":
-                        for col in cols:
+                        for col in features:
                             smoothers[(col,)] = IsotonicRegressor(increasing=False)
             self.smoothers = smoothers
 
@@ -229,7 +229,7 @@ class TornadoModule(TornadoModuleBase):
                  is_time_series=True,
                  data_interval=None,
                  max_iter=10,
-                 dist=None,
+                 dist="poisson",
                  model=None,
                  ) -> None:
         super().__init__(
@@ -268,7 +268,7 @@ class TornadoModule(TornadoModuleBase):
 
     def manage(self) -> bool:
         self.end = len(self.interaction_term)
-        if self.experiment <= self.end:
+        if self.experiment < self.end:
             self.update()
             self.experiment += 1
             return True
