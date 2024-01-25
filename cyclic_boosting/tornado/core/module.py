@@ -36,6 +36,7 @@ class TornadoModuleBase:
         manual_feature_property=None,
         is_time_series=True,
         data_interval=None,
+        max_iter=10,
         task="regression",
         dist="poisson",
         model="multiplicative",
@@ -43,6 +44,7 @@ class TornadoModuleBase:
         self.mfp = manual_feature_property
         self.is_ts = is_time_series
         self.data_interval = data_interval
+        self.max_iter = max_iter
         self.task = task
         self.dist = dist
         self.model = model
@@ -58,7 +60,6 @@ class TornadoModuleBase:
         self.report = dict()
         self.init_model_attr = dict()
         self.model_params = dict()
-        self.max_interaction = 0
         self.experiment = 0
         self.end = 0
 
@@ -71,45 +72,22 @@ class TornadoModuleBase:
         return class_vars
 
     def set_params(self, params: dict) -> None:
-        class_vars = self.__dict__
         for attr_name, value in params.items():
-            class_vars[attr_name] = value
-
-    def gen_base_feature_property(self) -> None:
-        cols = self.X.select_dtypes(include=["int", "float", "object"])
-        print("is a categorical or continuous variable?")
-        for col in cols:
-            fp_str = input(f"please enter {col} is [cat/con] ")
-            if fp_str == "cat":
-                self.feature_properties[col] = flags.IS_UNORDERED
-            elif fp_str == "con":
-                self.feature_properties[col] = flags.IS_CONTINUOUS
-            else:
-                raise ValueError("please type 'cat' or 'con'")
-
-    # FIXME
-    # この関数は入力の手間をなくすためだけのものであり本質的に自動化を行っているわけではない.修正の必要あり
-    def int_or_float_feature_property(self) -> None:
-        cols = self.X.select_dtypes(include=["int", "float", "object"])
-        for col in cols:
-            if isinstance(self.X[col][0], np.int64):
-                self.feature_properties[col] = flags.IS_UNORDERED
-            elif isinstance(self.X[col][0], np.float64):
-                self.feature_properties[col] = flags.IS_CONTINUOUS
-            else:
-                raise ValueError("整数または小数ではない")
+            self.__dict__[attr_name] = value
 
     def set_feature_property(self, fp=None, verbose=True) -> None:
-        if self.mfp is None and fp is None:
-            # self.gen_base_feature_property()
-            self.int_or_float_feature_property()
+        if fp is None:
             analyzer = TornadoAnalysisModule(self.X,
                                              is_time_series=self.is_ts,
                                              data_interval=self.data_interval,
                                              )
             self.report = analyzer.analyze()
             for check_point, analyzed_features in self.report.items():
-                if check_point == "has_seasonality":
+                if check_point == "is_unordered":
+                    flag = flags.IS_UNORDERED
+                elif check_point == "is_continuous":
+                    flag = flags.IS_CONTINUOUS
+                elif check_point == "has_seasonality":
                     flag = flags.IS_SEASONAL
                 elif check_point == "has_linearity":
                     flag = flags.IS_LINEAR
@@ -123,33 +101,16 @@ class TornadoModuleBase:
                     continue
 
                 for feature in analyzed_features:
-                    self.feature_properties[feature] |= flag
-        elif fp is not None:
-            self.feature_properties = fp
-        else:
-            self.feature_properties = self.mfp
+                    if feature not in self.feature_properties.keys():
+                        self.feature_properties[feature] = flag
+                    else:
+                        self.feature_properties[feature] |= flag
+        else :
+            self.feature_properties = {k: v for k, v in fp.items()}
 
         if verbose:
             for key, value in self.report.items():
                 _logger.info(f"    {key}: {value}\n")
-
-    def set_feature(self, feature: list = None) -> None:
-        if feature is None:
-            raise ValueError("feature doesn't not defined")
-        self.features = feature
-
-    def set_interaction_term(self, n_comb=2) -> None:
-        if n_comb <= 1:
-            raise ValueError("interaction size must be more than 2")
-        elif n_comb >= 3:
-            _logger.warning("many interaction terms might cause long training")
-
-        for s in range(2, n_comb + 1):
-            feature = self.init_model_attr["features"]
-            comb = itertools.combinations(feature, s)
-            self.interaction_term += [c for c in comb]
-
-        self.max_interaction = len(self.interaction_term)
 
     def set_smoother(self, smoothers: dict = None) -> None:
         if smoothers is None:
@@ -198,6 +159,7 @@ class TornadoModuleBase:
         self.set_feature_property()
         self.init_model_attr["X"] = self.X
         self.init_model_attr["y"] = self.y
+        self.features = list(self.feature_properties.keys())
         self.init_model_attr["features"] = list(self.feature_properties.keys())
         self.init_model_attr["feature_properties"] = self.feature_properties
 
@@ -214,7 +176,7 @@ class TornadoModuleBase:
             "feature_properties": self.feature_properties,
             "feature_groups": self.features,
             "observers": self.observers,
-            "maximal_iterations": 50,
+            "maximal_iterations": self.max_iter,
             "smoother_choice": common_smoothers.SmootherChoiceGroupBy(
                 use_regression_type=True,
                 use_normalization=False,
@@ -245,6 +207,14 @@ class TornadoModuleBase:
         return self.regressor
 
     @abc.abstractmethod
+    def set_feature(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def set_interaction_term(self, n_comb=2) -> None:
+        pass
+
+    @abc.abstractmethod
     def update(self) -> None:
         pass
 
@@ -258,18 +228,26 @@ class TornadoModule(TornadoModuleBase):
                  manual_feature_property=None,
                  is_time_series=True,
                  data_interval=None,
+                 max_iter=10,
+                 dist=None,
+                 model=None,
                  ) -> None:
-        super().__init__(manual_feature_property, is_time_series, data_interval)
-        self.mode = "multiple"
+        super().__init__(
+            manual_feature_property,
+            is_time_series,
+            data_interval,
+            max_iter=max_iter,
+            dist=dist,
+            model=model,
+            )
+        self.first_round = "dummy"
+        self.second_round = "interaction search"
+        self.mode = self.second_round
 
-    def set_feature(self) -> None:
-        # single feature
-        for feature in self.feature_properties.keys():
-            self.features.append(feature)
-
-        # interaction term
-        point = self.experiment - 1
-        self.features.append(self.interaction_term[point])
+    def set_feature(self, feature: list) -> None:
+        idx = self.experiment
+        feature.append(self.interaction_term[idx])
+        self.features = feature
 
     def set_interaction_term(self, n_comb=2) -> None:
         if n_comb <= 1:
@@ -282,18 +260,15 @@ class TornadoModule(TornadoModuleBase):
             comb = itertools.combinations(feature, s)
             self.interaction_term += [c for c in comb]
 
-        self.max_interaction = len(feature) + len(self.interaction_term)
-
     def update(self) -> None:
-        self.set_feature()
-        self.set_feature_property(self.feature_properties)
+        self.set_feature([x for x in self.features])
+        self.set_feature_property(self.feature_properties, verbose=False)
         self.set_smoother()
         self.set_observer()
 
     def manage(self) -> bool:
-        self.end = self.max_interaction
-        if self.experiment <= self.end - 1:
-            self.clear()
+        self.end = len(self.interaction_term)
+        if self.experiment <= self.end:
             self.update()
             self.experiment += 1
             return True
@@ -301,75 +276,72 @@ class TornadoModule(TornadoModuleBase):
             return False
 
 
-class ForwardSelectionModule(TornadoModuleBase):
+class ForwardSelectionModule(TornadoModule):
     def __init__(self, manual_feature_property=None,
                  is_time_series=True,
                  data_interval=None,
+                 max_iter=10,
                  dist="poisson",
                  ) -> None:
         super().__init__(manual_feature_property,
                          is_time_series,
                          data_interval,
+                         max_iter=max_iter,
                          dist=dist,
                          )
         self.first_round = "single_regression_analysis"
         self.second_round = "multiple_regression_analysis"
         self.mode = self.first_round
-        self.hold_setting = {"features": list(), "feature_properties": dict()}
         self.target_features = list()
         self.model_params = dict()
 
+    def set_feature(self, feature: list = None) -> None:
+        if feature is None:
+            raise ValueError("feature doesn't not defined")
+        self.features = feature
+
     def update(self) -> None:
         if self.mode == self.first_round:
-            ix = self.experiment
+            idx = self.experiment
 
-            name = "features"
-            base = self.init_model_attr[name]
+            base = self.init_model_attr["features"]
             interaction = self.interaction_term
             feature = base + interaction
-            self.set_feature([feature[ix]])
+            self.set_feature([feature[idx]])
 
             name = "feature_properties"
-            if isinstance(feature[ix], tuple):
-                param = {k: self.init_model_attr[name][k] for k in feature[ix]}
+            if isinstance(feature[idx], tuple):
+                param = {k: self.init_model_attr[name][k] for k in feature[idx]}
             else:
-                param = {feature[ix]: self.init_model_attr[name][feature[ix]]}
+                param = {feature[idx]: self.init_model_attr[name][feature[idx]]}
             self.set_feature_property(param, verbose=False)
-
             self.set_smoother()
-
             self.set_observer()
-
             self.drop_unused_features()
 
         elif self.mode == self.second_round:
-            ix = self.experiment
+            idx = self.experiment
 
-            name = "features"
-            feature = self.target_features[ix]
-            self.hold_setting[name].append(feature)
-            self.set_feature(self.hold_setting[name])
+            feature = self.target_features[idx]
+            next_features = [x for x in self.features]
+            next_features.append(feature)
+            self.set_feature(next_features)
 
-            name = "feature_properties"
-            tmp = list()
-            for feature in self.features:
-                if isinstance(feature, tuple):
-                    for f in feature:
-                        tmp.append(f)
-                else:
-                    tmp.append(feature)
-            unique_feature = list(set(tmp))
-            param = dict()
-            for feature in unique_feature:
-                property = self.init_model_attr[name][feature]
-                param[feature] = property
+            prop = {k: v for k, v in self.feature_properties.items()}
+            if isinstance(feature, tuple):
+                next_prop = [x for x in feature]
+            elif isinstance(feature, str):
+                next_prop = [feature]
+            else:
+                ValueError()
 
-            self.set_feature_property(param, verbose=False)
+            for feature in next_prop:
+                if feature not in prop.keys():
+                    prop[feature] = self.init_model_attr["feature_properties"][feature]
+            self.set_feature_property(prop, verbose=False)
 
             self.set_smoother()
-
             self.set_observer()
-
             self.drop_unused_features()
 
     def manage(self) -> bool:
@@ -380,8 +352,7 @@ class ForwardSelectionModule(TornadoModuleBase):
         else:
             self.end = len(self.target_features)
 
-        if self.experiment <= self.end - 1:
-            self.clear()
+        if self.experiment < self.end:
             self.update()
             self.experiment += 1
             return True
@@ -389,17 +360,30 @@ class ForwardSelectionModule(TornadoModuleBase):
             return False
 
 
-class BFForwardSelectionModule(TornadoModuleBase):
+class BFForwardSelectionModule(TornadoModule):
     def __init__(self,
                  manual_feature_property=None,
                  is_time_series=True,
+                 max_iter=10,
                  dist="qpd",
+                 model="additive",
                  ) -> None:
-        super().__init__(manual_feature_property, is_time_series, dist=dist)
+        super().__init__(
+            manual_feature_property,
+            is_time_series,
+            max_iter=max_iter,
+            dist=dist,
+            model=model,
+            )
         self.first_round = "prior_prediction_with_single_variables"
         self.second_round = "interaction_search"
         self.mode = self.first_round
         self.model_params = {"quantile": 0.5, "maximal_iterations": 1}
+
+    def set_feature(self, feature: list = None) -> None:
+        if feature is None:
+            raise ValueError("feature doesn't not defined")
+        self.features = feature
 
     def update(self) -> None:
         if self.mode == self.first_round:
@@ -408,43 +392,33 @@ class BFForwardSelectionModule(TornadoModuleBase):
 
             fp = self.init_model_attr["feature_properties"]
             self.set_feature_property(fp, verbose=False)
-
             self.set_smoother()
-
             self.set_observer()
-
             self.drop_unused_features()
 
         elif self.mode == self.second_round:
-            ix = self.experiment
+            idx = self.experiment
 
-            name = "prior_prediction_column"
-            prior = self.model_params[name]
+            single_interaction = self.init_model_attr["interaction"][idx]
+            self.set_feature([single_interaction])
 
-            name = "interaction"
-            interaction = self.init_model_attr[name][ix]
-            self.set_feature([interaction, prior])
-
-            name = "feature_properties"
-            fp = self.init_model_attr[name]
-            param = {feature: fp[feature] for feature in interaction}
-            param[prior] = flags.IS_CONTINUOUS
-            self.set_feature_property(param, verbose=False)
+            feature_properties = self.init_model_attr["feature_properties"]
+            prop = {f_name: feature_properties[f_name] for f_name in single_interaction}
+            prior = self.model_params["prior_prediction_column"]
+            prop[prior] = flags.IS_CONTINUOUS  # to skip drop_unused_features step
+            self.set_feature_property(prop, verbose=False)
 
             self.set_smoother()
-
             self.set_observer()
-
             self.drop_unused_features()
 
     def manage(self) -> bool:
         if self.mode == self.first_round:
             self.end = 1
         else:
-            self.end = self.max_interaction
+            self.end = len(self.interaction_term)
 
-        if self.experiment <= self.end - 1:
-            self.clear()
+        if self.experiment < self.end:
             self.update()
             self.experiment += 1
             return True
