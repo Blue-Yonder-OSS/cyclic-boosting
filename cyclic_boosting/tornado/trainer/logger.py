@@ -278,7 +278,7 @@ class Logger(LoggerBase):
         Parameters
         ----------
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
@@ -304,7 +304,7 @@ class Logger(LoggerBase):
             The model to be held.
 
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
@@ -353,7 +353,7 @@ class Logger(LoggerBase):
         Parameters
         ----------
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         Returns
         -------
@@ -409,7 +409,7 @@ class Logger(LoggerBase):
             The model to be held.
 
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
@@ -438,7 +438,7 @@ class Logger(LoggerBase):
             The model to be held.
 
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
@@ -491,7 +491,7 @@ class Logger(LoggerBase):
             The model to be held.
 
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
@@ -567,7 +567,7 @@ class BFForwardLogger(LoggerBase):
         Parameters
         ----------
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
@@ -588,7 +588,7 @@ class BFForwardLogger(LoggerBase):
             The model to be held.
 
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
@@ -637,7 +637,7 @@ class BFForwardLogger(LoggerBase):
         Parameters
         ----------
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         Returns
         -------
@@ -669,7 +669,7 @@ class BFForwardLogger(LoggerBase):
             The model to be held.
 
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
@@ -695,7 +695,7 @@ class BFForwardLogger(LoggerBase):
             The model to be held.
 
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
@@ -735,7 +735,7 @@ class BFForwardLogger(LoggerBase):
             The model to be held.
 
         eval_result : dict
-            The evaluator of the model.
+            Evaluation results of the model.
 
         mng_attr : dict
             Attributes in one of the manager classes
