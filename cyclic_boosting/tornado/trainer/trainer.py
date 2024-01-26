@@ -108,7 +108,7 @@ class Tornado(TornadoBase):
 
         return pred
 
-    def predict_proba(self, target, output="proba") -> Union[rv_frozen, np.ndarray]:   # 型ヒントのためにクラスをimportしている...
+    def predict_proba(self, target, output="proba") -> Union[rv_frozen, tuple(list, list)]:
         X, _ = self.data_deliveler.generate(target, is_time_series=self.manager.is_ts, pred=True)
         # X = self.data_deliveler.generate(X)
         pred = self.estimator.predict(X.copy())
@@ -264,7 +264,7 @@ class ForwardTrainer(TornadoBase):
 
         return pred
 
-    def predict_proba(self, target, output="proba") -> Union[rv_frozen, np.ndarray]:   # 型ヒントのためにクラスをimportしている...
+    def predict_proba(self, target, output="proba") -> Union[rv_frozen, tuple(list, list)]:
         X, _ = self.data_deliveler.generate(target, is_time_series=self.manager.is_ts, pred=True)
         # X = self.data_deliveler.generate(X)
         pred = self.estimator.predict(X.copy())
