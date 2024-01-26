@@ -45,24 +45,24 @@ class LoggerBase:
             os.mkdir(self.save_dir)
 
     def make_model_dir(self) -> None:
-        file_name = f"model_{self.log_data['iter']}"
-        self.model_dir = os.path.join(self.save_dir, file_name)
+        dir_name = f"model_{self.log_data['iter']}"
+        self.model_dir = os.path.join(self.save_dir, dir_name)
         if not os.path.isdir(self.model_dir):
             os.mkdir(self.model_dir)
 
     def save_model(self, est, name):
         pickle.dump(est, open(name, "wb"))
 
-    def save_metrics(self, name):
-        with open(name, "w") as f:
+    def save_metrics(self, file_name):
+        with open(file_name, "w") as f:
             for name, value in self.log_data["metrics"].items():
                 f.write(f"[{name}]: {value} \n")
 
-    def save_setting(self, name):
+    def save_setting(self, file_name):
         fp = self.log_data["feature_properties"]
         s = self.log_data["smoothers"]
 
-        with open(name, "w") as f:
+        with open(file_name, "w") as f:
             # feature property
             f.write("=== Feature property ===\n")
             for feature, prop in fp.items():
@@ -71,7 +71,8 @@ class LoggerBase:
 
             # feature
             f.write("=== Feature ===\n")
-            f.write(f"{self.log_data['features']}\n")
+            for feature in self.log_data['features']:
+                f.write(f"{feature}\n")
             f.write("\n")
 
             # smoother
@@ -212,7 +213,15 @@ class Logger(LoggerBase):
             self.hold(None, eval_result, mng_attr, verbose=False)
             self.bench_mark = copy.deepcopy(self.log_data)
 
-    def log_multiple(self, est, eval_result, mng_attr, first_iter, last_iter, verbose=True) -> None:
+    def log_multiple(
+            self,
+            est,
+            eval_result,
+            mng_attr,
+            first_iter,
+            last_iter,
+            verbose=True,
+            ) -> None:
         # check
         if first_iter:
             is_best = True
@@ -324,7 +333,14 @@ class BFForwardLogger(LoggerBase):
             self.hold(est, eval_result, mng_attr, save=False, verbose=False)
             self.bench_mark = copy.deepcopy(self.log_data)
 
-    def log_multiple(self, est, eval_result, mng_attr, first_iter, _, verbose=True) -> None:
+    def log_multiple(self,
+                     est,
+                     eval_result,
+                     mng_attr,
+                     first_iter,
+                     _,
+                     verbose=True,
+                     ) -> None:
         # check
         if first_iter:
             is_best = True

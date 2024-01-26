@@ -31,7 +31,8 @@ class TornadoBase:
     def fit(self,
             target,
             test_size=0.2,
-            seed=0, save_dir="./models",
+            seed=0,
+            save_dir="./models",
             log_policy="COD",
             verbose=True,
             ):
@@ -63,8 +64,8 @@ class Tornado(TornadoBase):
             verbose=True,
             ):
         # build logger and evaluator
-        mng_params = self.manager.get_params()
-        round2 = mng_params["second_round"]
+        mng_attr = self.manager.get_params()
+        round2 = mng_attr["second_round"]
         logger = Logger(save_dir, log_policy, ["SKIP", round2])
         evaluator = Evaluator()
 
@@ -131,9 +132,9 @@ class ForwardTrainer(TornadoBase):
             verbose=True,
             ):
         # build logger and evaluator
-        mng_params = self.manager.get_params()
-        round1 = mng_params["first_round"]
-        round2 = mng_params["second_round"]
+        mng_attr = self.manager.get_params()
+        round1 = mng_attr["first_round"]
+        round2 = mng_attr["second_round"]
         logger = Logger(save_dir, log_policy, [round1, round2])
         evaluator = Evaluator()
 
@@ -161,7 +162,7 @@ class ForwardTrainer(TornadoBase):
             if eval_result["F"] > threshold:
                 valid_feature[feature] = eval_result
 
-        base_feature = mng_params["init_model_attr"]["features"]
+        base_feature = mng_attr["init_model_attr"]["features"]
         interaction = [x for x in valid_feature.keys() if isinstance(x, tuple)]
         explanatory_variables = base_feature + interaction
 
@@ -170,7 +171,7 @@ class ForwardTrainer(TornadoBase):
             "mode": round2,
             "experiment": 0,
             "target_features": explanatory_variables,
-            "X": mng_params["init_model_attr"]["X"].copy(),
+            "X": mng_attr["init_model_attr"]["X"].copy(),
         }
         self.manager.set_params(update_params)
 
@@ -248,9 +249,9 @@ class QPDForwardTrainer(TornadoBase):
             verbose=True,
             ):
         # build logger and evaluator
-        mng_params = self.manager.get_params()
-        round1 = mng_params["first_round"]
-        round2 = mng_params["second_round"]
+        mng_attr = self.manager.get_params()
+        round1 = mng_attr["first_round"]
+        round2 = mng_attr["second_round"]
         logger = BFForwardLogger(save_dir, log_policy, [round1, round2])
         evaluator = QuantileEvaluator()
 
@@ -270,7 +271,7 @@ class QPDForwardTrainer(TornadoBase):
         args = {"quantile": self.quantile[0]}
         base_model = self.tornado(target, validation, logger, evaluator, verbose, args)
 
-        X_train = mng_params["init_model_attr"]["X"].copy()
+        X_train = mng_attr["init_model_attr"]["X"].copy()
         X_valid = validation.drop(target, axis=1)
         pred_train = base_model.predict(X_train.copy())
         pred_valid = base_model.predict(X_valid.copy())
@@ -278,9 +279,9 @@ class QPDForwardTrainer(TornadoBase):
         # change mode
         col = "prior_pred"
         X_train[col] = pred_train
-        init_model_attr = mng_params["init_model_attr"]
+        init_model_attr = mng_attr["init_model_attr"]
         init_model_attr["X"] = X_train.copy()
-        model_params = {k: v for k, v in mng_params["model_params"].items()}
+        model_params = {k: v for k, v in mng_attr["model_params"].items()}
         model_params["prior_prediction_column"] = col
         update_params = {
             "mode": round2,
@@ -306,7 +307,7 @@ class QPDForwardTrainer(TornadoBase):
         features = base + interaction
 
         # build 3 models for QPD
-        X_train = mng_params["init_model_attr"]["X"]
+        X_train = mng_attr["init_model_attr"]["X"]
         model_params = {
             "feature_properties": init_model_attr["feature_properties"],
             "feature_groups": features,
@@ -321,8 +322,8 @@ class QPDForwardTrainer(TornadoBase):
             est_quantiles.append(est)
 
         # train
-        X = copy.deepcopy(mng_params["init_model_attr"]["X"])
-        y = copy.deepcopy(mng_params["init_model_attr"]["y"])
+        X = copy.deepcopy(mng_attr["init_model_attr"]["X"])
+        y = copy.deepcopy(mng_attr["init_model_attr"]["y"])
         self.est_qpd = QPD_RegressorChain(
             est_lowq=est_quantiles[0],
             est_median=est_quantiles[1],

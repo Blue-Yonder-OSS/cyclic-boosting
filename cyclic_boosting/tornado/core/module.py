@@ -82,20 +82,20 @@ class TornadoModuleBase:
                                              data_interval=self.data_interval,
                                              )
             self.report = analyzer.analyze()
-            for check_point, analyzed_features in self.report.items():
-                if check_point == "is_unordered":
+            for prop, analyzed_features in self.report.items():
+                if prop == "is_unordered":
                     flag = flags.IS_UNORDERED
-                elif check_point == "is_continuous":
+                elif prop == "is_continuous":
                     flag = flags.IS_CONTINUOUS
-                elif check_point == "has_seasonality":
+                elif prop == "has_seasonality":
                     flag = flags.IS_SEASONAL
-                elif check_point == "has_linearity":
+                elif prop == "has_linearity":
                     flag = flags.IS_LINEAR
-                elif check_point == "has_up_monotonicity":
+                elif prop == "has_up_monotonicity":
                     flag = flags.IS_MONOTONIC
-                elif check_point == "has_down_monotonicity":
+                elif prop == "has_down_monotonicity":
                     flag = flags.IS_MONOTONIC
-                elif check_point == "has_missing":
+                elif prop == "has_missing":
                     flag = flags.HAS_MISSING
                 else:
                     continue
@@ -115,15 +115,15 @@ class TornadoModuleBase:
     def set_smoother(self, smoothers: dict = None) -> None:
         if smoothers is None:
             smoothers = dict()
-            for key, features in self.report.items():
+            for prop, features in self.report.items():
                 if len(features) > 0:
-                    if key == "has_seasonality":
+                    if prop == "has_seasonality":
                         for col in features:
                             smoothers[(col,)] = SeasonalSmoother(order=3)
-                    elif key == "has_up_monotonicity":
+                    elif prop == "has_up_monotonicity":
                         for col in features:
                             smoothers[(col,)] = IsotonicRegressor(increasing=True)
-                    elif key == "has_down_monotonicity":
+                    elif prop == "has_down_monotonicity":
                         for col in features:
                             smoothers[(col,)] = IsotonicRegressor(increasing=False)
             self.smoothers = smoothers
@@ -136,9 +136,9 @@ class TornadoModuleBase:
 
     def drop_unused_features(self) -> None:
         target = list()
-        for col in self.init_model_attr["X"].columns:
-            if col not in self.feature_properties.keys():
-                target.append(col)
+        for feature in self.init_model_attr["X"].columns:
+            if feature not in self.feature_properties.keys():
+                target.append(feature)
         self.X = self.init_model_attr["X"].drop(target, axis=1)
 
     def clear(self) -> None:
@@ -164,7 +164,7 @@ class TornadoModuleBase:
         self.init_model_attr["feature_properties"] = self.feature_properties
 
         # NOTE: run after feature_properties is into init_model_params
-        self.set_interaction_term(n_comb=n_comb)
+        self.set_interaction(n_comb=n_comb)
         self.init_model_attr["interaction"] = self.interaction_term
 
         # NOTE: run after X and feature_property are into init_model_params
@@ -211,7 +211,7 @@ class TornadoModuleBase:
         pass
 
     @abc.abstractmethod
-    def set_interaction_term(self, n_comb=2) -> None:
+    def set_interaction(self, n_comb=2) -> None:
         pass
 
     @abc.abstractmethod
@@ -249,7 +249,7 @@ class TornadoModule(TornadoModuleBase):
         feature.append(self.interaction_term[idx])
         self.features = feature
 
-    def set_interaction_term(self, n_comb=2) -> None:
+    def set_interaction(self, n_comb=2) -> None:
         if n_comb <= 1:
             raise ValueError("interaction size must be more than 2")
         elif n_comb >= 3:
@@ -277,18 +277,20 @@ class TornadoModule(TornadoModuleBase):
 
 
 class ForwardSelectionModule(TornadoModule):
-    def __init__(self, manual_feature_property=None,
+    def __init__(self,
+                 manual_feature_property=None,
                  is_time_series=True,
                  data_interval=None,
                  max_iter=10,
                  dist="poisson",
                  ) -> None:
-        super().__init__(manual_feature_property,
-                         is_time_series,
-                         data_interval,
-                         max_iter=max_iter,
-                         dist=dist,
-                         )
+        super().__init__(
+            manual_feature_property,
+            is_time_series,
+            data_interval,
+            max_iter=max_iter,
+            dist=dist,
+            )
         self.first_round = "single_regression_analysis"
         self.second_round = "multiple_regression_analysis"
         self.mode = self.first_round
@@ -321,7 +323,6 @@ class ForwardSelectionModule(TornadoModule):
 
         elif self.mode == self.second_round:
             idx = self.experiment
-
             feature = self.target_features[idx]
             next_features = [x for x in self.features]
             next_features.append(feature)
@@ -398,7 +399,6 @@ class BFForwardSelectionModule(TornadoModule):
 
         elif self.mode == self.second_round:
             idx = self.experiment
-
             single_interaction = self.init_model_attr["interaction"][idx]
             self.set_feature([single_interaction])
 
