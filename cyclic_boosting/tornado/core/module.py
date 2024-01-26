@@ -14,7 +14,6 @@ from cyclic_boosting import flags, common_smoothers, observers
 # from cyclic_boosting.plots import plot_analysis
 from cyclic_boosting.pipelines import (
     pipeline_CBPoissonRegressor as PoissonRegressor,
-    pipeline_CBNBinomRegressor as NBinomRegressor,
     pipeline_CBNBinomC as NBinomC,
     pipeline_CBMultiplicativeQuantileRegressor as MultiplicativeQuantileRegressor,
     pipeline_CBAdditiveQuantileRegressor as AdditiveQuantileRegressor,
