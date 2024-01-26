@@ -249,9 +249,11 @@ class Logger(LoggerBase):
 
     first_round : str
         Name of the first training round.
+        Control variable for multiple recursive learning
 
     second_round : str
         Name of the second training round.
+        Control variable for multiple recursive learning
 
     CODs : dict
         Model evaluation results (Coefficient of Determination (COD) and
@@ -275,11 +277,11 @@ class Logger(LoggerBase):
 
         Parameters
         ----------
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
         """
@@ -301,11 +303,11 @@ class Logger(LoggerBase):
         est : sklearn.pipeline.Pipeline
             The model to be held.
 
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
 
@@ -350,7 +352,7 @@ class Logger(LoggerBase):
 
         Parameters
         ----------
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
         Returns
@@ -406,11 +408,11 @@ class Logger(LoggerBase):
         est : sklearn.pipeline.Pipeline
             The model to be held.
 
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
 
@@ -435,11 +437,11 @@ class Logger(LoggerBase):
         est : sklearn.pipeline.Pipeline
             The model to be held.
 
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
 
@@ -488,11 +490,11 @@ class Logger(LoggerBase):
         est : sklearn.pipeline.Pipeline
             The model to be held.
 
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
 
@@ -534,9 +536,11 @@ class BFForwardLogger(LoggerBase):
     ----------
     first_round : str
         Name of the first training round.
+        Control variable for multiple recursive learning
 
     second_round : str
         Name of the second training round.
+        Control variable for multiple recursive learning
 
     log_data : dict
         Holds information regarding iterations, features, feature
@@ -562,11 +566,11 @@ class BFForwardLogger(LoggerBase):
 
         Parameters
         ----------
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
         """
@@ -583,11 +587,11 @@ class BFForwardLogger(LoggerBase):
         est : sklearn.pipeline.Pipeline
             The model to be held.
 
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
 
@@ -632,7 +636,7 @@ class BFForwardLogger(LoggerBase):
 
         Parameters
         ----------
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
         Returns
@@ -656,17 +660,19 @@ class BFForwardLogger(LoggerBase):
         """Log a single regression analysis.
 
         Stores information of the model of the last iteration.
+        Learning phase of the model using features excluding interaction terms
+        in the QPDForwardTrainer.
 
         Parameters
         ----------
         est : sklearn.pipeline.Pipeline
             The model to be held.
 
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
 
@@ -681,17 +687,18 @@ class BFForwardLogger(LoggerBase):
         """Log a multiple regression analysis.
 
         This function stores the best model information.
+        Searching phase for interaction terms in QPDForwardTrainer.
 
         Parameters
         ----------
         est : sklearn.pipeline.Pipeline
             The model to be held.
 
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
 
@@ -727,11 +734,11 @@ class BFForwardLogger(LoggerBase):
         est : sklearn.pipeline.Pipeline
             The model to be held.
 
-        eval : cyclic_boosting.tornado.trainer.evaluator.Evaluator
+        eval_result : dict
             The evaluator of the model.
 
-        mng : One of the manager classes
-            The manager of the model.
+        mng_attr : dict
+            Attributes in one of the manager classes
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
 
