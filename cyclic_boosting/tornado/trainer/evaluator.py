@@ -67,6 +67,11 @@ class EvaluatorBase:
 
         digit : int
             Number of digits of standard output. Default is 5.
+
+        Returns
+        -------
+        dict
+            Results of evaluation
         """
         for metrics, func in self.eval_funcs.items():
             if metrics not in ["F", "COD"]:
@@ -169,6 +174,11 @@ class QuantileEvaluator(EvaluatorBase):
 
         digit : int
             Number of digits of standard output. Default is 5.
+
+        Returns
+        -------
+        dict
+            Results of evaluation
         """
         for metrics, func in self.eval_funcs.items():
             if metrics == "PINBALL":
