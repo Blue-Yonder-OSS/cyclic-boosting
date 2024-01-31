@@ -4,10 +4,11 @@ import abc
 import copy
 import six
 import numpy as np
-import pandas as pd
+import pickle
+import os
 
 from .evaluator import Evaluator, QuantileEvaluator
-from .logger import Logger, BFForwardLogger
+from .logger import ForwardLogger, PriorPredForwardLogger
 from cyclic_boosting.quantile_matching import QPD_RegressorChain
 
 # from typing import List, Union
@@ -66,13 +67,13 @@ class Tornado(TornadoBase):
         # build logger and evaluator
         mng_attr = self.manager.get_params()
         round2 = mng_attr["second_round"]
-        logger = Logger(save_dir, log_policy, ["SKIP", round2])
+        logger = ForwardLogger(save_dir, log_policy, ["SKIP", round2])
         evaluator = Evaluator()
 
         # create dataset
         train, validation = self.data_deliveler.generate(
             target,
-            self.manager.is_ts,
+            self.manager.is_time_series,
             test_size,
             seed=seed,
             )
@@ -81,7 +82,14 @@ class Tornado(TornadoBase):
         self.manager.init(train, target)
 
         # train
-        self.estimator = self.tornado(target, validation, logger, evaluator, verbose)
+        logger_params = self.tornado(target, validation, logger, evaluator, verbose)
+
+        # best model
+        best_model_name = f'model_{logger_params["log_data"]["iter"]}'
+        model_dir = logger_params["model_dir"]
+        model_path = os.path.join(model_dir, best_model_name)
+        with open(model_path, "rb") as f:
+            self.estimator = pickle.load(f)
 
     def tornado(self, target, valid_data, logger, evaluator, verbose):
         while self.manager.manage():
@@ -109,7 +117,7 @@ class Tornado(TornadoBase):
                 update_params = {k: logger.get_params()["log_data"][k] for k in keys}
                 self.manager.set_params(update_params)
 
-        return estimator
+        return logger.get_params()
 
     def predict(self, X):
         X = self.data_deliveler.generate(X)
@@ -135,13 +143,13 @@ class ForwardTrainer(TornadoBase):
         mng_attr = self.manager.get_params()
         round1 = mng_attr["first_round"]
         round2 = mng_attr["second_round"]
-        logger = Logger(save_dir, log_policy, [round1, round2])
+        logger = ForwardLogger(save_dir, log_policy, [round1, round2])
         evaluator = Evaluator()
 
         # create dataset
         train, validation = self.data_deliveler.generate(
             target,
-            self.manager.is_ts,
+            self.manager.is_time_series,
             test_size,
             seed=seed,
         )
@@ -151,17 +159,17 @@ class ForwardTrainer(TornadoBase):
 
         # single variable regression analysis to search valid features
         _logger.info(f"\n=== [ROUND] {round1} ===\n")
-        _ = self.tornado(target, validation, logger, evaluator, verbose)
+        logger_params = self.tornado(target, validation, logger, evaluator, verbose)
 
         # pick up
         threshold = 2  # basically, 2 would be better for threshold
-        logger_params = logger.get_params()
 
         valid_feature = dict()
         for feature, eval_result in logger_params["CODs"].items():
             if eval_result["F"] > threshold:
                 valid_feature[feature] = eval_result
 
+        mng_attr = self.manager.get_params()
         base_feature = mng_attr["init_model_attr"]["features"]
         interaction = [x for x in valid_feature.keys() if isinstance(x, tuple)]
         explanatory_variables = base_feature + interaction
@@ -181,7 +189,14 @@ class ForwardTrainer(TornadoBase):
 
         # multiple variable regression (main training)
         _logger.info(f"\n=== [ROUND] {round2} ===\n")
-        self.estimator = self.tornado(target, validation, logger, evaluator, verbose)
+        logger_params = self.tornado(target, validation, logger, evaluator, verbose)
+
+        # best model
+        best_model_name = f'model_{logger_params["log_data"]["iter"]}'
+        model_dir = logger_params["model_dir"]
+        model_path = os.path.join(model_dir, best_model_name)
+        with open(model_path, "rb") as f:
+            self.estimator = pickle.load(f)
 
     def tornado(self, target, valid_data, logger, evaluator, verbose):
         while self.manager.manage():
@@ -210,7 +225,7 @@ class ForwardTrainer(TornadoBase):
                 update_params = {k: logger.get_params()["log_data"][k] for k in keys}
                 self.manager.set_params(update_params)
 
-        return estimator
+        return logger.get_params()
 
     def predict(self, X):
         X = self.data_deliveler.generate(X)
@@ -252,13 +267,13 @@ class QPDForwardTrainer(TornadoBase):
         mng_attr = self.manager.get_params()
         round1 = mng_attr["first_round"]
         round2 = mng_attr["second_round"]
-        logger = BFForwardLogger(save_dir, log_policy, [round1, round2])
+        logger = PriorPredForwardLogger(save_dir, log_policy, [round1, round2])
         evaluator = QuantileEvaluator()
 
         # create dataset
         train, validation = self.data_deliveler.generate(
             target,
-            self.manager.is_ts,
+            self.manager.is_time_series,
             test_size,
             seed=seed,
         )
