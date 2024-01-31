@@ -120,7 +120,7 @@ class LoggerBase:
         pass
 
 
-class Logger(LoggerBase):
+class ForwardLogger(LoggerBase):
     def __init__(self, save_dir, policy, round_names=["first", "second"]):
         super().__init__(save_dir, policy)
         self.iter = 0
@@ -231,7 +231,6 @@ class Logger(LoggerBase):
         # update
         if is_best:
             self.hold(est, eval_result, mng_attr, verbose=True, save=True)
-            # for next validation
             self.bench_mark = copy.deepcopy(self.log_data)
 
         if last_iter:
@@ -272,7 +271,7 @@ class Logger(LoggerBase):
                 )
 
 
-class BFForwardLogger(LoggerBase):
+class PriorPredForwardLogger(LoggerBase):
     def __init__(self, save_dir, policy, round_names=["first", "second"]):
         super().__init__(save_dir, policy)
         self.first_round = round_names[0]
