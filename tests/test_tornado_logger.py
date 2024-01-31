@@ -4,8 +4,8 @@ import shutil
 import numpy as np
 import pandas as pd
 from cyclic_boosting.tornado.trainer.logger import (
-    Logger,
-    BFForwardLogger
+    ForwardLogger,
+    PriorPredForwardLogger
 )
 from cyclic_boosting.pipelines import (
     pipeline_CBPoissonRegressor,
@@ -73,7 +73,7 @@ def test_logger(prepare_log_data, prepare_tornado_modules) -> None:
     eval = log_data["metrics"]
     bench_mark = {k: (v - 1) for k, v in log_data["metrics"].items()}
 
-    logger = Logger(save_dir=save_dir, policy=policy)
+    logger = ForwardLogger(save_dir=save_dir, policy=policy)
 
     desired = {
         "iter": 0,
@@ -198,7 +198,7 @@ def test_BFForwardLogger(prepare_log_data, prepare_tornado_modules) -> None:
     eval = log_data["metrics"]
     bench_mark = {k: (v - 1) for k, v in log_data["metrics"].items()}
 
-    logger = BFForwardLogger(
+    logger = PriorPredForwardLogger(
         save_dir=save_dir,
         policy=policy
     )

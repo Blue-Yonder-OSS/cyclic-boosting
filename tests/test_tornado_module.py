@@ -5,7 +5,7 @@ from itertools import combinations
 from cyclic_boosting.tornado.core.module import (
     TornadoModule,
     ForwardSelectionModule,
-    BFForwardSelectionModule
+    PriorPredForwardSelectionModule
 )
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
 import pytest
@@ -90,7 +90,7 @@ def test_tornado_module(prepare_data, manager_base_params):
     assert is_same, f"{func}'s result is {res[attr]}, {desired}"
 
     # set_interaction_term
-    func = "set_interaction_term"
+    func = "set_interaction"
     attr = "interaction_term"
     desired = [x for x in combinations(X_dummy.columns, 2)]
     manager_base_params.update({
@@ -99,7 +99,7 @@ def test_tornado_module(prepare_data, manager_base_params):
         "interaction_term": list()
         })
     manager.set_params(manager_base_params)
-    manager.set_interaction_term()
+    manager.set_interaction()
     res = manager.get_params()
     is_same = res[attr] == desired
     assert is_same, f"{func}'s result is {res[attr]}, {desired}"
@@ -173,14 +173,14 @@ def test_forward_selection_module(prepare_data):
     # update
     manager.update()
 
-"""
+
 def test_bfforward_selection_module(prepare_data):
     X, y = prepare_data
     X, y = X[:100].copy(), y[:100].copy()
     X.loc[:, "SALES"] = y
     names = {k: k.lower() for k in X.columns}
     X.rename(names, axis=1, inplace=True)
-    manager = BFForwardSelectionModule(is_time_series=True)
+    manager = PriorPredForwardSelectionModule(is_time_series=True)
 
     # init
     manager.init(X.copy(), "SALES")
@@ -195,4 +195,3 @@ def test_bfforward_selection_module(prepare_data):
 
     # update
     manager.update()
-"""
