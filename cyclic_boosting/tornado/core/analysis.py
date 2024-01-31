@@ -6,7 +6,6 @@ import pandas as pd
 from statsmodels.tsa.seasonal import MSTL
 from scipy.fft import fft
 import pymannkendall as mk
-import matplotlib.pyplot as plt
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
@@ -70,19 +69,17 @@ class TornadoAnalysisModule():
 
     def __init__(self, dataset, is_time_series=True,
                  data_interval=None):
-        # super().__init__()
-        # データセットはカテゴリ変数がint, 量的変数がfloatという前提をおく
         self.dataset = dataset
-        self.targets = []
+        self.targets = list()
         self.report = {
-            'is_unordered': [],
-            'is_continuous': [],
-            'has_trend': [],
-            'has_seasonality': [],
-            'has_up_monotonicity': [],
-            'has_down_monotonicity': [],
-            'has_linearity': [],
-            'has_missing': []
+            'is_unordered': list(),
+            'is_continuous': list(),
+            'has_trend': list(),
+            'has_seasonality': list(),
+            'has_up_monotonicity': list(),
+            'has_down_monotonicity': list(),
+            'has_linearity': list(),
+            'has_missing': list()
         }
         self.is_time_series = is_time_series
         self.P_THRESH = 0.05
@@ -113,7 +110,7 @@ class TornadoAnalysisModule():
         self.targets = [c for c in cols]
         targets = [c for c in cols]
         _logger.info(f"Auto analysis target {targets}")
-        
+
         if 'date' in self.dataset.columns:
             self.dataset.index = self.dataset["date"].values
             self.dataset = self.dataset[targets]
@@ -132,6 +129,12 @@ class TornadoAnalysisModule():
         return self.report
 
     def gen_base_feature_property(self) -> None:
+        """Ask the user to set if each feature is categorical or continuous.
+
+        Ask the user the property of each feature and flag it as either
+        categorical or continuous, depending on the input. The input is "cat"
+        for categorical features and "con" for continuous features.
+        """
         cols = self.dataset.select_dtypes(include=['int', 'float', 'object'])
         _logger.info('is a categorical or continuous variable?')
         for col in cols:
@@ -144,16 +147,20 @@ class TornadoAnalysisModule():
                 raise ValueError("please type 'cat' or 'con'")
 
     # FIXME
-    # この関数は入力の手間をなくすためだけのものであり本質的に自動化を行っているわけではない.修正の必要あり
     def int_or_float_feature_property(self) -> None:
-        cols = self.dataset.select_dtypes(include=['int', 'float', 'object'])
+        """Set each feature as categorical or continuous based on data type.
+
+        Assign a flag of categorical or continuous feature based on the data
+        type of each feature. Assign the categorical feature flag to features
+        of type int, and the continuous feature flag to features of type
+        float.
+        """
+        cols = self.dataset.select_dtypes(include=['int', 'float'])
         for col in cols:
             if isinstance(self.dataset[col][0], np.int64):
                 self.report['is_unordered'].append(col)
             elif isinstance(self.dataset[col][0], np.float64):
                 self.report['is_continuous'].append(col)
-            else:
-                raise ValueError("整数または小数ではない")
 
     def calc_daily_average(self) -> None:
         """Average features in the dataset by time.
@@ -207,7 +214,7 @@ class TornadoAnalysisModule():
             data_interval = "H"
             self.data_interval = "hourly"
         _logger.info(f"Data interval is '{self.data_interval}'. If not, give\n"
-                     "    the data_interval option in the TornadoDataModule.")
+                     "    the data_interval option in the TornadoDataModule.\n")
         if self.data_interval in ["monthly", "weekly", "daily"]:
             self.dataset.index = [i.date() for i in self.dataset.index]
         self.dataset = self.dataset.asfreq(freq=data_interval)
@@ -220,12 +227,11 @@ class TornadoAnalysisModule():
         This function uses the Mann-Kendall trend test to assess each feature
         for the presence of a trend.
         """
-        # 帰無仮説：n個のサンプルx1,x2,...xnが独立で同一の確率分布に従う
-        # 　　　　　つまり、トレンド性なし
-        # P値が0.05を超えた場合、帰無仮説を棄却⇒トレンド性あり
         self.report['has_trend'] = []
         for col in self.targets:
-            flag = mk.original_test(self.dataset[col])[0] != "no trend"
+            decmp = self.decompose(self.dataset[col])
+            decmp_trend = pd.DataFrame(decmp.trend)
+            flag = mk.original_test(decmp_trend)[0] != "no trend"
             if flag:
                 self.report['has_trend'].append(col)
 
@@ -336,20 +342,3 @@ class TornadoAnalysisModule():
         count = self.dataset.isnull().sum()
         missing = count[count > 0]
         self.report['has_missing'] = [i for i in missing.index]
-
-    # gen_base_feature_property
-        """Ask the user to set if each feature is categorical or continuous.
-
-        Ask the user the property of each feature and flag it as either
-        categorical or continuous, depending on the input. The input is "cat"
-        for categorical features and "con" for continuous features.
-        """
-
-    # int_or_float_feature_property
-        """Set each feature as categorical or continuous based on data type.
-
-        Assign a flag of categorical or continuous feature based on the data
-        type of each feature. Assign the categorical feature flag to features
-        of type int, and the continuous feature flag to features of type
-        float.
-        """

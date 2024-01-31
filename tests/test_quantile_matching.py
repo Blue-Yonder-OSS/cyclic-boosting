@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 from cyclic_boosting.quantile_matching import (
     J_QPD_S,
     J_QPD_B,
+    J_QPD_extended_U,
+    J_QPD_extended_S,
+    J_QPD_extended_B,
     quantile_fit_gaussian,
     quantile_fit_gamma,
     quantile_fit_nbinom,
@@ -133,6 +136,230 @@ def test_J_QPD_B(is_plot):
         xs = np.linspace(0.0, 1.0, 100)
         plt.plot(xs, j_qpd_b.ppf(xs))
         plt.savefig("J_QPD_B_logistic.png")
+        plt.clf()
+
+
+def test_J_QPD_extended_U(is_plot):
+    alpha = 0.2
+
+    qv_low = -4.0
+    qv_median = 1.0
+    qv_high = 5.0
+
+    j_qpd_u = J_QPD_extended_U(alpha, qv_low, qv_median, qv_high, version="normal")
+
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.8), qv_high, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.1), -7.412, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.3), -1.927, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.7), 3.544, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.9), 7.03, 3)
+
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_high), 0.8, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(-7.412), 0.1, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(-1.927), 0.3, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(3.544), 0.7, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(7.03), 0.9, 3)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_u.ppf(xs))
+        plt.savefig("J_QPD_extended_U.png")
+        plt.clf()
+
+    j_qpd_u = J_QPD_extended_U(alpha, qv_low, qv_median, qv_high, version="logistic")
+
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.8), qv_high, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.1), -7.869, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.3), -1.866, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.7), 3.497, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.9), 7.279, 3)
+
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_high), 0.8, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(-7.869), 0.1, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(-1.866), 0.3, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(3.497), 0.7, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(7.279), 0.9, 3)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_u.ppf(xs))
+        plt.savefig("J_QPD_extended_U_logistic.png")
+        plt.clf()
+
+    j_qpd_u = J_QPD_extended_U(alpha, qv_low, qv_median, qv_high)
+
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.8), qv_high, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.1), -7.869, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.3), -1.866, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.7), 3.497, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.9), 7.279, 3)
+
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_high), 0.8, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(-7.869), 0.1, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(-1.866), 0.3, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(3.497), 0.7, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(7.279), 0.9, 3)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_u.ppf(xs))
+        plt.savefig("J_QPD_extended_U_sinh.png")
+        plt.clf()
+
+    j_qpd_u = J_QPD_extended_U(alpha, qv_low, qv_median, qv_high, shape=0.5)
+
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.8), qv_high, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.1), -7.783, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.3), -1.876, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.7), 3.505, 3)
+    np.testing.assert_almost_equal(j_qpd_u.ppf(0.9), 7.232, 3)
+
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(qv_high), 0.8, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(-7.783), 0.1, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(-1.876), 0.3, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(3.505), 0.7, 3)
+    np.testing.assert_almost_equal(j_qpd_u.cdf(7.232), 0.9, 3)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_u.ppf(xs))
+        plt.savefig("J_QPD_extended_U_sinh_shape.png")
+        plt.clf()
+
+
+def test_J_QPD_extended_S(is_plot):
+    alpha = 0.2
+
+    qv_low = 1.12
+    qv_median = 2.023
+    qv_high = 3.322
+
+    j_qpd_extended_s = J_QPD_extended_S(alpha, qv_low, qv_median, qv_high)
+
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.8), qv_high, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.1), 0.726, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.3), 1.435, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.7), 2.753, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.9), 4.414, 3)
+
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(qv_high), 0.8, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(0.726), 0.1, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(1.435), 0.3, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(2.753), 0.7, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(4.414), 0.9, 3)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_extended_s.ppf(xs))
+        plt.savefig("J_QPD_extended_S_sinh.png")
+        plt.clf()
+
+    j_qpd_extended_s = J_QPD_extended_S(alpha, qv_low, qv_median, qv_high, shape=0.5)
+
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.8), qv_high, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.1), 0.732, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.3), 1.433, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.7), 2.756, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.ppf(0.9), 4.389, 3)
+
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(qv_high), 0.8, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(0.732), 0.1, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(1.433), 0.3, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(2.756), 0.7, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_s.cdf(4.389), 0.9, 3)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_extended_s.ppf(xs))
+        plt.savefig("J_QPD_extended_S_sinh_shape.png")
+        plt.clf()
+
+
+def test_J_QPD_extended_B(is_plot):
+    alpha = 0.2
+
+    qv_low = -0.878
+    qv_median = 0.3
+    qv_high = 1.478
+
+    j_qpd_extended_b = J_QPD_extended_B(alpha, qv_low, qv_median, qv_high, -5.0, 10.0)
+
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.8), qv_high, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.1), -1.572, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.3), -0.418, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.7), 1.017, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.9), 2.188, 3)
+
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(qv_high), 0.8, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(-1.572), 0.1, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(-0.418), 0.3, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(1.017), 0.7, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(2.188), 0.9, 3)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_extended_b.ppf(xs))
+        plt.savefig("J_QPD_extended_B_sinh.png")
+        plt.clf()
+
+    j_qpd_extended_b = J_QPD_extended_B(alpha, qv_low, qv_median, qv_high, -5.0, 10.0, shape=0.5)
+
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.2), qv_low, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.5), qv_median, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.8), qv_high, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.1), -1.558, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.3), -0.42, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.7), 1.019, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.ppf(0.9), 2.173, 3)
+
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(qv_low), 0.2, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(qv_median), 0.5, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(qv_high), 0.8, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(-1.558), 0.1, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(-0.42), 0.3, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(1.019), 0.7, 3)
+    np.testing.assert_almost_equal(j_qpd_extended_b.cdf(2.173), 0.9, 3)
+
+    if is_plot:
+        plt.plot([alpha, 0.5, 1 - alpha], [qv_low, qv_median, qv_high], "ro")
+        xs = np.linspace(0.0, 1.0, 100)
+        plt.plot(xs, j_qpd_extended_b.ppf(xs))
+        plt.savefig("J_QPD_extended_B_sinh_shape.png")
         plt.clf()
 
 
