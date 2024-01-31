@@ -41,8 +41,8 @@ class TornadoModuleBase:
         dist="poisson",
         model="multiplicative",
     ) -> None:
-        self.mfp = manual_feature_property
-        self.is_ts = is_time_series
+        self.manual_feature_property = manual_feature_property
+        self.is_time_series = is_time_series
         self.data_interval = data_interval
         self.max_iter = max_iter
         self.task = task
@@ -78,7 +78,7 @@ class TornadoModuleBase:
     def set_feature_property(self, fp=None, verbose=True) -> None:
         if fp is None:
             analyzer = TornadoAnalysisModule(self.X,
-                                             is_time_series=self.is_ts,
+                                             is_time_series=self.is_time_series,
                                              data_interval=self.data_interval,
                                              )
             self.report = analyzer.analyze()
@@ -152,11 +152,14 @@ class TornadoModuleBase:
         self.y = np.asarray(dataset[self.target])
         self.X = dataset.drop(self.target, axis=1)
 
-        if not self.is_ts:
+        if not self.is_time_series:
             self.X = self.X.drop("date", axis=1)
 
         # set and save model parameter
-        self.set_feature_property()
+        if self.manual_feature_property:
+            self.set_feature_property(fp=self.manual_feature_property)
+        else:
+            self.set_feature_property()
         self.init_model_attr["X"] = self.X
         self.init_model_attr["y"] = self.y
         self.features = list(self.feature_properties.keys())
@@ -361,7 +364,7 @@ class ForwardSelectionModule(TornadoModule):
             return False
 
 
-class BFForwardSelectionModule(TornadoModule):
+class PriorPredForwardSelectionModule(TornadoModule):
     def __init__(self,
                  manual_feature_property=None,
                  is_time_series=True,
