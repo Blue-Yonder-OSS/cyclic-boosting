@@ -33,6 +33,6 @@ def test_qpd_forward_trainer(prepare_data):
     df.to_csv("temp.csv", index=False)
 
     data_deliverer = datamodule.TornadoDataModule("temp.csv")
-    manager = module.BFForwardSelectionModule(max_iter=10, model="additive")
+    manager = module.PriorPredForwardSelectionModule(max_iter=10, model="additive")
     predictor = trainer.QPDForwardTrainer(data_deliverer, manager)
     predictor.fit(target="sales", log_policy="PINBALL", verbose=False)
