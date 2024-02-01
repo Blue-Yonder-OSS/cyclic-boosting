@@ -13,6 +13,7 @@ def test_tornado(prepare_data):
     predictor = trainer.Tornado(data_deliverer, manager)
     predictor.fit(target="sales", log_policy="COD", verbose=False)
     _ = predictor.predict(df)
+    _ = predictor.predict_proba(df, output="proba")
 
 
 def test_forward_trainer(prepare_data):
@@ -26,6 +27,7 @@ def test_forward_trainer(prepare_data):
     predictor = trainer.ForwardTrainer(data_deliverer, manager)
     predictor.fit(target="sales", log_policy="COD", verbose=False)
     _ = predictor.predict(df)
+    _ = predictor.predict_proba(df, output="proba")
 
 
 def test_qpd_forward_trainer(prepare_data):

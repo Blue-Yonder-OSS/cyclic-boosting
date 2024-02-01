@@ -155,31 +155,31 @@ class Tornado(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="proba") -> Union[rv_frozen, pd.DataFrame]:
+                      X, output="pmf") -> Union[rv_frozen, pd.DataFrame]:
         X = self.data_deliveler.generate_testset(X)
-        pred = self.estimator.predict(X.copy())
+        y_pred = self.estimator.predict(X.copy())
 
         mng_params = self.manager.get_params()
         dist = mng_params["dist"]
 
         if dist == "poisson":
-            pd_func = poisson(pred)
+            pd_func = poisson(y_pred)
 
         elif dist == "nbinom":
-            X["yhat_mean"] = pred
+            X["yhat_mean"] = y_pred
             X["yhat_mean_feature"] = X["yhat_mean"]
             c = self.nbinomc.predict(X)
             var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
 
-            p = np.minimum(np.where(var > 0, pred / var, 1 - 1e-8), 1 - 1e-8)
-            n = np.where(var > 0, pred * p / (1 - p), 1)
+            p = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
+            n = np.where(var > 0, y_pred * p / (1 - p), 1)
 
             pd_func = nbinom(n, p)
 
         if output == "func":
             return pd_func
 
-        elif output == "proba":
+        elif output == "pmf":
             min_x = min(pd_func.ppf(0.01))
             max_x = max(pd_func.ppf(0.99))
             ix = np.arange(min_x, max_x).astype(int)
@@ -325,31 +325,31 @@ class ForwardTrainer(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="proba") -> Union[rv_frozen, pd.DataFrame]:
+                      X, output="pmf") -> Union[rv_frozen, pd.DataFrame]:
         X = self.data_deliveler.generate_testset(X)
-        pred = self.estimator.predict(X.copy())
+        y_pred = self.estimator.predict(X.copy())
 
         mng_params = self.manager.get_params()
         dist = mng_params["dist"]
 
         if dist == "poisson":
-            pd_func = poisson(pred)
+            pd_func = poisson(y_pred)
 
         elif dist == "nbinom":
-            X["yhat_mean"] = pred
+            X["yhat_mean"] = y_pred
             X["yhat_mean_feature"] = X["yhat_mean"]
             c = self.nbinomc.predict(X)
             var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
 
-            p = np.minimum(np.where(var > 0, pred / var, 1 - 1e-8), 1 - 1e-8)
-            n = np.where(var > 0, pred * p / (1 - p), 1)
+            p = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
+            n = np.where(var > 0, y_pred * p / (1 - p), 1)
 
             pd_func = nbinom(n, p)
 
         if output == "func":
             return pd_func
 
-        elif output == "proba":
+        elif output == "pmf":
             min_x = min(pd_func.ppf(0.01))
             max_x = max(pd_func.ppf(0.99))
             ix = np.arange(min_x, max_x).astype(int)
@@ -520,14 +520,14 @@ class QPDForwardTrainer(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="proba",
+                      X, output="pdf",
                       y_range=[0.0, 1.0]) -> Union[list, pd.DataFrame]:
         X = self.data_deliveler.generate_testset(X)
         _, _, _, qpd = self.est_qpd.predict(X)
 
         if output == "func":
             return qpd
-        elif output == "proba":
+        elif output == "pdf":
             from findiff import FinDiff
             x = np.linspace(start=y_range[0], stop=y_range[1], num=100)
             dx = x[1] - x[0]
