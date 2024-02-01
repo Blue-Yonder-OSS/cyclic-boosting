@@ -61,7 +61,7 @@ def prepare_tornado_modules() -> tuple:
     return manager_attr, estimator
 
 
-def test_logger(prepare_log_data, prepare_tornado_modules) -> None:
+def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
     log_data = prepare_log_data
     manager_attr, est = prepare_tornado_modules
 
@@ -186,7 +186,7 @@ def test_logger(prepare_log_data, prepare_tornado_modules) -> None:
         assert False, error
 
 
-def test_BFForwardLogger(prepare_log_data, prepare_tornado_modules) -> None:
+def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
     log_data = prepare_log_data
     manager_attr, est = prepare_tornado_modules
 
