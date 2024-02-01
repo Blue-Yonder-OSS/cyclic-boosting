@@ -163,7 +163,9 @@ class Tornado(TornadoBase):
         dist = mng_params["dist"]
 
         if dist == "poisson":
-            pd_func = poisson(y_pred)
+            pd_func = list()
+            for mu in y_pred:
+                pd_func.append(poisson(mu))
 
         elif dist == "nbinom":
             X["yhat_mean"] = y_pred
@@ -171,25 +173,28 @@ class Tornado(TornadoBase):
             c = self.nbinomc.predict(X)
             var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
 
-            p = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
-            n = np.where(var > 0, y_pred * p / (1 - p), 1)
+            ps = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
+            ns = np.where(var > 0, y_pred * ps / (1 - ps), 1)
 
-            pd_func = nbinom(n, p)
+            pd_func = list()
+            for n, p in np.stack((ns, ps)).T:
+                pd_func.append(nbinom(n, p))
 
         if output == "func":
             return pd_func
 
         elif output == "pmf":
-            min_x = min(pd_func.ppf(0.01))
-            max_x = max(pd_func.ppf(0.99))
-            ix = np.arange(min_x, max_x).astype(int)
-            pmfs = []
-            for x in ix:
-                pmf = pd_func.pmf(x)
-                pmfs.append(pmf)
-            pmfs = pd.DataFrame(np.array(pmfs).T, columns=ix)
+            min_x = np.inf
+            max_x = -np.inf
+            for dist in pd_func:
+                min_x = min(min_x, dist.ppf(0.01))
+                max_x = max(max_x, dist.ppf(0.99))
+            x = np.arange(min_x, max_x)
+            pmfs = list()
+            for dist in pd_func:
+                pmfs.append(dist.pmf(x))
 
-            return pmfs
+            return pd.DataFrame(pmfs, columns=x)
 
 
 class ForwardTrainer(TornadoBase):
@@ -333,7 +338,9 @@ class ForwardTrainer(TornadoBase):
         dist = mng_params["dist"]
 
         if dist == "poisson":
-            pd_func = poisson(y_pred)
+            pd_func = list()
+            for mu in y_pred:
+                pd_func.append(poisson(mu))
 
         elif dist == "nbinom":
             X["yhat_mean"] = y_pred
@@ -341,25 +348,28 @@ class ForwardTrainer(TornadoBase):
             c = self.nbinomc.predict(X)
             var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
 
-            p = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
-            n = np.where(var > 0, y_pred * p / (1 - p), 1)
+            ps = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
+            ns = np.where(var > 0, y_pred * ps / (1 - ps), 1)
 
-            pd_func = nbinom(n, p)
+            pd_func = list()
+            for n, p in np.stack((ns, ps)).T:
+                pd_func.append(nbinom(n, p))
 
         if output == "func":
             return pd_func
 
         elif output == "pmf":
-            min_x = min(pd_func.ppf(0.01))
-            max_x = max(pd_func.ppf(0.99))
-            ix = np.arange(min_x, max_x).astype(int)
-            pmfs = []
-            for x in ix:
-                pmf = pd_func.pmf(x)
-                pmfs.append(pmf)
-            pmfs = pd.DataFrame(np.array(pmfs).T, columns=ix)
+            min_x = np.inf
+            max_x = -np.inf
+            for dist in pd_func:
+                min_x = min(min_x, dist.ppf(0.01))
+                max_x = max(max_x, dist.ppf(0.99))
+            x = np.arange(min_x, max_x)
+            pmfs = list()
+            for dist in pd_func:
+                pmfs.append(dist.pmf(x))
 
-            return pmfs
+            return pd.DataFrame(pmfs, columns=x)
 
 
 class QPDForwardTrainer(TornadoBase):
@@ -513,7 +523,7 @@ class QPDForwardTrainer(TornadoBase):
         elif quantile == "median":
             y_pred = quantiles[1]
         elif quantile == "high":
-            y_pred == quantiles[2]
+            y_pred = quantiles[2]
         else:
             ValueError("quantile need to 'low' or 'median' or 'high'")
 
