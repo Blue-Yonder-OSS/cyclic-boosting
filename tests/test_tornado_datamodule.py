@@ -1,10 +1,8 @@
-import warnings
 from logging import INFO
 
 import numpy as np
 import pandas as pd
 import pickle
-import pytest
 import os
 import datetime
 import re
@@ -213,7 +211,7 @@ def test_remove_features():
     pd.testing.assert_frame_equal(data_deliverer.valid, desired_valid)
 
 
-def test_generate(caplog):
+def test_generate_trainset(caplog):
     caplog.set_level(INFO)
     # without parameter
     path = "./test_data.csv"
@@ -232,7 +230,7 @@ def test_generate(caplog):
                           desired_n_features_preprocessed,
                           desired_n_features_selected]
 
-    train, valid = data_deliverer.generate("target", True, 0.2, 0)
+    train, valid = data_deliverer.generate_trainset("target", True, 0.2, 0)
 
     for logger_name, log_level, message in caplog.record_tuples:
         if 'datamodule' in logger_name and "->" in message:
@@ -250,3 +248,22 @@ def test_generate(caplog):
     assert all(k in log["preprocessors"].keys()
                for k in data_deliverer.preprocessors.keys())
     assert data_deliverer.features == log["features"]
+
+
+def test_generate_testset(caplog):
+    caplog.set_level(INFO)
+    path = "./test_data.csv"
+    data_deliverer = datamodule.TornadoDataModule(path)
+    correlated_data = create_correlated_data(100, True)
+    t = np.arange(0, 100 * 0.1, 0.1)
+    correlated_data["y0_drop"] = (np.sin(2 * np.pi * t + 0.5) +
+                                  np.random.random(100) * 0.1)
+    correlated_data.to_csv(path, index=False)
+
+    train, valid = data_deliverer.generate_trainset("target", True, 0.2, 0)
+    dataset = data_deliverer.generate_testset(correlated_data)
+    desired_dataset = pd.concat([train, valid]).drop("target", axis=1)
+
+    print(dataset.columns, desired_dataset.columns)
+    pd.testing.assert_frame_equal(dataset, desired_dataset)
+    os.remove(path)
