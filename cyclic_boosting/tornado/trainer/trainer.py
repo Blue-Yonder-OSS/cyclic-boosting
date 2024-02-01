@@ -1,4 +1,3 @@
-from __future__ import annotations
 import logging
 
 import abc
@@ -13,9 +12,7 @@ from .evaluator import Evaluator, QuantileEvaluator
 from .logger import ForwardLogger, PriorPredForwardLogger
 from cyclic_boosting.quantile_matching import QPD_RegressorChain
 
-from typing import Union, TYPE_CHECKING
-if TYPE_CHECKING:
-    from scipy.stats._distn_infrastructure import rv_frozen
+from typing import Union
 
 
 _logger = logging.getLogger(__name__)
@@ -155,7 +152,7 @@ class Tornado(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="pmf") -> Union[rv_frozen, pd.DataFrame]:
+                      X, output="pmf") -> Union[list, pd.DataFrame]:
         X = self.data_deliveler.generate_testset(X)
         y_pred = self.estimator.predict(X.copy())
 
@@ -184,11 +181,13 @@ class Tornado(TornadoBase):
             return pd_func
 
         elif output == "pmf":
-            min_x = np.inf
-            max_x = -np.inf
+            min_xs = list()
+            max_xs = list()
             for dist in pd_func:
-                min_x = min(min_x, dist.ppf(0.01))
-                max_x = max(max_x, dist.ppf(0.99))
+                min_xs.append(dist.ppf(0.01))
+                max_xs.append(dist.ppf(0.99))
+            min_x = min(min_xs)
+            max_x = max(max_xs)
             x = np.arange(min_x, max_x)
             pmfs = list()
             for dist in pd_func:
@@ -330,7 +329,7 @@ class ForwardTrainer(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="pmf") -> Union[rv_frozen, pd.DataFrame]:
+                      X, output="pmf") -> Union[list, pd.DataFrame]:
         X = self.data_deliveler.generate_testset(X)
         y_pred = self.estimator.predict(X.copy())
 
@@ -359,11 +358,13 @@ class ForwardTrainer(TornadoBase):
             return pd_func
 
         elif output == "pmf":
-            min_x = np.inf
-            max_x = -np.inf
+            min_xs = list()
+            max_xs = list()
             for dist in pd_func:
-                min_x = min(min_x, dist.ppf(0.01))
-                max_x = max(max_x, dist.ppf(0.99))
+                min_xs.append(dist.ppf(0.01))
+                max_xs.append(dist.ppf(0.99))
+            min_x = min(min_xs)
+            max_x = max(max_xs)
             x = np.arange(min_x, max_x)
             pmfs = list()
             for dist in pd_func:
