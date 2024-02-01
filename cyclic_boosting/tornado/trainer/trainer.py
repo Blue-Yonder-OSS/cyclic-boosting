@@ -4,21 +4,17 @@ import abc
 import copy
 import six
 import numpy as np
-<<<<<<< HEAD
-import pandas as pd
-from sklearn.model_selection import train_test_split
 from scipy.stats import nbinom, poisson
-from scipy.stats._distn_infrastructure import rv_frozen     # 型ヒントのためにクラスをimportしている...
-=======
 import pickle
+import pandas as pd
 import os
->>>>>>> tornado
-
 from .evaluator import Evaluator, QuantileEvaluator
 from .logger import ForwardLogger, PriorPredForwardLogger
 from cyclic_boosting.quantile_matching import QPD_RegressorChain
 
-# from typing import List, Union
+from typing import Union  # TYPE_CHECKING
+# if TYPE_CHECKING:
+from scipy.stats._distn_infrastructure import rv_frozen
 
 
 _logger = logging.getLogger(__name__)
@@ -78,7 +74,7 @@ class Tornado(TornadoBase):
         evaluator = Evaluator()
 
         # create dataset
-        train, validation = self.data_deliveler.generate(
+        train, validation = self.data_deliveler.generate_trainset(
             target,
             self.manager.is_time_series,
             test_size,
@@ -127,13 +123,17 @@ class Tornado(TornadoBase):
         return logger.get_params()
 
     def predict(self, X):
-        X = self.data_deliveler.generate(X)
-        pred = self.estimator.predict(X)
+        X = self.data_deliveler.generate_testset(X)
+        y_pred = self.estimator.predict(X)
 
-        return pred
+        return y_pred
 
-    def predict_proba(self, target, output="proba") -> Union[rv_frozen, tuple(list, list)]:
-        X, _ = self.data_deliveler.generate(target, is_time_series=self.manager.is_ts, pred=True)
+    def predict_proba(self,
+                      target, output="proba") -> Union[rv_frozen, tuple[list, list]]:
+        X, _ = self.data_deliveler.generate_trainset(
+            target,
+            is_time_series=self.manager.is_time_series,
+            )
         # X = self.data_deliveler.generate(X)
         pred = self.estimator.predict(X.copy())
 
@@ -214,7 +214,7 @@ class ForwardTrainer(TornadoBase):
         evaluator = Evaluator()
 
         # create dataset
-        train, validation = self.data_deliveler.generate(
+        train, validation = self.data_deliveler.generate_trainset(
             target,
             self.manager.is_time_series,
             test_size,
@@ -295,14 +295,17 @@ class ForwardTrainer(TornadoBase):
         return logger.get_params()
 
     def predict(self, X):
-        X = self.data_deliveler.generate(X)
-        pred = self.estimator.predict(X)
+        X = self.data_deliveler.generate_testset(X)
+        y_pred = self.estimator.predict(X)
 
-        return pred
+        return y_pred
 
-    def predict_proba(self, target, output="proba") -> Union[rv_frozen, tuple(list, list)]:
-        X, _ = self.data_deliveler.generate(target, is_time_series=self.manager.is_ts, pred=True)
-        # X = self.data_deliveler.generate(X)
+    def predict_proba(self,
+                      target, output="proba") -> Union[rv_frozen, tuple[list, list]]:
+        X, _ = self.data_deliveler.generate_testset(
+            target,
+            is_time_series=self.manager.is_time_series,
+            )
         pred = self.estimator.predict(X.copy())
 
         mng_params = self.manager.get_params()
@@ -400,7 +403,7 @@ class QPDForwardTrainer(TornadoBase):
         evaluator = QuantileEvaluator()
 
         # create dataset
-        train, validation = self.data_deliveler.generate(
+        train, validation = self.data_deliveler.generate_trainset(
             target,
             self.manager.is_time_series,
             test_size,
@@ -506,10 +509,36 @@ class QPDForwardTrainer(TornadoBase):
         return estimator
 
     def predict(self, X, quantile="median") -> np.ndarray:
-        X = self.data_deliveler.generate(X)
+        X = self.data_deliveler.generate_testset(X)
+        quantiles = self.est_qpd.predict(X)
 
-        est_ix = {"lower": 0, "median": 1, "upper": 2}
-        est = self.estimators[est_ix[quantile]]
-        quantile_values = est.predict(X)
+        if quantile == "low":
+            y_pred = quantiles[0]
+        elif quantile == "median":
+            y_pred = quantiles[1]
+        elif quantile == "high":
+            y_pred == quantiles[2]
+        else:
+            ValueError("quantile need to 'low' or 'median' or 'high'")
 
-        return quantile_values
+        return y_pred
+
+    def predict_proba(self,
+                      X, output="proba",
+                      y_range=[0.0, 1.0]) -> Union[list, pd.DataFrame]:
+        X = self.data_deliveler.generate_testset(X)
+        _, _, _, qpd = self.est_qpd.predict(X)
+
+        if output == "func":
+            print(qpd)
+        elif output == "proba":
+            from findiff import FinDiff
+            x = np.linspace(start=y_range[0], stop=y_range[1], num=100)
+            dx = x[1] - x[0]
+            individual_pdfs = list()
+            derivative_func = FinDiff(0, dx, 1)
+            for dist in qpd:
+                cdf_value = dist.cdf(x)
+                individual_pdfs.append(derivative_func(cdf_value))
+
+            return pd.DataFrame(individual_pdfs, columns=x)

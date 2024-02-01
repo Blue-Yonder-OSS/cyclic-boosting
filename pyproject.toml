@@ -27,6 +27,7 @@ scipy = { version = "1.7.3", python = "<3.10" }
 statsmodels = "^0.14.0"
 pymannkendall = "^1.4.3"
 openpyxl = "^3.1.2"
+findiff = "^0.10.0"
 
 
 [tool.poetry.group.dev.dependencies]
