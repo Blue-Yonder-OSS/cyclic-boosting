@@ -530,7 +530,7 @@ class QPDForwardTrainer(TornadoBase):
         _, _, _, qpd = self.est_qpd.predict(X)
 
         if output == "func":
-            print(qpd)
+            return qpd
         elif output == "proba":
             from findiff import FinDiff
             x = np.linspace(start=y_range[0], stop=y_range[1], num=100)
