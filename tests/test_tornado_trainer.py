@@ -41,4 +41,4 @@ def test_qpd_forward_trainer(prepare_data):
     predictor = trainer.QPDForwardTrainer(data_deliverer, manager)
     predictor.fit(target="sales", log_policy="PINBALL", verbose=False)
     _ = predictor.predict(df)
-    _ = predictor.predict_proba(df, output="proba", y_range=[0, 10])
+    _ = predictor.predict_proba(df, output="proba")

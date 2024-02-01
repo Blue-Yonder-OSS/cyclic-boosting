@@ -532,7 +532,7 @@ class QPDForwardTrainer(TornadoBase):
 
     def predict_proba(self,
                       X, output="pdf",
-                      y_range=[0.0, 1.0]) -> Union[list, pd.DataFrame]:
+                      range=None) -> Union[list, pd.DataFrame]:
         X = self.data_deliveler.generate_testset(X)
         _, _, _, qpd = self.est_qpd.predict(X)
 
@@ -540,7 +540,18 @@ class QPDForwardTrainer(TornadoBase):
             return qpd
         elif output == "pdf":
             from findiff import FinDiff
-            x = np.linspace(start=y_range[0], stop=y_range[1], num=100)
+            min_xs = list()
+            max_xs = list()
+            if range is None:
+                for dist in qpd:
+                    min_xs.append(dist.ppf(0.01))
+                    max_xs.append(dist.ppf(0.99))
+                min_x = min(min_xs)
+                max_x = max(max_xs)
+            else:
+                min_x = range[0]
+                max_x = range[1]
+            x = np.linspace(start=min_x, stop=max_x, num=100)
             dx = x[1] - x[0]
             individual_pdfs = list()
             derivative_func = FinDiff(0, dx, 1)
