@@ -155,12 +155,8 @@ class Tornado(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      target, output="proba") -> Union[rv_frozen, pd.DataFrame]:
-        X, _ = self.data_deliveler.generate_trainset(
-            target,
-            is_time_series=self.manager.is_time_series,
-            )
-        # X = self.data_deliveler.generate(X)
+                      X, output="proba") -> Union[rv_frozen, pd.DataFrame]:
+        X = self.data_deliveler.generate_testset(X)
         pred = self.estimator.predict(X.copy())
 
         mng_params = self.manager.get_params()
@@ -329,11 +325,8 @@ class ForwardTrainer(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      target, output="proba") -> Union[rv_frozen, pd.DataFrame]:
-        X, _ = self.data_deliveler.generate_testset(
-            target,
-            is_time_series=self.manager.is_time_series,
-            )
+                      X, output="proba") -> Union[rv_frozen, pd.DataFrame]:
+        X = self.data_deliveler.generate_testset(X)
         pred = self.estimator.predict(X.copy())
 
         mng_params = self.manager.get_params()
