@@ -4,14 +4,15 @@ import abc
 import copy
 import six
 import numpy as np
+from scipy.stats import nbinom, poisson
 import pickle
+import pandas as pd
 import os
-
 from .evaluator import Evaluator, QuantileEvaluator
 from .logger import ForwardLogger, PriorPredForwardLogger
 from cyclic_boosting.quantile_matching import QPD_RegressorChain
 
-# from typing import List, Union
+from typing import Union
 
 
 _logger = logging.getLogger(__name__)
@@ -55,6 +56,7 @@ class Tornado(TornadoBase):
     def __init__(self, DataModule, TornadoModule):
         super().__init__(DataModule, TornadoModule)
         self.estimator = None
+        self.nbinomc = None
 
     def fit(self,
             target,
@@ -71,7 +73,7 @@ class Tornado(TornadoBase):
         evaluator = Evaluator()
 
         # create dataset
-        train, validation = self.data_deliveler.generate(
+        train, validation = self.data_deliveler.generate_trainset(
             target,
             self.manager.is_time_series,
             test_size,
@@ -90,6 +92,30 @@ class Tornado(TornadoBase):
         model_path = os.path.join(model_dir, best_model_name)
         with open(model_path, "rb") as f:
             self.estimator = pickle.load(f)
+
+        # estimate c parameter
+        mng_params = self.manager.get_params()
+        dist = mng_params["dist"]
+        if dist == "nbinom":
+            estimator_params = self.estimator[-1].__dict__
+            update_params = {
+                "dist": "nbinomc",
+                "feature_properties": estimator_params["feature_properties"],
+                "features": estimator_params["feature_groups"],
+                "observers": estimator_params["observers"],
+                "smoothers": estimator_params["smoother_choice"].explicit_smoothers
+                }
+            self.manager.set_params(update_params)
+
+            self.nbinomc = self.manager.build()
+
+            X_train = copy.deepcopy(self.manager.X)
+            y_train = copy.deepcopy(self.manager.y)
+            X_train['yhat_mean'] = self.estimator.predict(X_train.copy())
+            X_train["yhat_mean_feature"] = X_train['yhat_mean']
+            self.nbinomc.fit(X_train.copy(), np.float64(y_train))
+
+            self.manager.set_params({"dist": "nbinom"})
 
     def tornado(self, target, valid_data, logger, evaluator, verbose):
         while self.manager.manage():
@@ -120,16 +146,61 @@ class Tornado(TornadoBase):
         return logger.get_params()
 
     def predict(self, X):
-        X = self.data_deliveler.generate(X)
-        pred = self.estimator.predict(X)
+        X = self.data_deliveler.generate_testset(X)
+        y_pred = self.estimator.predict(X)
 
-        return pred
+        return y_pred
+
+    def predict_proba(self,
+                      X, output="pmf") -> Union[list, pd.DataFrame]:
+        X = self.data_deliveler.generate_testset(X)
+        y_pred = self.estimator.predict(X.copy())
+
+        mng_params = self.manager.get_params()
+        dist = mng_params["dist"]
+
+        if dist == "poisson":
+            pd_func = list()
+            for mu in y_pred:
+                pd_func.append(poisson(mu))
+
+        elif dist == "nbinom":
+            X["yhat_mean"] = y_pred
+            X["yhat_mean_feature"] = X["yhat_mean"]
+            c = self.nbinomc.predict(X)
+            var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
+
+            ps = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
+            ns = np.where(var > 0, y_pred * ps / (1 - ps), 1)
+
+            pd_func = list()
+            for n, p in np.stack((ns, ps)).T:
+                pd_func.append(nbinom(n, p))
+
+        if output == "func":
+            return pd_func
+
+        elif output == "pmf":
+            min_xs = list()
+            max_xs = list()
+            for dist in pd_func:
+                min_xs.append(dist.ppf(0.01))
+                max_xs.append(dist.ppf(0.99))
+            min_x = min(min_xs)
+            max_x = max(max_xs)
+            x = np.arange(min_x, max_x)
+            pmfs = list()
+            for dist in pd_func:
+                pmfs.append(dist.pmf(x))
+
+            return pd.DataFrame(pmfs, columns=x)
 
 
 class ForwardTrainer(TornadoBase):
     def __init__(self, DataModule, TornadoModule):
         super().__init__(DataModule, TornadoModule)
         self.estimator = None
+        self.nbinomc = None
 
     def fit(self,
             target,
@@ -147,7 +218,7 @@ class ForwardTrainer(TornadoBase):
         evaluator = Evaluator()
 
         # create dataset
-        train, validation = self.data_deliveler.generate(
+        train, validation = self.data_deliveler.generate_trainset(
             target,
             self.manager.is_time_series,
             test_size,
@@ -198,6 +269,30 @@ class ForwardTrainer(TornadoBase):
         with open(model_path, "rb") as f:
             self.estimator = pickle.load(f)
 
+        # build c parameter estimateor
+        mng_params = self.manager.get_params()
+        dist = mng_params["dist"]
+        if dist == "nbinom":
+            estimator_params = self.estimator[-1].__dict__
+            update_params = {
+                "dist": "nbinomc",
+                "feature_properties": estimator_params["feature_properties"],
+                "features": estimator_params["feature_groups"],
+                "observers": estimator_params["observers"],
+                "smoothers": estimator_params["smoother_choice"].explicit_smoothers
+                }
+            self.manager.set_params(update_params)
+
+            self.nbinomc = self.manager.build()
+
+            X_train = copy.deepcopy(self.manager.X)
+            y_train = copy.deepcopy(self.manager.y)
+            X_train['yhat_mean'] = self.estimator.predict(X_train.copy())
+            X_train["yhat_mean_feature"] = X_train['yhat_mean']
+            self.nbinomc.fit(X_train.copy(), np.float64(y_train))
+
+            self.manager.set_params({"dist": "nbinom"})
+
     def tornado(self, target, valid_data, logger, evaluator, verbose):
         while self.manager.manage():
             estimator = self.manager.build()
@@ -228,10 +323,54 @@ class ForwardTrainer(TornadoBase):
         return logger.get_params()
 
     def predict(self, X):
-        X = self.data_deliveler.generate(X)
-        pred = self.estimator.predict(X)
+        X = self.data_deliveler.generate_testset(X)
+        y_pred = self.estimator.predict(X)
 
-        return pred
+        return y_pred
+
+    def predict_proba(self,
+                      X, output="pmf") -> Union[list, pd.DataFrame]:
+        X = self.data_deliveler.generate_testset(X)
+        y_pred = self.estimator.predict(X.copy())
+
+        mng_params = self.manager.get_params()
+        dist = mng_params["dist"]
+
+        if dist == "poisson":
+            pd_func = list()
+            for mu in y_pred:
+                pd_func.append(poisson(mu))
+
+        elif dist == "nbinom":
+            X["yhat_mean"] = y_pred
+            X["yhat_mean_feature"] = X["yhat_mean"]
+            c = self.nbinomc.predict(X)
+            var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
+
+            ps = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
+            ns = np.where(var > 0, y_pred * ps / (1 - ps), 1)
+
+            pd_func = list()
+            for n, p in np.stack((ns, ps)).T:
+                pd_func.append(nbinom(n, p))
+
+        if output == "func":
+            return pd_func
+
+        elif output == "pmf":
+            min_xs = list()
+            max_xs = list()
+            for dist in pd_func:
+                min_xs.append(dist.ppf(0.01))
+                max_xs.append(dist.ppf(0.99))
+            min_x = min(min_xs)
+            max_x = max(max_xs)
+            x = np.arange(min_x, max_x)
+            pmfs = list()
+            for dist in pd_func:
+                pmfs.append(dist.pmf(x))
+
+            return pd.DataFrame(pmfs, columns=x)
 
 
 class QPDForwardTrainer(TornadoBase):
@@ -271,7 +410,7 @@ class QPDForwardTrainer(TornadoBase):
         evaluator = QuantileEvaluator()
 
         # create dataset
-        train, validation = self.data_deliveler.generate(
+        train, validation = self.data_deliveler.generate_trainset(
             target,
             self.manager.is_time_series,
             test_size,
@@ -377,10 +516,47 @@ class QPDForwardTrainer(TornadoBase):
         return estimator
 
     def predict(self, X, quantile="median") -> np.ndarray:
-        X = self.data_deliveler.generate(X)
+        X = self.data_deliveler.generate_testset(X)
+        quantiles = self.est_qpd.predict(X)
 
-        est_ix = {"lower": 0, "median": 1, "upper": 2}
-        est = self.estimators[est_ix[quantile]]
-        quantile_values = est.predict(X)
+        if quantile == "low":
+            y_pred = quantiles[0]
+        elif quantile == "median":
+            y_pred = quantiles[1]
+        elif quantile == "high":
+            y_pred = quantiles[2]
+        else:
+            ValueError("quantile need to 'low' or 'median' or 'high'")
 
-        return quantile_values
+        return y_pred
+
+    def predict_proba(self,
+                      X, output="pdf",
+                      range=None) -> Union[list, pd.DataFrame]:
+        X = self.data_deliveler.generate_testset(X)
+        _, _, _, qpd = self.est_qpd.predict(X)
+
+        if output == "func":
+            return qpd
+        elif output == "pdf":
+            from findiff import FinDiff
+            min_xs = list()
+            max_xs = list()
+            if range is None:
+                for dist in qpd:
+                    min_xs.append(dist.ppf(0.01))
+                    max_xs.append(dist.ppf(0.99))
+                min_x = min(min_xs)
+                max_x = max(max_xs)
+            else:
+                min_x = range[0]
+                max_x = range[1]
+            x = np.linspace(start=min_x, stop=max_x, num=100)
+            dx = x[1] - x[0]
+            individual_pdfs = list()
+            derivative_func = FinDiff(0, dx, 1)
+            for dist in qpd:
+                cdf_value = dist.cdf(x)
+                individual_pdfs.append(derivative_func(cdf_value))
+
+            return pd.DataFrame(individual_pdfs, columns=x)

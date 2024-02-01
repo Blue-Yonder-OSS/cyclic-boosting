@@ -236,7 +236,12 @@ class TornadoDataModule():
             self.train = self.train.loc[:, self.features]
             self.valid = self.valid.loc[:, self.features]
 
-    def generate(self, target, is_time_series, test_size, seed) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def generate_trainset(self,
+                          target,
+                          is_time_series,
+                          test_size,
+                          seed=0,
+                          ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate a dataset for prediction.
 
         This function loads a dataset from a specified path, applies
@@ -276,10 +281,7 @@ class TornadoDataModule():
             n_features_original = len(dataset.columns) - 1
             _logger.info(f"\rn_features: {n_features_original} ->")
 
-            if self.preprocessors:
-                preprocess.set_preprocessors(self.preprocessors)
-            else:
-                preprocess.check_data(dataset, self.is_time_series)
+            preprocess.check_data(dataset, self.is_time_series)
 
             self.train, self.valid = train_test_split(
                 dataset,
@@ -322,3 +324,51 @@ class TornadoDataModule():
                                                           self.target)
 
         return self.train, self.valid
+
+    def generate_testset(self,
+                         dataset,
+                         ) -> pd.DataFrame:
+        """Generate a dataset for prediction.
+
+        This function apply some preprocessing if `generete_trainset` method run before.
+        if it is not, the dataset rename columns to lower case is just applied.
+        (`Tornado` needs dataset with lower case columns.)
+
+        Parameters
+        ----------
+        dataset : str
+            Raw testset
+
+        Returns
+        -------
+        pd.DataFrame
+            The testset
+        """
+        preprocess = Preprocess(self.params)
+        dataset = preprocess.tolowerstr(dataset)
+        self.train, self.valid = train_test_split(
+                dataset,
+                test_size=0.2,
+                random_state=0,
+                )
+
+        if self.preprocessors:
+            preprocess.set_preprocessors(self.preprocessors)
+            self.train, self.valid = preprocess.apply(self.train,
+                                                      self.valid,
+                                                      self.target)
+            self.remove_features()
+
+        else:
+            if self.is_time_series:
+                self.preprocessors["todatetime"] = {}
+                preprocess.set_preprocessors(self.preprocessors)
+                self.train, self.valid = preprocess.apply(self.train,
+                                                          self.valid,
+                                                          self.target)
+
+        X = pd.concat([self.train, self.valid])
+        if self.target in X.columns:
+            X = X.drop(self.target, axis=1)
+
+        return X

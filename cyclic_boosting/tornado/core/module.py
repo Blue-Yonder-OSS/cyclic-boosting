@@ -14,6 +14,7 @@ from cyclic_boosting import flags, common_smoothers, observers
 # from cyclic_boosting.plots import plot_analysis
 from cyclic_boosting.pipelines import (
     pipeline_CBPoissonRegressor as PoissonRegressor,
+    pipeline_CBNBinomC as NBinomC,
     pipeline_CBMultiplicativeQuantileRegressor as MultiplicativeQuantileRegressor,
     pipeline_CBAdditiveQuantileRegressor as AdditiveQuantileRegressor,
 )
@@ -201,8 +202,13 @@ class TornadoModuleBase:
                 else:
                     raise ValueError(f"{self.mode} mode is not exist")
 
-            elif self.dist == "poisson":
+            elif self.dist in ["poisson", "nbinom"]:
                 self.regressor = PoissonRegressor(**param)
+            elif self.dist == "nbinomc":
+                param["mean_prediction_column"] = "yhat_mean"
+                param["feature_properties"]["yhat_mean_feature"] = flags.IS_CONTINUOUS | flags.HAS_MISSING | flags.MISSING_NOT_LEARNED
+                param["feature_groups"].append("yhat_mean_feature")
+                return NBinomC(**param)
 
             else:
                 raise ValueError(f"{self.dist} mode is not exist")
