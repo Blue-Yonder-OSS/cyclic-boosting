@@ -174,7 +174,7 @@ def test_forward_selection_module(prepare_data):
     manager.update()
 
 
-def test_prior_pred_forward_selection_Module(prepare_data):
+def test_prior_pred_forward_selection_module(prepare_data):
     X, y = prepare_data
     X, y = X[:100].copy(), y[:100].copy()
     X.loc[:, "SALES"] = y
