@@ -87,7 +87,7 @@ class Tornado(TornadoBase):
         logger_params = self.tornado(target, validation, logger, evaluator, verbose)
 
         # best model
-        best_model_name = f'model_{logger_params["log_data"]["iter"]}'
+        best_model_name = f'model_{logger_params["log_data"]["iter"]}.pkl'
         model_dir = logger_params["model_dir"]
         model_path = os.path.join(model_dir, best_model_name)
         with open(model_path, "rb") as f:
@@ -134,7 +134,8 @@ class Tornado(TornadoBase):
             # log
             eval_history = evaluator.eval(y_valid, y_pred, estimator, verbose)
             mng_attr = self.manager.get_params()
-            logger.log(estimator, eval_history, mng_attr)
+            logger.log(estimator,
+                       eval_history, mng_attr, verbose=verbose)
             self.manager.clear()
 
             # update param
@@ -152,7 +153,8 @@ class Tornado(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="pmf") -> Union[list, pd.DataFrame]:
+                      X, output="pmf",
+                      range=None) -> Union[list, pd.DataFrame]:
         X = self.data_deliveler.generate_testset(X)
         y_pred = self.estimator.predict(X.copy())
 
@@ -183,11 +185,15 @@ class Tornado(TornadoBase):
         elif output == "pmf":
             min_xs = list()
             max_xs = list()
-            for dist in pd_func:
-                min_xs.append(dist.ppf(0.01))
-                max_xs.append(dist.ppf(0.99))
-            min_x = min(min_xs)
-            max_x = max(max_xs)
+            if range is None:
+                for dist in pd_func:
+                    min_xs.append(dist.ppf(0.05))
+                    max_xs.append(dist.ppf(0.95))
+                min_x = min(min_xs)
+                max_x = max(max_xs)
+            else:
+                min_x = range[0]
+                max_x = range[1]
             x = np.arange(min_x, max_x)
             pmfs = list()
             for dist in pd_func:
@@ -263,7 +269,7 @@ class ForwardTrainer(TornadoBase):
         logger_params = self.tornado(target, validation, logger, evaluator, verbose)
 
         # best model
-        best_model_name = f'model_{logger_params["log_data"]["iter"]}'
+        best_model_name = f'model_{logger_params["log_data"]["iter"]}.pkl'
         model_dir = logger_params["model_dir"]
         model_path = os.path.join(model_dir, best_model_name)
         with open(model_path, "rb") as f:
@@ -329,7 +335,8 @@ class ForwardTrainer(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="pmf") -> Union[list, pd.DataFrame]:
+                      X, output="pmf",
+                      range=None) -> Union[list, pd.DataFrame]:
         X = self.data_deliveler.generate_testset(X)
         y_pred = self.estimator.predict(X.copy())
 
@@ -360,11 +367,15 @@ class ForwardTrainer(TornadoBase):
         elif output == "pmf":
             min_xs = list()
             max_xs = list()
-            for dist in pd_func:
-                min_xs.append(dist.ppf(0.01))
-                max_xs.append(dist.ppf(0.99))
-            min_x = min(min_xs)
-            max_x = max(max_xs)
+            if range is None:
+                for dist in pd_func:
+                    min_xs.append(dist.ppf(0.05))
+                    max_xs.append(dist.ppf(0.95))
+                min_x = min(min_xs)
+                max_x = max(max_xs)
+            else:
+                min_x = range[0]
+                max_x = range[1]
             x = np.arange(min_x, max_x)
             pmfs = list()
             for dist in pd_func:
@@ -505,7 +516,7 @@ class QPDForwardTrainer(TornadoBase):
                 y_pred,
                 args["quantile"],
                 estimator,
-                verbose=False,
+                verbose=verbose,
                 )
             mng_attr = self.manager.get_params()
 
@@ -544,8 +555,8 @@ class QPDForwardTrainer(TornadoBase):
             max_xs = list()
             if range is None:
                 for dist in qpd:
-                    min_xs.append(dist.ppf(0.01))
-                    max_xs.append(dist.ppf(0.99))
+                    min_xs.append(dist.ppf(0.05))
+                    max_xs.append(dist.ppf(0.95))
                 min_x = min(min_xs)
                 max_x = max(max_xs)
             else:
