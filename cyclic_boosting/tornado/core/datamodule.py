@@ -326,7 +326,7 @@ class TornadoDataModule():
         return self.train, self.valid
 
     def generate_testset(self,
-                         dataset,
+                         X,
                          ) -> pd.DataFrame:
         """Generate a dataset for prediction.
 
@@ -336,7 +336,7 @@ class TornadoDataModule():
 
         Parameters
         ----------
-        dataset : str
+        X : str
             Raw testset
 
         Returns
@@ -345,17 +345,13 @@ class TornadoDataModule():
             The testset
         """
         preprocess = Preprocess(self.params)
-        dataset = preprocess.tolowerstr(dataset)
-        self.train, self.valid = train_test_split(
-                dataset,
-                test_size=0.2,
-                random_state=0,
-                )
+        X = preprocess.tolowerstr(X)
 
+        # NOTE self.valid is dummy to run
         if self.preprocessors:
             preprocess.set_preprocessors(self.preprocessors)
-            self.train, self.valid = preprocess.apply(self.train,
-                                                      self.valid,
+            self.train, self.valid = preprocess.apply(X,
+                                                      X,
                                                       self.target)
             self.remove_features()
 
@@ -363,11 +359,10 @@ class TornadoDataModule():
             if self.is_time_series:
                 self.preprocessors["todatetime"] = {}
                 preprocess.set_preprocessors(self.preprocessors)
-                self.train, self.valid = preprocess.apply(self.train,
-                                                          self.valid,
+                self.train, self.valid = preprocess.apply(X,
+                                                          X,
                                                           self.target)
-
-        X = pd.concat([self.train, self.valid])
+        X = self.train
         if self.target in X.columns:
             X = X.drop(self.target, axis=1)
 

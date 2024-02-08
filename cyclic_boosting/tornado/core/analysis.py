@@ -109,7 +109,7 @@ class TornadoAnalysisModule():
         cols = self.dataset.select_dtypes(include=['float']).columns
         self.targets = [c for c in cols]
         targets = [c for c in cols]
-        _logger.info(f"Auto analysis target {targets}")
+        _logger.info(f"Auto analysis target {targets} \n")
 
         if 'date' in self.dataset.columns:
             self.dataset.index = self.dataset["date"].values

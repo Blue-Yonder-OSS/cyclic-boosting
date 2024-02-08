@@ -184,10 +184,10 @@ class Preprocess():
                           " a 'date' column is required to identify\n"
                           " the datetime of the data.")
 
-        self.preprocessors["standardization"] = {}
-        self.preprocessors["logarithmic"] = {}
-        self.preprocessors["rank"] = {}
-        self.preprocessors["rankgauss"] = {}
+        # self.preprocessors["standardization"] = {}
+        # self.preprocessors["logarithmic"] = {}
+        # self.preprocessors["rank"] = {}
+        # self.preprocessors["rankgauss"] = {}
 
     def apply(self, train, valid, target) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Apply feature engineering to the dataset.
