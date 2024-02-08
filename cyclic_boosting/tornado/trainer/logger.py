@@ -184,12 +184,12 @@ class LoggerBase:
             )
 
     def save(self, est):
-        """Save information about the model.
+        """Save information about the model to files.
 
         Parameters
         ----------
         est : sklearn.pipeline.Pipeline
-            The model.
+            The model to be held.
         """
         self.make_model_dir()
         # metrics
@@ -203,6 +203,10 @@ class LoggerBase:
         # plot
         file_name = f'plot_{self.log_data["iter"]}'
         self.save_plot(est, os.path.join(self.model_dir, file_name))
+
+        # model
+        file_name = f'model_{self.log_data["iter"]}.pkl'
+        self.save_model(est, os.path.join(self.model_dir, file_name))
 
     def reset_count(self) -> None:
         """Reset the iteration count."""
@@ -369,31 +373,6 @@ class ForwardLogger(LoggerBase):
 
         return is_detect
 
-    def save(self, est):
-        """Save information about the model to files.
-
-        Parameters
-        ----------
-        est : sklearn.pipeline.Pipeline
-            The model to be held.
-        """
-        self.make_model_dir()
-        # metrics
-        file_name = f"metrics_{self.log_data['iter']}.txt"
-        self.save_metrics(os.path.join(self.model_dir, file_name))
-
-        # setting
-        file_name = f"setting_{self.log_data['iter']}.txt"
-        self.save_setting(os.path.join(self.model_dir, file_name))
-
-        # plot
-        file_name = f'plot_{self.log_data["iter"]}'
-        self.save_plot(est, os.path.join(self.model_dir, file_name))
-
-        # model
-        file_name = f'model_{self.log_data["iter"]}'
-        self.save_model(est, os.path.join(self.model_dir, file_name))
-
     def log_single(self, _, eval_result, mng_attr, last_iter) -> None:
         """Log a single regression analysis.
 
@@ -468,7 +447,7 @@ class ForwardLogger(LoggerBase):
 
         # update
         if is_best:
-            self.hold(est, eval_result, mng_attr, verbose=True, save=True)
+            self.hold(est, eval_result, mng_attr, verbose=verbose, save=True)
             self.bench_mark = copy.deepcopy(self.log_data)
 
         if last_iter:
@@ -742,7 +721,7 @@ class PriorPredForwardLogger(LoggerBase):
 
         # update
         if is_best:
-            self.hold(est, eval_result, mng_attr, verbose, save=False)
+            self.hold(est, eval_result, mng_attr, verbose=verbose, save=False)
             interaction = self.log_data["features"][0]
             self.valid_interactions.append(interaction)
 
