@@ -39,7 +39,7 @@ class TornadoModuleBase:
 
     Attributes
     ----------
-    mfp : dict or None
+    manual_feature_property : dict or None
         Feature property set manually. Dfault is None.
 
     is_time_series : bool
