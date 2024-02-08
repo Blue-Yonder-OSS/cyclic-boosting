@@ -1106,3 +1106,27 @@ def smear_discrete_cdftruth(cdf_func: callable, y: int) -> float:
         cdf_low = 0.0
     cdf_truth = cdf_low + np.random.uniform(0, 1) * (cdf_high - cdf_low)
     return cdf_truth
+
+
+def smear_discrete_cdftruth_qpd(qpds: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """
+    Smearing of the CDF values of samples from discrete random variables. Main
+    usage is for a histogram of CDF values to check an estimated individual
+    probability distribution (should be flat).
+
+    Parameters
+    ----------
+    y : np.ndarray
+        values from discrete random variables
+    qpds : np.ndarray
+        array of QPDs
+
+    Returns
+    -------
+    np.ndarray
+        smeared CDF values for y
+    """
+    cdf_high = qpds.cdf(y, inner=True)
+    cdf_low = np.where(y >= 1, qpds.cdf(y - 1, inner=True), 0.0)
+    cdf_truth = cdf_low + np.random.uniform(0, 1, len(y)) * (cdf_high - cdf_low)
+    return cdf_truth
