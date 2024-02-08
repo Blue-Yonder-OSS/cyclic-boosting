@@ -749,7 +749,7 @@ class PriorPredForwardLogger(LoggerBase):
         """
         iter_all = mng_attr["end"]
         self.iter = mng_attr["experiment"]
-        _logger.info(f"\riter: {self.iter} / {iter_all}\n")
+        _logger.info(f"\riter: {self.iter} / {iter_all} ")
 
         is_first_iter = self.iter == 1
         is_last_iter = iter_all <= self.iter
