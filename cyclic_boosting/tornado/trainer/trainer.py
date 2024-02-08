@@ -277,6 +277,13 @@ class Tornado(TornadoBase):
         output : str
             Output type. 'pmf' or 'func'. Default is 'pmf'.
 
+        range : lsit
+            List containing the lower and upper bounds of the probability
+            distribution. If None, the lower bound is the minimum of the 0.01
+            quantile of all samples, and the upper bound is the maximum of the
+            0.99 quantile of all samples. Default is None.
+                For example: [100, 200]
+
         Returns
         -------
         list of scipy.stats._distn_infrastructure.rv_frozen or pandas.DataFrame
@@ -573,6 +580,13 @@ class ForwardTrainer(TornadoBase):
 
         output : str
             Output type. 'pmf' or 'func'. Default is 'pmf'.
+
+        range : lsit
+            List containing the lower and upper bounds of the probability
+            distribution. If None, the lower bound is the minimum of the 0.01
+            quantile of all samples, and the upper bound is the maximum of the
+            0.99 quantile of all samples. Default is None.
+                For example: [100, 200]
 
         Returns
         -------
