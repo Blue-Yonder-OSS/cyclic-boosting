@@ -128,28 +128,35 @@ class Preprocess():
 
         return opt
 
-    def load_dataset(self, path_ds) -> pd.DataFrame:
+    def load_dataset(self, src) -> pd.DataFrame:
         """Load a dataset from a csv or xlsx file.
 
         Column names in the loaded dataset will be renamed to lowercase.
 
         Parameters
         ----------
-        path_ds : str
-            Path to the dataset.
+        src : str
+            Dataset path of csv or xlsx, or pandas.DataFrame
 
         Returns
         -------
         pandas.DataFrame
-            dataset
+            Dataset
         """
-        if path_ds.endswith(".csv"):
-            dataset = self.tolowerstr(pd.read_csv(path_ds))
-        elif path_ds.endswith(".xlsx"):
-            dataset = self.tolowerstr(pd.read_excel(path_ds))
+        if isinstance(src, str):
+            if src.endswith(".csv"):
+                df = pd.read_csv(src)
+            elif src.endswith(".xlsx"):
+                df = pd.read_excel(src)
+            else:
+                _logger.error("The file format is not supported.\n"
+                              "Please use the csv or xlsx format.")
+        elif isinstance(src, pd.DataFrame):
+            df = src
         else:
-            _logger.error("The file format is not supported.\n"
-                          "Please use the csv or xlsx format.")
+            ValueError("please set path of csv or xlsx, or pandas.DataFrame")
+        dataset = self.tolowerstr(df)
+
         return dataset
 
     def check_data(self, dataset, is_time_series) -> None:
@@ -158,7 +165,7 @@ class Preprocess():
         Parameters
         ----------
         dataset : pandas.DataFrame
-            dataset
+            Dataset
 
         is_time_series : bool
             Whether the data is a time series dataset or not.

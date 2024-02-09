@@ -39,7 +39,7 @@ def split_dataset(df):
 def test_set_log():
     # load failure
     path = "./test_data.csv"
-    log_path = "./test_data.pickle"
+    log_path = "./test_data.pkl"
     data_deliverer = datamodule.TornadoDataModule(path)
     data_deliverer.set_log()
     assert data_deliverer.log_path == log_path
@@ -48,7 +48,7 @@ def test_set_log():
 
     # load success
     path = "./test_data.csv"
-    log_path = "./test_data_success.pickle"
+    log_path = "./test_data_success.pkl"
     with open(log_path, "wb") as p:
         log = {"preprocessors": {"test": {}},
                "features": ["test"]}
@@ -215,7 +215,7 @@ def test_generate_trainset(caplog):
     caplog.set_level(INFO)
     # without parameter
     path = "./test_data.csv"
-    log_path = "./test_data.pickle"
+    log_path = "./test_data.pkl"
     data_deliverer = datamodule.TornadoDataModule(path)
     correlated_data = create_correlated_data(100, True)
     t = np.arange(0, 100 * 0.1, 0.1)
