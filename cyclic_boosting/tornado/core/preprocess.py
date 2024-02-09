@@ -5,17 +5,22 @@ Processing necessary for data loading, checking, and other preprocessing
 tasks, as well as various feature engineering methods.
 """
 import logging
-
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, \
-                                  PowerTransformer, QuantileTransformer, \
-                                  OrdinalEncoder, KBinsDiscretizer, \
-                                  OneHotEncoder, TargetEncoder
-from sklearn.feature_extraction import FeatureHasher
-import statsmodels.api as sm
 from typing import Tuple
 
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+from sklearn.feature_extraction import FeatureHasher
+from sklearn.preprocessing import (
+    KBinsDiscretizer,
+    MinMaxScaler,
+    OneHotEncoder,
+    OrdinalEncoder,
+    PowerTransformer,
+    QuantileTransformer,
+    StandardScaler,
+    TargetEncoder,
+)
 
 _logger = logging.getLogger(__name__)
 

@@ -3,17 +3,16 @@
 Standard output and output of files containing the best model, its settings,
 evaluation results, graph plots, etc.
 """
-import logging
-
 import abc
-import six
+import copy
+import logging
 import os
 import pickle
-import copy
+
+import six
 
 from cyclic_boosting import flags
 from cyclic_boosting.plots import plot_analysis
-
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)

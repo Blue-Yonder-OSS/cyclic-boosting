@@ -1,15 +1,15 @@
 """Preparation (handling preprocessing) of data for the Tornado module."""
 import logging
+import pickle
+from itertools import combinations
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
-import pickle
 from sklearn.model_selection import train_test_split
 from statsmodels.stats.outliers_influence import variance_inflation_factor
-from itertools import combinations
-from .preprocess import Preprocess
-from typing import Tuple
 
+from .preprocess import Preprocess
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)

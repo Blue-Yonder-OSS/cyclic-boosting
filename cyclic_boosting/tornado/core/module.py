@@ -1,26 +1,26 @@
 """Handle model settings."""
 from __future__ import annotations
-import logging
 
 import abc
-import six
 import itertools
+import logging
+from typing import TYPE_CHECKING
+
 import numpy as np
+import six
 
-from cyclic_boosting import flags, common_smoothers, observers
-
-# from cyclic_boosting.plots import plot_analysis
+from cyclic_boosting import common_smoothers, flags, observers
 from cyclic_boosting.pipelines import (
-    pipeline_CBPoissonRegressor as PoissonRegressor,
-    pipeline_CBNBinomC as NBinomC,
-    pipeline_CBMultiplicativeQuantileRegressor as MultiplicativeQuantileRegressor,
     pipeline_CBAdditiveQuantileRegressor as AdditiveQuantileRegressor,
 )
+from cyclic_boosting.pipelines import (
+    pipeline_CBMultiplicativeQuantileRegressor as MultiplicativeQuantileRegressor,
+)
+from cyclic_boosting.pipelines import pipeline_CBNBinomC as NBinomC
+from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor as PoissonRegressor
+from cyclic_boosting.smoothing.onedim import IsotonicRegressor, SeasonalSmoother
 
-from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
 from .analysis import TornadoAnalysisModule
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline

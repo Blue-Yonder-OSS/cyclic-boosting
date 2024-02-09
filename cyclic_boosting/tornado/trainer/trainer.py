@@ -1,20 +1,22 @@
 """Control Recursive Learning in Tornado."""
 from __future__ import annotations
-import logging
 
 import abc
 import copy
-import six
-import numpy as np
-from scipy.stats import nbinom, poisson
-import pickle
-import pandas as pd
+import logging
 import os
-from .evaluator import Evaluator, QuantileEvaluator
-from .logger import ForwardLogger, PriorPredForwardLogger
+import pickle
+from typing import TYPE_CHECKING, Union
+
+import numpy as np
+import pandas as pd
+import six
+from scipy.stats import nbinom, poisson
+
 from cyclic_boosting.quantile_matching import QPD_RegressorChain
 
-from typing import Union, TYPE_CHECKING
+from .evaluator import Evaluator, QuantileEvaluator
+from .logger import ForwardLogger, PriorPredForwardLogger
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -572,8 +574,7 @@ class ForwardTrainer(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="pmf",
-                      range=None) -> Union[list, pd.DataFrame]:
+                      X, output="pmf", range=None) -> Union[list, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         List containing instances of a fitted method collection or
@@ -932,8 +933,7 @@ class QPDForwardTrainer(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="pdf",
-                      range=None) -> Union[list, pd.DataFrame]:
+                      X, output="pdf", range=None) -> Union[list, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         Instances of the fitted method collection for a particular probability

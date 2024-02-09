@@ -3,9 +3,9 @@ import logging
 
 import numpy as np
 import pandas as pd
-from statsmodels.tsa.seasonal import MSTL
-from scipy.fft import fft
 import pymannkendall as mk
+from scipy.fft import fft
+from statsmodels.tsa.seasonal import MSTL
 
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
