@@ -36,8 +36,8 @@ class LoggerBase:
     save_dir : str
         The path to the directory where log data is saved.
 
-    policy : str
-        Model evaluation policy. "COD" or "PINBALL".
+    criterion : str
+        Model evaluation criterion. "COD" or "PINBALL".
 
     Attributes
     ----------
@@ -52,23 +52,24 @@ class LoggerBase:
         The path to the directory where models are saved.
     """
 
-    def __init__(self, save_dir, policy):
+    def __init__(self, criterion, save_dir):
         self.iter = 0
         self.save_dir = save_dir
-        self.policy = policy
+        self.criterion = criterion
         self.log_data = dict()
         self.model_dir = None
         self.make_dir()
 
-    def get_params(self) -> dict:
-        """Get instance variables of this class.
+    def get_attr(self) -> dict:
+        """Get class attributes.
 
         Exclude those starting with "__".
 
         Returns
         -------
         dict
-            Dictionary containing the instance variables of this class.
+            Dictionary with class attribute names as keys and class attribute
+            as values.
         """
         class_vars = dict()
         for attr_name, value in self.__dict__.items():
@@ -77,8 +78,15 @@ class LoggerBase:
 
         return class_vars
 
-    def set_params(self, params: dict) -> None:
-        """Set instance variables of this class."""
+    def set_attr(self, params: dict) -> None:
+        """Set class attributes.
+
+        Parameters
+        ----------
+        params : dict
+            Parameters to be set. Dictionary with attribute names as keys and
+            attribute as values.
+        """
         for attr_name, value in params.items():
             self.__dict__[attr_name] = value
 
@@ -228,8 +236,8 @@ class ForwardLogger(LoggerBase):
     save_dir : str
         The path to the directory to save the logs.
 
-    policy : str
-        The evaluation policy for the model. Should be "COD" or "PINBALL".
+    criterion : str
+        The evaluation criterion for the model. Should be "COD" or "PINBALL".
 
     round_names : list
         List of names of training rounds, including two round names.
@@ -259,11 +267,11 @@ class ForwardLogger(LoggerBase):
         F-value).
     """
 
-    def __init__(self, save_dir, policy, round_names=["first", "second"]):
-        super().__init__(save_dir, policy)
+    def __init__(self, criterion, save_dir, round_names=["first", "second"]):
+        super().__init__(criterion, save_dir)
         self.iter = 0
         self.save_dir = save_dir
-        self.policy = policy
+        self.criterion = criterion
         self.first_round = round_names[0]
         self.second_round = round_names[1]
         self.log_data = dict()
@@ -347,8 +355,8 @@ class ForwardLogger(LoggerBase):
         """Check if the model is the best or not.
 
         The model is compared with the coefficient of determination or Pinball
-        loss, depending on the `policy` variable of the model evaluation
-        policy.
+        loss, depending on the `criterion` variable of the model evaluation
+        criterion.
 
         Parameters
         ----------
@@ -360,15 +368,15 @@ class ForwardLogger(LoggerBase):
         bool
             Whether the model is best or not.
         """
-        result = eval_result[self.policy]
-        bench_mark = self.bench_mark["metrics"][self.policy]
+        result = eval_result[self.criterion]
+        bench_mark = self.bench_mark["metrics"][self.criterion]
 
-        if self.policy == "COD":
+        if self.criterion == "COD":
             is_detect = result > bench_mark
-        elif self.policy == "PINBALL":
+        elif self.criterion == "PINBALL":
             is_detect = result < bench_mark
         else:
-            raise ValueError(f"{self.policy} doesn't not exist")
+            raise ValueError(f"{self.criterion} doesn't not exist")
 
         return is_detect
 
@@ -519,8 +527,8 @@ class PriorPredForwardLogger(LoggerBase):
     save_dir : str
         The path to the directory to save the logs.
 
-    policy : str
-        The evaluation policy for the model. Should be "COD" or "PINBALL".
+    criterion : str
+        The evaluation criterion for the model. Should be "COD" or "PINBALL".
 
     round_names : list
         List of names of training rounds, including two round names.
@@ -546,8 +554,8 @@ class PriorPredForwardLogger(LoggerBase):
         List of valid interaction terms.
     """
 
-    def __init__(self, save_dir, policy, round_names=["first", "second"]):
-        super().__init__(save_dir, policy)
+    def __init__(self, criterion, save_dir, round_names=["first", "second"]):
+        super().__init__(criterion, save_dir)
         self.first_round = round_names[0]
         self.second_round = round_names[1]
         self.log_data = dict()
@@ -567,10 +575,10 @@ class PriorPredForwardLogger(LoggerBase):
             Any manager class that inherits from
             :class:`cyclic_boosting.tornado.core.module.TornadoModuleBase`.
         """
-        policy = self.policy
-        metrics = eval_result[self.policy]
+        criterion = self.criterion
+        metrics = eval_result[self.criterion]
         feature = mng_attr["features"][0]
-        _logger.info(f"[DETECT] {policy}: {metrics}, {feature}\n")
+        _logger.info(f"[DETECT] {criterion}: {metrics}, {feature}\n")
 
     def hold(self, est, eval_result, mng_attr, verbose=True, save=True):
         """Hold information of the best model.
@@ -625,8 +633,8 @@ class PriorPredForwardLogger(LoggerBase):
         """Check if the model is the best or not.
 
         The model is compared with the coefficient of determination or Pinball
-        loss, depending on the `policy` variable of the model evaluation
-        policy.
+        loss, depending on the `criterion` variable of the model evaluation
+        criterion.
 
         Parameters
         ----------
@@ -638,15 +646,15 @@ class PriorPredForwardLogger(LoggerBase):
         bool
             Whether the model is best or not.
         """
-        result = eval_result[self.policy]
-        bench_mark = self.bench_mark["metrics"][self.policy]
+        result = eval_result[self.criterion]
+        bench_mark = self.bench_mark["metrics"][self.criterion]
 
-        if self.policy == "COD":
+        if self.criterion == "COD":
             is_detect = result > bench_mark
-        elif self.policy == "PINBALL":
+        elif self.criterion == "PINBALL":
             is_detect = result < bench_mark
         else:
-            raise ValueError(f"{self.policy} is not existed option")
+            raise ValueError(f"{self.criterion} is not existed option")
 
         return is_detect
 

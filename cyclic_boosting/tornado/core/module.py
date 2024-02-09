@@ -144,8 +144,8 @@ class TornadoModuleBase:
         self.experiment = 0
         self.end = 0
 
-    def get_params(self) -> dict:
-        """Get class parameters.
+    def get_attr(self) -> dict:
+        """Get class attributes.
 
         Get the attributes of the class not starting with "__" as a dictionary.
 
@@ -153,7 +153,7 @@ class TornadoModuleBase:
         -------
         dict
             Dictionary with class attribute names as keys and class attribute
-            values as values.
+            as values.
         """
         class_vars = dict()
         for attr_name, value in self.__dict__.items():
@@ -162,14 +162,14 @@ class TornadoModuleBase:
 
         return class_vars
 
-    def set_params(self, params: dict) -> None:
-        """Set class parameters.
+    def set_attr(self, params: dict) -> None:
+        """Set class attributes.
 
         Parameters
         ----------
         params : dict
             Parameters to be set. Dictionary with attribute names as keys and
-            attribute values as values.
+            attribute as values.
         """
         for attr_name, value in params.items():
             self.__dict__[attr_name] = value

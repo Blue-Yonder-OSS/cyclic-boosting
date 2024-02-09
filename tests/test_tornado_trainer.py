@@ -11,7 +11,7 @@ def test_tornado(prepare_data):
     data_deliverer = datamodule.TornadoDataModule("temp.csv")
     manager = module.TornadoModule(max_iter=5)
     predictor = trainer.Tornado(data_deliverer, manager)
-    predictor.fit(target="sales", log_policy="COD", verbose=False)
+    predictor.fit(target="sales", criterion="COD", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
 
@@ -25,7 +25,7 @@ def test_forward_trainer(prepare_data):
     data_deliverer = datamodule.TornadoDataModule("temp.csv")
     manager = module.ForwardSelectionModule(max_iter=5)
     predictor = trainer.ForwardTrainer(data_deliverer, manager)
-    predictor.fit(target="sales", log_policy="COD", verbose=False)
+    predictor.fit(target="sales", criterion="COD", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
 
@@ -39,6 +39,6 @@ def test_qpd_forward_trainer(prepare_data):
     data_deliverer = datamodule.TornadoDataModule("temp.csv")
     manager = module.PriorPredForwardSelectionModule(max_iter=10, model="additive")
     predictor = trainer.QPDForwardTrainer(data_deliverer, manager)
-    predictor.fit(target="sales", log_policy="PINBALL", verbose=False)
+    predictor.fit(target="sales", criterion="PINBALL", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")

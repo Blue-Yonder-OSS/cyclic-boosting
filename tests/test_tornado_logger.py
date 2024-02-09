@@ -85,12 +85,12 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
         "CODs": dict(),
         "model_dir": None,
     }
-    assert logger.get_params() == desired
+    assert logger.get_attr() == desired
 
     params = {"log_data": log_data}
     desired.update(params)
-    logger.set_params(params)
-    assert logger.get_params()["log_data"] == log_data
+    logger.set_attr(params)
+    assert logger.get_attr()["log_data"] == log_data
     del desired
 
     logger.make_dir()
@@ -124,7 +124,7 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
     shutil.rmtree(model_dir)
 
     logger.reset_count()
-    assert logger.get_params()["iter"] == 0
+    assert logger.get_attr()["iter"] == 0
 
     try:
         logger.output(eval, None)
@@ -134,9 +134,9 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
     params = {
         "iter": 100,
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     logger.hold(est, eval, manager_attr, verbose=True, save=True)
-    assert log_data == logger.get_params()["log_data"]
+    assert log_data == logger.get_attr()["log_data"]
     ext = ".pkl"
     os.remove(os.path.join(save_dir, f_name + ext))
 
@@ -145,7 +145,7 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
         "policy": policy,
         "bench_mark": {"metrics": bench_mark}
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     assert logger.validate(eval), f"{policy} logic is wrong"
 
     policy = "PINBALL"
@@ -154,7 +154,7 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
         "policy": policy,
         "bench_mark": {"metrics": bench_mark}
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     assert logger.validate(eval), f"{policy} logic is wrong"
 
     # check for 2 steps round training
@@ -164,7 +164,7 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
         "first_round": f_round,
         "bench_mark": {"metrics": bench_mark},
         }
-    logger.set_params(param)
+    logger.set_attr(param)
     try:
         logger.log(est, eval, manager_attr)
     except Exception as error:
@@ -175,7 +175,7 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
         "second_round": s_round,
         "bench_mark": {"metrics": bench_mark},
         }
-    logger.set_params(param)
+    logger.set_attr(param)
     param = {
         "mode": s_round,
         }
@@ -219,9 +219,9 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
     params = {
         "iter": 100,
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     logger.hold(est, eval, manager_attr, verbose=True, save=True)
-    assert log_data == logger.get_params()["log_data"]
+    assert log_data == logger.get_attr()["log_data"]
     ext = ".pkl"
     os.remove(os.path.join(save_dir, f_name + ext))
 
@@ -231,7 +231,7 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
         "policy": policy,
         "bench_mark": {"metrics": bench_mark}
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     logger.validate(eval)
     assert logger.validate(eval), f"{policy} logic is wrong"
 
@@ -241,7 +241,7 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
         "policy": policy,
         "bench_mark": {"metrics": bench_mark}
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     logger.validate(eval)
     assert logger.validate(eval), f"{policy} logic is wrong"
 
@@ -252,7 +252,7 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
         "first_round": f_round,
         "bench_mark": {"metrics": bench_mark},
         }
-    logger.set_params(param)
+    logger.set_attr(param)
     try:
         logger.log(est, eval, manager_attr)
     except Exception as error:
@@ -263,7 +263,7 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
         "second_round": s_round,
         "bench_mark": {"metrics": bench_mark},
         }
-    logger.set_params(param)
+    logger.set_attr(param)
     param = {
         "mode": s_round,
         }

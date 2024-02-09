@@ -116,7 +116,7 @@ class TornadoDataModule():
         self.train = None
         self.valid = None
         self.target = None
-        self.is_time_series = True
+        self.is_time_series = False
         self.set_log()
 
     def set_log(self) -> None:
@@ -238,9 +238,9 @@ class TornadoDataModule():
 
     def generate_trainset(self,
                           target,
-                          is_time_series,
                           test_size,
                           seed=0,
+                          is_time_series=False,
                           ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate a dataset for prediction.
 
@@ -254,15 +254,15 @@ class TornadoDataModule():
         target : str
             The name of the target variable.
 
-        is_time_series : bool
-            Whether the data is a time series dataset or not.
-
         test_size : float
             The proportion of the data to allocate as test data.
 
         seed : int
             The random seed used for splitting the data into training and
             validation sets.
+
+        is_time_series : bool
+            Whether the data is a time series dataset or not.
 
         Returns
         -------

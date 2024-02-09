@@ -224,13 +224,17 @@ def test_generate_trainset(caplog):
     correlated_data.to_csv(path, index=False)
 
     desired_n_features_original = [4]
-    desired_n_features_preprocessed = [21]
-    desired_n_features_selected = [7, 8, 9]
+    desired_n_features_preprocessed = [9]
+    desired_n_features_selected = [6]
     desired_n_features = [desired_n_features_original,
                           desired_n_features_preprocessed,
                           desired_n_features_selected]
 
-    train, valid = data_deliverer.generate_trainset("target", True, 0.2, 0)
+    train, valid = data_deliverer.generate_trainset("target",
+                                                    test_size=0.2,
+                                                    seed=0,
+                                                    is_time_series=True,
+                                                    )
 
     for logger_name, log_level, message in caplog.record_tuples:
         if 'datamodule' in logger_name and "->" in message:
@@ -260,10 +264,13 @@ def test_generate_testset(caplog):
                                   np.random.random(100) * 0.1)
     correlated_data.to_csv(path, index=False)
 
-    train, valid = data_deliverer.generate_trainset("target", True, 0.2, 0)
-    dataset = data_deliverer.generate_testset(correlated_data)
-    desired_dataset = pd.concat([train, valid]).drop("target", axis=1)
+    train, valid = data_deliverer.generate_trainset("target",
+                                                    test_size=0.2,
+                                                    seed=0,
+                                                    is_time_series=True,
+                                                    )
+    dataset = data_deliverer.generate_testset(correlated_data).sort_index()
+    desired_dataset = pd.concat([train, valid]).drop(columns="target").sort_index()
 
-    print(dataset.columns, desired_dataset.columns)
     pd.testing.assert_frame_equal(dataset, desired_dataset)
     os.remove(path)

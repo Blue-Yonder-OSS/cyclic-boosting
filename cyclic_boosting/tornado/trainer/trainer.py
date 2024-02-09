@@ -36,7 +36,7 @@ class TornadoBase:
 
     Attributes
     ----------
-    data_deliveler : TornadoDataModule
+    data_deliverer : TornadoDataModule
         A class that controls data preparation.
 
     manager : One of the classes in the module.py
@@ -44,7 +44,7 @@ class TornadoBase:
     """
 
     def __init__(self, DataModule, TornadoModule):
-        self.data_deliveler = DataModule
+        self.data_deliverer = DataModule
         self.manager = TornadoModule
 
     @abc.abstractmethod
@@ -53,9 +53,9 @@ class TornadoBase:
             test_size=0.2,
             seed=0,
             save_dir="./models",
-            log_policy="COD",
+            criterion="COD",
             verbose=True,
-            ):
+            ) -> None:
         """Abstract method for model fitting."""
         # write main fitting steps using Estimator, Evaluator, Logger, DataModule
         pass
@@ -84,7 +84,7 @@ class Tornado(TornadoBase):
 
     Attributes
     ----------
-    data_deliveler : TornadoDataModule
+    data_deliverer : TornadoDataModule
         Class that controls data preparation.
 
     manager : One of the module classes
@@ -107,7 +107,7 @@ class Tornado(TornadoBase):
             test_size=0.2,
             seed=0,
             save_dir="./models",
-            log_policy="COD",
+            criterion="COD",
             verbose=True,
             ) -> None:
         """Control the sequence of learning of the model.
@@ -131,42 +131,42 @@ class Tornado(TornadoBase):
             (number of iterations) is created, in which information about the
             model is stored.
 
-        log_policy : str
+        criterion : str
             Best Model Evaluation Policy. 'COD' or 'PINBALL'. Default is 'COD'.
 
         verbose : bool
             Whether to display standard output or not. Default is True.
         """
-        # build logger and evaluator
-        mng_attr = self.manager.get_params()
-        round2 = mng_attr["second_round"]
-        logger = ForwardLogger(save_dir, log_policy, ["SKIP", round2])
         evaluator = Evaluator()
+        mgr_attr = self.manager.get_attr()
+        training_round = ["SKIP", mgr_attr["second_round"]]
+        logger = ForwardLogger(criterion, save_dir, training_round)
 
-        # create dataset
-        train, validation = self.data_deliveler.generate_trainset(
+        train_set, valid_set = self.data_deliverer.generate_trainset(
             target,
-            self.manager.is_time_series,
             test_size,
-            seed=seed,
+            seed,
+            is_time_series=mgr_attr["is_time_series"],
             )
 
-        # initialize model setting
-        self.manager.init(train, target)
+        # recursive interaction search
+        self.manager.init(train_set, target)
+        logger_attr = self.tornado(target,
+                                   valid_set,
+                                   logger,
+                                   evaluator,
+                                   verbose,
+                                   )
 
-        # train
-        logger_params = self.tornado(target, validation, logger, evaluator, verbose)
-
-        # best model
-        best_model_name = f'model_{logger_params["log_data"]["iter"]}.pkl'
-        model_dir = logger_params["model_dir"]
-        model_path = os.path.join(model_dir, best_model_name)
-        with open(model_path, "rb") as f:
+        best_model_path = os.path.join(logger_attr["model_dir"],
+                                       f'model_{logger_attr["log_data"]["iter"]}.pkl',
+                                       )
+        with open(best_model_path, "rb") as f:
             self.estimator = pickle.load(f)
 
-        # estimate c parameter
-        mng_params = self.manager.get_params()
-        dist = mng_params["dist"]
+        # c parameter estimator for proba prediction
+        mgr_attr = self.manager.get_attr()
+        dist = mgr_attr["dist"]
         if dist == "nbinom":
             estimator_params = self.estimator[-1].__dict__
             update_params = {
@@ -176,7 +176,7 @@ class Tornado(TornadoBase):
                 "observers": estimator_params["observers"],
                 "smoothers": estimator_params["smoother_choice"].explicit_smoothers
                 }
-            self.manager.set_params(update_params)
+            self.manager.set_attr(update_params)
 
             self.nbinomc = self.manager.build()
 
@@ -186,7 +186,7 @@ class Tornado(TornadoBase):
             X_train["yhat_mean_feature"] = X_train['yhat_mean']
             self.nbinomc.fit(X_train.copy(), np.float64(y_train))
 
-            self.manager.set_params({"dist": "nbinom"})
+            self.manager.set_attr({"dist": "nbinom"})
 
     def tornado(self, target, valid_data, logger, evaluator, verbose) -> Pipeline:
         """Recursive learning in Tornado.
@@ -233,18 +233,18 @@ class Tornado(TornadoBase):
 
             # log
             eval_history = evaluator.eval(y_valid, y_pred, estimator, verbose)
-            mng_attr = self.manager.get_params()
+            mgr_attr = self.manager.get_attr()
             logger.log(estimator,
-                       eval_history, mng_attr, verbose=verbose)
+                       eval_history, mgr_attr, verbose=verbose)
             self.manager.clear()
 
             # update param
-            if mng_attr["mode"] == mng_attr["second_round"]:
+            if mgr_attr["mode"] == mgr_attr["second_round"]:
                 keys = ["features", "feature_properties"]
-                update_params = {k: logger.get_params()["log_data"][k] for k in keys}
-                self.manager.set_params(update_params)
+                update_params = {k: logger.get_attr()["log_data"][k] for k in keys}
+                self.manager.set_attr(update_params)
 
-        return logger.get_params()
+        return logger.get_attr()
 
     def predict(self, X) -> np.ndarray:
         """Predict using the best model explored in Tornado.
@@ -259,14 +259,16 @@ class Tornado(TornadoBase):
         numpy.ndarray
             Predicted values
         """
-        X = self.data_deliveler.generate_testset(X)
+        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X)
 
         return y_pred
 
     def predict_proba(self,
-                      X, output="pmf",
-                      range=None) -> Union[list, pd.DataFrame]:
+                      X,
+                      output="pmf",
+                      range=None,
+                      ) -> Union[list, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         List containing instances of a fitted method collection or
@@ -298,11 +300,11 @@ class Tornado(TornadoBase):
             pandas.DataFrame
                 Predicted probability distribution for each sample.
         """
-        X = self.data_deliveler.generate_testset(X)
+        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X.copy())
 
-        mng_params = self.manager.get_params()
-        dist = mng_params["dist"]
+        mgr_attr = self.manager.get_attr()
+        dist = mgr_attr["dist"]
 
         if dist == "poisson":
             pd_func = list()
@@ -358,7 +360,7 @@ class ForwardTrainer(TornadoBase):
 
     Attributes
     ----------
-    data_deliveler : TornadoDataModule
+    data_deliverer : TornadoDataModule
         Class that controls data preparation.
 
     manager : One of the module classes
@@ -381,7 +383,7 @@ class ForwardTrainer(TornadoBase):
             test_size=0.2,
             seed=0,
             save_dir="./models",
-            log_policy="COD",
+            criterion="COD",
             verbose=True,
             ) -> None:
         """Control the sequence of model learning using Forward Selection.
@@ -408,74 +410,70 @@ class ForwardTrainer(TornadoBase):
             (number of iterations) is created, in which information about the
             model is stored.
 
-        log_policy : str
+        criterion : str
             Best Model Evaluation Policy. 'COD' or 'PINBALL'. Default is 'COD'.
 
         verbose : bool
             Whether to display standard output or not. Default is True.
         """
-        # build logger and evaluator
-        mng_attr = self.manager.get_params()
-        round1 = mng_attr["first_round"]
-        round2 = mng_attr["second_round"]
-        logger = ForwardLogger(save_dir, log_policy, [round1, round2])
         evaluator = Evaluator()
+        mgr_attr = self.manager.get_attr()
+        training_round = [mgr_attr["first_round"], mgr_attr["second_round"]]
+        logger = ForwardLogger(criterion, save_dir, training_round)
 
-        # create dataset
-        train, validation = self.data_deliveler.generate_trainset(
+        train_set, valid_set = self.data_deliverer.generate_trainset(
             target,
-            self.manager.is_time_series,
             test_size,
-            seed=seed,
+            seed,
+            is_time_series=mgr_attr["is_time_series"],
         )
 
-        # initialize training setting
-        self.manager.init(train, target)
+        # 1. rucursive single variable regression
+        # This step is to find valid features
+        status = "\n=== [ROUND] {} ===\n"
+        _logger.info(status.format(mgr_attr['first_round']))
 
-        # single variable regression analysis to search valid features
-        _logger.info(f"\n=== [ROUND] {round1} ===\n")
-        logger_params = self.tornado(target, validation, logger, evaluator, verbose)
+        self.manager.init(train_set, target)
+        logger_attr = self.tornado(target,
+                                   valid_set,
+                                   logger,
+                                   evaluator,
+                                   verbose,
+                                   )
 
-        # pick up
-        threshold = 2  # basically, 2 would be better for threshold
+        valid_features = list()
+        for feature, eval_result in logger_attr["CODs"].items():
+            if eval_result["F"] > 2:
+                valid_features.append(feature)
 
-        valid_feature = dict()
-        for feature, eval_result in logger_params["CODs"].items():
-            if eval_result["F"] > threshold:
-                valid_feature[feature] = eval_result
-
-        mng_attr = self.manager.get_params()
-        base_feature = mng_attr["init_model_attr"]["features"]
-        interaction = [x for x in valid_feature.keys() if isinstance(x, tuple)]
-        explanatory_variables = base_feature + interaction
-
-        # model setting for multiple variable regression
-        update_params = {
-            "mode": round2,
+        next_setting = {
             "experiment": 0,
-            "target_features": explanatory_variables,
-            "X": mng_attr["init_model_attr"]["X"].copy(),
+            "mode": mgr_attr["second_round"],
+            "target_features": valid_features,
+            "X": mgr_attr["init_model_attr"]["X"].copy(),
         }
-        self.manager.set_params(update_params)
-
-        # clearing for next training
+        self.manager.set_attr(next_setting)
         logger.reset_count()
         evaluator.clear()
 
-        # multiple variable regression (main training)
-        _logger.info(f"\n=== [ROUND] {round2} ===\n")
-        logger_params = self.tornado(target, validation, logger, evaluator, verbose)
+        # 2. multiple variable regression with forward selection
+        _logger.info(status.format(mgr_attr['second_round']))
+        logger_attr = self.tornado(target,
+                                   valid_set,
+                                   logger,
+                                   evaluator,
+                                   verbose,
+                                   )
 
-        # best model
-        best_model_name = f'model_{logger_params["log_data"]["iter"]}.pkl'
-        model_dir = logger_params["model_dir"]
-        model_path = os.path.join(model_dir, best_model_name)
-        with open(model_path, "rb") as f:
+        best_model_path = os.path.join(logger_attr["model_dir"],
+                                       f'model_{logger_attr["log_data"]["iter"]}.pkl',
+                                       )
+        with open(best_model_path, "rb") as f:
             self.estimator = pickle.load(f)
 
-        # build c parameter estimateor
-        mng_params = self.manager.get_params()
-        dist = mng_params["dist"]
+        # c parameter estimator for proba prediction
+        mgr_attr = self.manager.get_attr()
+        dist = mgr_attr["dist"]
         if dist == "nbinom":
             estimator_params = self.estimator[-1].__dict__
             update_params = {
@@ -485,7 +483,7 @@ class ForwardTrainer(TornadoBase):
                 "observers": estimator_params["observers"],
                 "smoothers": estimator_params["smoother_choice"].explicit_smoothers
                 }
-            self.manager.set_params(update_params)
+            self.manager.set_attr(update_params)
 
             self.nbinomc = self.manager.build()
 
@@ -495,7 +493,7 @@ class ForwardTrainer(TornadoBase):
             X_train["yhat_mean_feature"] = X_train['yhat_mean']
             self.nbinomc.fit(X_train.copy(), np.float64(y_train))
 
-            self.manager.set_params({"dist": "nbinom"})
+            self.manager.set_attr({"dist": "nbinom"})
 
     def tornado(self, target, valid_data, logger, evaluator, verbose) -> Pipeline:
         """Recursive learning in Tornado.
@@ -543,17 +541,17 @@ class ForwardTrainer(TornadoBase):
 
             # log
             eval_history = evaluator.eval(y_valid, y_pred, estimator, verbose)
-            mng_attr = self.manager.get_params()
-            logger.log(estimator, eval_history, mng_attr)
+            mgr_attr = self.manager.get_attr()
+            logger.log(estimator, eval_history, mgr_attr)
             self.manager.clear()
 
             # update param
-            if mng_attr["mode"] == mng_attr["second_round"]:
+            if mgr_attr["mode"] == mgr_attr["second_round"]:
                 keys = ["features", "feature_properties"]
-                update_params = {k: logger.get_params()["log_data"][k] for k in keys}
-                self.manager.set_params(update_params)
+                update_params = {k: logger.get_attr()["log_data"][k] for k in keys}
+                self.manager.set_attr(update_params)
 
-        return logger.get_params()
+        return logger.get_attr()
 
     def predict(self, X) -> np.ndarray:
         """Predict using the best model explored in Tornado.
@@ -568,13 +566,16 @@ class ForwardTrainer(TornadoBase):
         numpy.ndarray
             Predicted values
         """
-        X = self.data_deliveler.generate_testset(X)
+        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X)
 
         return y_pred
 
     def predict_proba(self,
-                      X, output="pmf", range=None) -> Union[list, pd.DataFrame]:
+                      X,
+                      output="pmf",
+                      range=None,
+                      ) -> Union[list, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         List containing instances of a fitted method collection or
@@ -606,11 +607,11 @@ class ForwardTrainer(TornadoBase):
             pandas.DataFrame
                 Predicted probability distribution for each sample.
         """
-        X = self.data_deliveler.generate_testset(X)
+        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X.copy())
 
-        mng_params = self.manager.get_params()
-        dist = mng_params["dist"]
+        mgr_attr = self.manager.get_attr()
+        dist = mgr_attr["dist"]
 
         if dist == "poisson":
             pd_func = list()
@@ -671,7 +672,7 @@ class QPDForwardTrainer(TornadoBase):
 
     Attributes
     ----------
-    data_deliveler : TornadoDataModule
+    data_deliverer : TornadoDataModule
         Class that controls data preparation.
 
     manager : One of the module classes
@@ -699,15 +700,14 @@ class QPDForwardTrainer(TornadoBase):
         Pipeline with steps including binning and CB
     """
 
-    def __init__(
-            self,
-            DataModule,
-            TornadoModule,
-            quantile=0.1,
-            bound="U",
-            lower=0.0,
-            upper=1.0,
-            ):
+    def __init__(self,
+                 DataModule,
+                 TornadoModule,
+                 quantile=0.1,
+                 bound="U",
+                 lower=0.0,
+                 upper=1.0,
+                 ):
         super().__init__(DataModule, TornadoModule)
         self.quantile = [quantile, 0.5, 1 - quantile]
         self.bound = bound
@@ -724,7 +724,7 @@ class QPDForwardTrainer(TornadoBase):
             test_size=0.2,
             seed=0,
             save_dir="./models",
-            log_policy="PINBALL",
+            criterion="PINBALL",
             verbose=True,
             ) -> None:
         """Control the sequence of model learning using QPD.
@@ -753,73 +753,80 @@ class QPDForwardTrainer(TornadoBase):
             (number of iterations) is created, in which information about the
             model is stored.
 
-        log_policy : str
+        criterion : str
             Best Model Evaluation Policy. 'COD' or 'PINBALL'. Default is
             'PINBALL'.
 
         verbose : bool
             Whether to display standard output or not. Default is True.
         """
-        # build logger and evaluator
-        mng_attr = self.manager.get_params()
-        round1 = mng_attr["first_round"]
-        round2 = mng_attr["second_round"]
-        logger = PriorPredForwardLogger(save_dir, log_policy, [round1, round2])
         evaluator = QuantileEvaluator()
+        mgr_attr = self.manager.get_attr()
+        training_round = [mgr_attr["first_round"], mgr_attr["second_round"]]
+        logger = PriorPredForwardLogger(criterion, save_dir, training_round)
 
-        # create dataset
-        train, validation = self.data_deliveler.generate_trainset(
+        train_set, valid_set = self.data_deliverer.generate_trainset(
             target,
-            self.manager.is_time_series,
             test_size,
-            seed=seed,
+            seed,
+            is_time_series=mgr_attr["is_time_series"]
         )
 
-        # initialize training setting
-        self.manager.init(train, target)
+        status = "\n=== [ROUND] {} ===\n"
+        _logger.info(status.format(mgr_attr['first_round']))
 
-        # single variables model for interaction search
-        _logger.info(f"\n=== [ROUND] {round1} ===\n")
-        args = {"quantile": self.quantile[0]}
-        base_model = self.tornado(target, validation, logger, evaluator, verbose, args)
+        # prior prediction for quick interaction search
+        self.manager.init(train_set, target)
+        base_model = self.tornado(target,
+                                  valid_set,
+                                  logger,
+                                  evaluator,
+                                  verbose,
+                                  args={"quantile": self.quantile[0]},
+                                  )
 
-        X_train = mng_attr["init_model_attr"]["X"].copy()
-        X_valid = validation.drop(target, axis=1)
+        X_train = mgr_attr["init_model_attr"]["X"].copy()
+        X_valid = valid_set.drop(target, axis=1)
         pred_train = base_model.predict(X_train.copy())
         pred_valid = base_model.predict(X_valid.copy())
 
-        # change mode
         col = "prior_pred"
         X_train[col] = pred_train
-        init_model_attr = mng_attr["init_model_attr"]
+        valid_set[col] = pred_valid
+        init_model_attr = mgr_attr["init_model_attr"]
         init_model_attr["X"] = X_train.copy()
-        model_params = {k: v for k, v in mng_attr["model_params"].items()}
+        model_params = {k: v for k, v in mgr_attr["model_params"].items()}
         model_params["prior_prediction_column"] = col
-        update_params = {
-            "mode": round2,
+        next_setting = {
+            "mode": mgr_attr['second_round'],
             "experiment": 0,
             "X": X_train.copy(),
             "model_params": model_params,
             "init_model_attr": init_model_attr
             }
-        self.manager.set_params(update_params)
-        validation[col] = pred_valid
+        self.manager.set_attr(next_setting)
         logger.reset_count()
         evaluator.clear()
 
-        # brute force model search
-        _logger.info(f"\n=== [ROUND] {round2} ===\n")
-        _ = self.tornado(target, validation, logger, evaluator, verbose, args)
+        # quick interaction search with prior pred
+        _logger.info(status.format(mgr_attr['second_round']))
+        _ = self.tornado(target,
+                         valid_set,
+                         logger,
+                         evaluator,
+                         verbose,
+                         args={"quantile": self.quantile[0]},
+                         )
         _logger.info(f"\nDetect {len(logger.valid_interactions)} interactions\n")
 
         # model setting for QPD estimation
-        _logger.info("\n=== [ROUND] QPD estimator training ===\n")
+        _logger.info(status.format("QPD estimator training"))
         base = [x for x in init_model_attr["feature_properties"].keys()]
-        interaction = logger.get_params()["valid_interactions"]
+        interaction = logger.get_attr()["valid_interactions"]
         features = base + interaction
 
-        # build 3 models for QPD
-        X_train = mng_attr["init_model_attr"]["X"]
+        # best quantile models for QPD
+        X_train = mgr_attr["init_model_attr"]["X"]
         model_params = {
             "feature_properties": init_model_attr["feature_properties"],
             "feature_groups": features,
@@ -827,15 +834,14 @@ class QPDForwardTrainer(TornadoBase):
         est_quantiles = list()
         for quantile in self.quantile:
             model_params["quantile"] = quantile
-            update_params = {"X": X_train, "model_params": model_params}
-            self.manager.set_params(update_params)
+            setting = {"X": X_train, "model_params": model_params}
+            self.manager.set_attr(setting)
             self.manager.drop_unused_features()
             est = self.manager.build()
             est_quantiles.append(est)
 
-        # train
-        X = copy.deepcopy(mng_attr["init_model_attr"]["X"])
-        y = copy.deepcopy(mng_attr["init_model_attr"]["y"])
+        X = copy.deepcopy(mgr_attr["init_model_attr"]["X"])
+        y = copy.deepcopy(mgr_attr["init_model_attr"]["y"])
         self.est_qpd = QPD_RegressorChain(
             est_lowq=est_quantiles[0],
             est_median=est_quantiles[1],
@@ -894,10 +900,10 @@ class QPDForwardTrainer(TornadoBase):
                 estimator,
                 verbose=verbose,
                 )
-            mng_attr = self.manager.get_params()
+            mgr_attr = self.manager.get_attr()
 
             # log
-            logger.log(estimator, eval_history, mng_attr, verbose=verbose)
+            logger.log(estimator, eval_history, mgr_attr, verbose=verbose)
             self.manager.clear()
 
         return estimator
@@ -918,7 +924,7 @@ class QPDForwardTrainer(TornadoBase):
         numpy.ndarray
             Predicted values
         """
-        X = self.data_deliveler.generate_testset(X)
+        X = self.data_deliverer.generate_testset(X)
         quantiles = self.est_qpd.predict(X)
 
         if quantile == "low":
@@ -933,7 +939,10 @@ class QPDForwardTrainer(TornadoBase):
         return y_pred
 
     def predict_proba(self,
-                      X, output="pdf", range=None) -> Union[list, pd.DataFrame]:
+                      X,
+                      output="pdf",
+                      range=None,
+                      ) -> Union[list, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         Instances of the fitted method collection for a particular probability
@@ -966,7 +975,7 @@ class QPDForwardTrainer(TornadoBase):
                 Predicted PPF for every 0.05 for each sample. Shape of
                 dataframe is n_samples x 19.
         """
-        X = self.data_deliveler.generate_testset(X)
+        X = self.data_deliverer.generate_testset(X)
         _, _, _, qpd = self.est_qpd.predict(X)
 
         if output == "func":
