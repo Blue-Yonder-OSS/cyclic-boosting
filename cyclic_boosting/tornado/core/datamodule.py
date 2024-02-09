@@ -267,7 +267,7 @@ class TornadoDataModule():
         Returns
         -------
         tuple
-            (pd.DataFrame, pd.DataFrame)
+            (pandas.DataFrame, pandas.DataFrame)
             The training and validation datasets as a tuple of pandas
             DataFrames.
         """
@@ -336,12 +336,12 @@ class TornadoDataModule():
 
         Parameters
         ----------
-        X : str
+        X : pandas.DataFrame
             Raw testset
 
         Returns
         -------
-        pd.DataFrame
+        pandas.DataFrame
             The testset
         """
         preprocess = Preprocess(self.params)

@@ -1,7 +1,5 @@
-# Add some comments
-#
-#
-#
+"""Handle model settings."""
+from __future__ import annotations
 import logging
 
 import abc
@@ -22,6 +20,11 @@ from cyclic_boosting.pipelines import (
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
 from .analysis import TornadoAnalysisModule
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sklearn.pipeline import Pipeline
+
 _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
@@ -32,6 +35,83 @@ _logger.addHandler(handler)
 
 @six.add_metaclass(abc.ABCMeta)
 class TornadoModuleBase:
+    """Base class handling model settings in the recursive learning.
+
+    Attributes
+    ----------
+    manual_feature_property : dict or None
+        Feature property set manually. Dfault is None.
+
+    is_time_series : bool
+        Time-series data or not. Default is True.
+
+    data_interval : str or None
+        The data collection interval which can be one of "hourly", "daily",
+        "weekly", "monthly", or None. If None (default), the interval will be
+        inferred and set automatically.
+
+    max_iter : int
+        Maximal number of iteration. This is used in each estimator. Default
+        is 10.
+
+    task : str
+        Type of task. Default is 'regression'.
+
+    dist : str
+        Type of distribution. 'poisson', 'nbinom' or 'qpd'. Default is
+        'poisson'.
+
+    model : str
+        Type of model. 'additive' or 'multiplicative'. Default is
+        'multiplicative'. This is used only when `dist` is 'qpd'.
+
+    X : pandas.DataFrame
+        Training data with explanatory variables
+
+    y : numpy.ndarray
+        Training data with target variable
+
+    target : str
+        Name of the target valiable
+
+    regressor : sklearn.pipeline.Pipeline
+        Pipeline with steps including binning and CB
+
+    features : list
+        List of names of explanatory variables
+
+    interaction_term : list
+        Two-dimensional list with lists of interaction terms
+
+    feature_properties : dict
+        Dictionary with feature names as keys and properties as values
+
+    smoothers : dict
+        Dictionary with feature names as keys and smoothers as values
+
+    observers : list
+        List of :class:`PlottingObserver`.
+
+    report : dict
+        Results of automatic analysis. Properties and smoothers are set based
+        on this.
+
+    init_model_attr : dict
+        Attributes of the initial model that will be the base for recursive
+        training. A dictionary with attribute names as keys and attribute
+        values as values.
+
+    model_params : dict
+        Parameters of the model. A dictionary with parameter names as keys and
+        parameter values as values.
+
+    experiment : int
+        Number of experiments
+
+    end : int
+        Maximum number of experiments
+    """
+
     def __init__(
         self,
         manual_feature_property=None,
@@ -65,6 +145,16 @@ class TornadoModuleBase:
         self.end = 0
 
     def get_params(self) -> dict:
+        """Get class parameters.
+
+        Get the attributes of the class not starting with "__" as a dictionary.
+
+        Returns
+        -------
+        dict
+            Dictionary with class attribute names as keys and class attribute
+            values as values.
+        """
         class_vars = dict()
         for attr_name, value in self.__dict__.items():
             if not callable(value) and not attr_name.startswith("__"):
@@ -73,10 +163,29 @@ class TornadoModuleBase:
         return class_vars
 
     def set_params(self, params: dict) -> None:
+        """Set class parameters.
+
+        Parameters
+        ----------
+        params : dict
+            Parameters to be set. Dictionary with attribute names as keys and
+            attribute values as values.
+        """
         for attr_name, value in params.items():
             self.__dict__[attr_name] = value
 
     def set_feature_property(self, fp=None, verbose=True) -> None:
+        """Set the feature properties for the model.
+
+        Parameters
+        ----------
+        fp : dict
+            Feature properties to be set. If None, features are automatically
+            analyzed and the properties are set. Default is None.
+
+        verbose : bool
+            Whether to display standard output or not. Default is True.
+        """
         if fp is None:
             analyzer = TornadoAnalysisModule(self.X,
                                              is_time_series=self.is_time_series,
@@ -114,6 +223,15 @@ class TornadoModuleBase:
                 _logger.info(f"    {key}: {value}\n")
 
     def set_smoother(self, smoothers: dict = None) -> None:
+        """Set smoothers for the model.
+
+        Smoothers are set according to the properties of the features.
+
+        Parameters
+        ----------
+        smoothers : dict
+            Smoothers to be set. Default is None.
+        """
         if smoothers is None:
             smoothers = dict()
             for prop, features in self.report.items():
@@ -130,12 +248,14 @@ class TornadoModuleBase:
             self.smoothers = smoothers
 
     def set_observer(self) -> None:
+        """Set observers for plotting on the model."""
         self.observers = [
             observers.PlottingObserver(iteration=1),
             observers.PlottingObserver(iteration=-1),
         ]
 
     def drop_unused_features(self) -> None:
+        """Drop unused features in the model."""
         target = list()
         for feature in self.init_model_attr["X"].columns:
             if feature not in self.feature_properties.keys():
@@ -143,12 +263,31 @@ class TornadoModuleBase:
         self.X = self.init_model_attr["X"].drop(target, axis=1)
 
     def clear(self) -> None:
+        """Clear the model settings."""
         self.features = list()
         self.feature_properties = dict()
         self.smoothers = dict()
         self.observers = dict()
 
     def init(self, dataset, target, n_comb=2) -> None:
+        """Set initial settings for the model.
+
+        Set up the model, generate interaction terms, and drop unneeded
+        features. The model settings here are held as the initial model
+        settings that are used as the base for recursive learning.
+
+        Parameters
+        ----------
+        dataset : pandas.DataFrame
+            Dataset for learning
+
+        target : str
+            Name of the target valiable
+
+        n_comb : int
+            Maximum number of features included in the combination of
+            interaction terms created from the given features. Default is 2.
+        """
         self.target = target.lower()
         self.y = np.asarray(dataset[self.target])
         self.X = dataset.drop(self.target, axis=1)
@@ -174,7 +313,19 @@ class TornadoModuleBase:
         # NOTE: run after X and feature_property are into init_model_params
         self.drop_unused_features()
 
-    def build(self):
+    def build(self) -> Pipeline:
+        """Build the model.
+
+        A model is built depending on the type of task (regression,
+        classification, , , ), the type of probability distribution assumed
+        (Poisson distribution, negative binomial distribution, QPD, , , ), and
+        the type of model (multiplicative model, additive model).
+
+        Returns
+        -------
+        sklearn.pipeline.Pipeline
+            Estimator built with specific settings.
+        """
         # set param
         param = {
             "feature_properties": self.feature_properties,
@@ -217,22 +368,45 @@ class TornadoModuleBase:
 
     @abc.abstractmethod
     def set_feature(self) -> None:
+        """Abstract methods to set features."""
         pass
 
     @abc.abstractmethod
     def set_interaction(self, n_comb=2) -> None:
+        """Abstract methods to set interaction terms."""
         pass
 
     @abc.abstractmethod
     def update(self) -> None:
+        """Abstract methods to update settings."""
         pass
 
     @abc.abstractmethod
     def manage(self) -> bool:
+        """Abstract methods to manage model settings."""
         pass
 
 
 class TornadoModule(TornadoModuleBase):
+    """Class handling the model settings in ordinary Tornado.
+
+    Controls the settings of the model in recursive learning in ordinary
+    Tornado. This class inherits from :class:`TornadoModuleBase`.
+
+    Attributes
+    ----------
+    first_round : str
+        Name of the first round in the learning process. Default is "dummy"
+        because Recursive learning is performed only once in ordinary Tornado.
+
+    second_round : str
+        Name of the second round in the learning process. Default is
+        "interaction search".
+
+    mode : str
+        Current round
+    """
+
     def __init__(self,
                  manual_feature_property=None,
                  is_time_series=True,
@@ -254,11 +428,26 @@ class TornadoModule(TornadoModuleBase):
         self.mode = self.second_round
 
     def set_feature(self, feature: list) -> None:
+        """Set feature for the model.
+
+        Parameters
+        ----------
+        feature : list
+            List containing feature names.
+        """
         idx = self.experiment
         feature.append(self.interaction_term[idx])
         self.features = feature
 
     def set_interaction(self, n_comb=2) -> None:
+        """Set interaction terms for the model.
+
+        Parameters
+        ----------
+        n_comb : int
+            Maximum number of features included in the combination of
+            interaction terms created from the given features. Default is 2.
+        """
         if n_comb <= 1:
             raise ValueError("interaction size must be more than 2")
         elif n_comb >= 3:
@@ -270,12 +459,20 @@ class TornadoModule(TornadoModuleBase):
             self.interaction_term += [c for c in comb]
 
     def update(self) -> None:
+        """Update model settings."""
         self.set_feature([x for x in self.features])
         self.set_feature_property(self.feature_properties, verbose=False)
         self.set_smoother()
         self.set_observer()
 
     def manage(self) -> bool:
+        """Manage model settings in the recursive learning.
+
+        Returns
+        -------
+        bool
+            Whether to continue recursive learning or not.
+        """
         self.end = len(self.interaction_term)
         if self.experiment < self.end:
             self.update()
@@ -286,6 +483,29 @@ class TornadoModule(TornadoModuleBase):
 
 
 class ForwardSelectionModule(TornadoModule):
+    """Class handling the model settings in forward selection of Tornado.
+
+    Controls the settings of the model in recursive learning in forward
+    feature selection of Tornado. This class inherits from
+    :class:`TornadoModule`.
+
+    Attributes
+    ----------
+    first_round : str
+        Name of the first round in the learning process. Default is
+        "single_regression_analysis".
+
+    second_round : str
+        Name of the second round in the learning process. Default is
+        "multiple_regression_analysis".
+
+    mode : str
+        Current round
+
+    target_features : list
+        List of features for variable selection
+    """
+
     def __init__(self,
                  manual_feature_property=None,
                  is_time_series=True,
@@ -307,11 +527,26 @@ class ForwardSelectionModule(TornadoModule):
         self.model_params = dict()
 
     def set_feature(self, feature: list = None) -> None:
+        """Set feature for the model.
+
+        Parameters
+        ----------
+        feature : list
+            List containing feature names.
+        """
         if feature is None:
             raise ValueError("feature doesn't not defined")
         self.features = feature
 
     def update(self) -> None:
+        """Update model settings.
+
+        If `mode` is the first round of 'single_regression_analysis', one
+        feature from all single features and interaction terms are set in the
+        model at a time. If `mode` is the second round of
+        'multiple_regression_analysis', one feature from all single features
+        and interaction terms are added and set into the model one by one.
+        """
         if self.mode == self.first_round:
             idx = self.experiment
 
@@ -355,6 +590,13 @@ class ForwardSelectionModule(TornadoModule):
             self.drop_unused_features()
 
     def manage(self) -> bool:
+        """Manage model settings in the recursive learning.
+
+        Returns
+        -------
+        bool
+            Whether to continue recursive learning or not.
+        """
         if self.mode == self.first_round:
             single_size = len(self.init_model_attr["features"])
             interaction_size = len(self.interaction_term)
@@ -371,6 +613,26 @@ class ForwardSelectionModule(TornadoModule):
 
 
 class PriorPredForwardSelectionModule(TornadoModule):
+    """Handle the model setting in forward selection with prior prediction.
+
+    Control the settings of the model in recursive learning in forward
+    selection with prior prediction in Tornado. This class inherits from
+    :class:`TornadoModule`.
+
+    Attributes
+    ----------
+    first_round : str
+        Name of the first round in the learning process. Default is
+        "prior_prediction_with_single_variables".
+
+    second_round : str
+        Name of the second round in the learning process. Default is
+        "interaction_search".
+
+    mode : str
+        Current round
+    """
+
     def __init__(self,
                  manual_feature_property=None,
                  is_time_series=True,
@@ -391,11 +653,27 @@ class PriorPredForwardSelectionModule(TornadoModule):
         self.model_params = {"quantile": 0.5, "maximal_iterations": 1}
 
     def set_feature(self, feature: list = None) -> None:
+        """Set feature for the model.
+
+        Parameters
+        ----------
+        feature : list
+            List containing feature names.
+        """
         if feature is None:
             raise ValueError("feature doesn't not defined")
         self.features = feature
 
     def update(self) -> None:
+        """Update model settings.
+
+        If `mode` is the first round of
+        `prior_prediction_with_single_variables', all single features are set
+        in the model. If `mode` is the second round of `interaction_search',
+        two features are set in the model : one feature is the prediction
+        result in round 1 and the other feature is one from all the
+        interaction terms.
+        """
         if self.mode == self.first_round:
             feature = self.init_model_attr["features"]
             self.set_feature(feature)
@@ -422,6 +700,13 @@ class PriorPredForwardSelectionModule(TornadoModule):
             self.drop_unused_features()
 
     def manage(self) -> bool:
+        """Manage model settings in the recursive learning.
+
+        Returns
+        -------
+        bool
+            Whether to continue recursive learning or not.
+        """
         if self.mode == self.first_round:
             self.end = 1
         else:
