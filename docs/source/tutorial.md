@@ -157,8 +157,7 @@ CB_est.get_feature_contributions(X_test)
 Below you can find an example of a quantile regression model for three
 different quantiles, with a subsequent quantile matching (to get a full
 individual probability distribution from the estimated quantiles) by means of a
-Johnson Quantile-Parameterized Distribution (J-QPD) for an arbitrary test
-sample:
+Johnson Quantile-Parameterized Distribution (J-QPD) for each test sample:
 ```python
 from cyclic_boosting.pipelines import pipeline_CBMultiplicativeQuantileRegressor
 from cyclic_boosting.quantile_matching import J_QPD_S
@@ -175,15 +174,15 @@ CB_est_qhigh = pipeline_CBMultiplicativeQuantileRegressor(quantile=0.8)
 CB_est_qhigh.fit(X_train, y)
 yhat_qhigh = CB_est_qhigh.predict(X_test)
 
-j_qpd_s_42 = J_QPD_S(0.2, yhat_qlow[42], yhat_qmedian[42], yhat_qhigh[42])
-yhat_42_percentile95 = j_qpd_s_42.ppf(0.95)
+j_qpd_s = J_QPD_S(0.2, yhat_qlow, yhat_qmedian, yhat_qhigh)
+yhat_percentile95 = j_qpd_s.ppf(0.95)
 ```
 
 There is also a ready-made end-to-end practical training chain, employing
 quantile transformations to impose constraints on the target range (for bound
 or semi-bound scenarios) and maintain the order of symmetric-percentile triplet
 predictions (from an arbitrary quantile regression method, not restricted to
-Cyclic Boosting) used for J-QPD (and its [extensions](https://github.com/Blue-Yonder-OSS/cyclic-boosting/blob/main/docs/JQPDregression.pdf)):
+Cyclic Boosting) used for J-QPD:
 ```python
 from cyclic_boosting.pipelines import pipeline_CBAdditiveQuantileRegressor
 from cyclic_boosting.quantile_matching import QPD_RegressorChain
