@@ -87,6 +87,23 @@ class J_QPD_S:
         )
 
     def ppf(self, x: Union[float, np.ndarray], inner=False) -> Union[float, np.ndarray]:
+        """
+        Percent point function (inverse of cdf).
+
+        Parameters
+        ----------
+        x : np.ndarray
+            quantiles to be calculated
+        inner : bool
+            flag to choose between inner (True) or outer (False) vector
+            multiplication of QPD distributions for a set of samples and
+            quantiles to be calculated, default (outer)
+
+        Returns
+        -------
+        np.ndarray
+            values according to the quantiles given
+        """
         if inner:
             ppf_value = self.l + self.theta * exp(
                 self.kappa
@@ -105,6 +122,23 @@ class J_QPD_S:
         return ppf_value
 
     def cdf(self, x: Union[float, np.ndarray], inner=False) -> Union[float, np.ndarray]:
+        """
+        Cumulative distribution function.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            values to be calculated
+        inner : bool
+            flag to choose between inner (True) or outer (False) vector
+            multiplication of QPD distributions for a set of samples and
+            values to be calculated, default (outer)
+
+        Returns
+        -------
+        np.ndarray
+            quantiles
+        """
         if inner:
             cdf_value = self.phi.cdf(
                 1.0
