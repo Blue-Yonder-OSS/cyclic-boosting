@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import exp, log, sinh, arcsinh, arccosh
+from numpy import exp, sinh, arcsinh, arccosh
 import pandas as pd
 from scipy.optimize import curve_fit, minimize_scalar
 from scipy.stats import norm, gamma, nbinom, logistic, mstats
@@ -20,12 +20,12 @@ class J_QPD_S:
     ----------
     alpha : float
         lower quantile of SPT (upper is ``1 - alpha``)
-    qv_low : float
-        quantile function value of ``alpha``
-    qv_median : float
-        quantile function value of quantile 0.5
-    qv_high : float
-        quantile function value of quantile ``1 - alpha``
+    qv_low : np.ndarray
+        quantile function values of ``alpha``
+    qv_median : np.ndarray
+        quantile function values of quantile 0.5
+    qv_high : np.ndarray
+        quantile function values of quantile ``1 - alpha``
     l : float
         lower bound of semi-bounded range (default is 0)
     version: str
@@ -35,9 +35,9 @@ class J_QPD_S:
     def __init__(
         self,
         alpha: float,
-        qv_low: float,
-        qv_median: float,
-        qv_high: float,
+        qv_low: Union[float, np.ndarray],
+        qv_median: Union[float, np.ndarray],
+        qv_high: Union[float, np.ndarray],
         l: Optional[float] = 0,
         version: Optional[str] = "normal",
     ):
@@ -48,42 +48,121 @@ class J_QPD_S:
         else:
             raise Exception("Invalid version.")
 
-        if (qv_low > qv_median) or (qv_high < qv_median):
+        qv_low = np.asarray(qv_low)
+        qv_median = np.asarray(qv_median)
+        qv_high = np.asarray(qv_high)
+
+        if (qv_low > qv_median).any() or (qv_high < qv_median).any():
             raise ValueError("The SPT values need to be monotonically increasing.")
 
         self.l = l
 
         self.c = self.phi.ppf(1 - alpha)
 
-        self.L = log(qv_low - l)
-        self.H = log(qv_high - l)
-        self.B = log(qv_median - l)
+        self.L = np.log(qv_low - l)
+        self.H = np.log(qv_high - l)
+        self.B = np.log(qv_median - l)
 
-        if self.L + self.H - 2 * self.B > 0:
-            self.n = 1
-            self.theta = qv_low - l
-        elif self.L + self.H - 2 * self.B < 0:
-            self.n = -1
-            self.theta = qv_high - l
-        else:
-            self.n = 0
-            self.theta = qv_median - l
+        self.n = np.where(self.L + self.H - 2 * self.B > 0, 1, -1)
+        self.theta = np.where(self.L + self.H - 2 * self.B > 0, qv_low - l, qv_high - l)
 
-        self.delta = 1.0 / self.c * sinh(arccosh((self.H - self.L) / (2 * min(self.B - self.L, self.H - self.B))))
+        self.n = np.where(self.L + self.H - 2 * self.B == 0, 0, self.n)
+        self.theta = np.where(self.L + self.H - 2 * self.B == 0, qv_median - l, self.theta)
 
-        self.kappa = 1.0 / (self.delta * self.c) * min(self.H - self.B, self.B - self.L)
-
-    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        return self.l + self.theta * exp(
-            self.kappa * sinh(arcsinh(self.delta * self.phi.ppf(x)) + arcsinh(self.n * self.c * self.delta))
-        )
-
-    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        return self.phi.cdf(
+        self.delta = (
             1.0
-            / self.delta
-            * sinh(arcsinh(1.0 / self.kappa * log((x - self.l) / self.theta)) - arcsinh(self.n * self.c * self.delta))
+            / self.c
+            * np.sinh(
+                np.arccosh(
+                    (self.H - self.L)
+                    / (2 * np.where((self.B - self.L) < (self.H - self.B), (self.B - self.L), (self.H - self.B)))
+                )
+            )
         )
+
+        self.kappa = (
+            1.0
+            / (self.delta * self.c)
+            * np.where((self.H - self.B) < (self.B - self.L), (self.H - self.B), (self.B - self.L))
+        )
+
+    def ppf(self, x: Union[float, np.ndarray], inner=False) -> Union[float, np.ndarray]:
+        """
+        Percent point function (inverse of cdf).
+
+        Parameters
+        ----------
+        x : np.ndarray
+            quantiles to be calculated
+        inner : bool
+            flag to choose between inner (True) or outer (False) vector
+            multiplication of QPD distributions for a set of samples and
+            quantiles to be calculated, default (outer)
+
+        Returns
+        -------
+        np.ndarray
+            values according to the quantiles given
+        """
+        if inner:
+            ppf_value = self.l + self.theta * exp(
+                self.kappa
+                * np.sinh(np.arcsinh(self.phi.ppf(x) * self.delta) + np.arcsinh(self.n * self.c * self.delta))
+            )
+        else:
+            ppf_value = self.l + self.theta * exp(
+                self.kappa
+                * np.sinh(np.arcsinh(np.outer(self.phi.ppf(x), self.delta)) + np.arcsinh(self.n * self.c * self.delta))
+            )
+
+        if ppf_value.ndim == 0:
+            ppf_value = ppf_value.item()
+        ppf_value = np.squeeze(ppf_value)
+
+        return ppf_value
+
+    def cdf(self, x: Union[float, np.ndarray], inner=False) -> Union[float, np.ndarray]:
+        """
+        Cumulative distribution function.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            values to be calculated
+        inner : bool
+            flag to choose between inner (True) or outer (False) vector
+            multiplication of QPD distributions for a set of samples and
+            values to be calculated, default (outer)
+
+        Returns
+        -------
+        np.ndarray
+            quantiles
+        """
+        if inner:
+            cdf_value = self.phi.cdf(
+                1.0
+                / self.delta
+                * np.sinh(
+                    np.arcsinh(1.0 / self.kappa * np.log((x - self.l) / self.theta))
+                    - np.arcsinh(self.n * self.c * self.delta)
+                )
+            )
+        else:
+            cdf_value = self.phi.cdf(
+                1.0
+                / self.delta
+                * np.sinh(
+                    np.arcsinh(1.0 / self.kappa * np.log(np.outer((x - self.l), 1.0 / self.theta)))
+                    - np.arcsinh(self.n * self.c * self.delta)
+                )
+            )
+
+        if cdf_value.ndim == 0:
+            cdf_value = cdf_value.item()
+        cdf_value = np.squeeze(cdf_value)
+
+        return cdf_value
 
 
 class J_QPD_B:
@@ -97,12 +176,12 @@ class J_QPD_B:
     ----------
     alpha : float
         lower quantile of SPT (upper is ``1 - alpha``)
-    qv_low : float
-        quantile function value of ``alpha``
-    qv_median : float
-        quantile function value of quantile 0.5
-    qv_high : float
-        quantile function value of quantile ``1 - alpha``
+    qv_low : np.ndarray
+        quantile function values of ``alpha``
+    qv_median : np.ndarray
+        quantile function values of quantile 0.5
+    qv_high : np.ndarray
+        quantile function values of quantile ``1 - alpha``
     l : float
         lower bound of supported range
     u : float
@@ -114,9 +193,9 @@ class J_QPD_B:
     def __init__(
         self,
         alpha: float,
-        qv_low: float,
-        qv_median: float,
-        qv_high: float,
+        qv_low: Union[float, np.ndarray],
+        qv_median: Union[float, np.ndarray],
+        qv_high: Union[float, np.ndarray],
         l: float,
         u: float,
         version: Optional[str] = "normal",
@@ -128,7 +207,11 @@ class J_QPD_B:
         else:
             raise Exception("Invalid version.")
 
-        if (qv_low > qv_median) or (qv_high < qv_median):
+        qv_low = np.asarray(qv_low)
+        qv_median = np.asarray(qv_median)
+        qv_high = np.asarray(qv_high)
+
+        if (qv_low > qv_median).any() or (qv_high < qv_median).any():
             raise ValueError("The SPT values need to be monotonically increasing.")
 
         self.l = l
@@ -140,30 +223,66 @@ class J_QPD_B:
         self.H = self.phi.ppf((qv_high - l) / (u - l))
         self.B = self.phi.ppf((qv_median - l) / (u - l))
 
-        if self.L + self.H - 2 * self.B > 0:
-            self.n = 1
-            self.xi = self.L
-        elif self.L + self.H - 2 * self.B < 0:
-            self.n = -1
-            self.xi = self.H
+        self.n = np.where(self.L + self.H - 2 * self.B > 0, 1, -1)
+        self.xi = np.where(self.L + self.H - 2 * self.B > 0, self.L, self.H)
+
+        self.n = np.where(self.L + self.H - 2 * self.B == 0, 0, self.n)
+        self.xi = np.where(self.L + self.H - 2 * self.B == 0, self.B, self.xi)
+
+        self.delta = (
+            1.0
+            / self.c
+            * np.arccosh(
+                (self.H - self.L)
+                / (2 * np.where((self.B - self.L) < (self.H - self.B), self.B - self.L, self.H - self.B))
+            )
+        )
+
+        self.kappa = (self.H - self.L) / np.sinh(2 * self.delta * self.c)
+
+    def ppf(self, x: Union[float, np.ndarray], inner=False) -> Union[float, np.ndarray]:
+        if inner:
+            ppf_value = self.l + (self.u - self.l) * self.phi.cdf(
+                self.xi + self.kappa * np.sinh(self.delta * (self.phi.ppf(x) + self.n * self.c))
+            )
         else:
-            self.n = 0
-            self.xi = self.B
+            if np.isscalar(x):
+                x = np.asarray([x])
+            ppf_value = self.l + (self.u - self.l) * self.phi.cdf(
+                self.xi + self.kappa * np.sinh(self.delta * (self.phi.ppf(x[:, np.newaxis]) + self.n * self.c))
+            )
 
-        self.delta = 1.0 / self.c * arccosh((self.H - self.L) / (2 * min(self.B - self.L, self.H - self.B)))
+        if ppf_value.ndim == 0:
+            ppf_value = ppf_value.item()
+        ppf_value = np.squeeze(ppf_value)
 
-        self.kappa = (self.H - self.L) / sinh(2 * self.delta * self.c)
+        return ppf_value
 
-    def ppf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        return self.l + (self.u - self.l) * self.phi.cdf(
-            self.xi + self.kappa * sinh(self.delta * (self.phi.ppf(x) + self.n * self.c))
-        )
+    def cdf(self, x: Union[float, np.ndarray], inner=False) -> Union[float, np.ndarray]:
+        if inner:
+            cdf_value = self.phi.cdf(
+                1.0
+                / self.delta
+                * np.arcsinh(1.0 / self.kappa * (self.phi.ppf((x - self.l) / (self.u - self.l)) - self.xi))
+                - self.n * self.c
+            )
+        else:
+            if np.isscalar(x):
+                x = np.asarray([x])
+            cdf_value = self.phi.cdf(
+                1.0
+                / self.delta
+                * np.arcsinh(
+                    1.0 / self.kappa * (self.phi.ppf((x[:, np.newaxis] - self.l) / (self.u - self.l)) - self.xi)
+                )
+                - self.n * self.c
+            )
 
-    def cdf(self, x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
-        return self.phi.cdf(
-            1.0 / self.delta * arcsinh(1.0 / self.kappa * (self.phi.ppf((x - self.l) / (self.u - self.l)) - self.xi))
-            - self.n * self.c
-        )
+        if cdf_value.ndim == 0:
+            cdf_value = cdf_value.item()
+        cdf_value = np.squeeze(cdf_value)
+
+        return cdf_value
 
 
 class SinhLogistic:
@@ -621,12 +740,11 @@ class QPD_RegressorChain(BaseEstimator):
         ``alpha = 0.25``)
     bound: str
         Different modes defined by supported target range, options are ``S``
-        (semi-bound), ``B`` (bound), and ``U`` (unbound).
+        (semi-bound) and ``B`` (bound).
     alpha : float
         lower quantile of SPT (upper is ``1 - alpha``)
     l : float
-        lower bound of supported range (only active for bound and semi-bound
-        modes)
+        lower bound of supported range
     u : float
         upper bound of supported range (only active for bound mode)
     """
@@ -651,59 +769,44 @@ class QPD_RegressorChain(BaseEstimator):
         self.u = u
 
         self.bound = bound
-        if self.bound not in ["S", "B", "U"]:
+        if self.bound not in ["S", "B"]:
             raise Exception("Invalid version.")
 
-        self.shape = 0
-
     def fit(self, X: Union[pd.DataFrame, np.ndarray], y: np.ndarray) -> BaseEstimator:
-        # fit sinhlogistic shape parameter
-        self.shape = fit_sinhlogistic_shape(self.alpha, self.l, self.u, self.bound, y)
-
         # median model
         if self.bound == "S":
             y_trans = transform_from_semibound_lower(y, self.l)
         elif self.bound == "B":
             y_trans = transform_from_bounds(y, self.l, self.u)
-        else:
-            y_trans = y
         self.est_median.fit(X, y_trans)
         z = self.est_median.predict(X)
         if self.bound == "S":
             pred_median = back_transform_in_semibound_lower(z, self.l)
         elif self.bound == "B":
             pred_median = back_transform_in_bounds(z, self.l, self.u)
-        else:
-            pred_median = z
 
         # lower quantile model
         y_trans = y / pred_median
         mask = y_trans < 1
         y_trans = y_trans[mask]
-        if self.bound in ["S", "B"]:
-            y_trans = transform_from_bounds(y_trans, self.l / pred_median[mask], 1)
-        else:
-            y_trans = transform_from_semibound_upper(y_trans, 1)
+        y_trans = transform_from_bounds(y_trans, self.l / pred_median[mask], 1)
         self.est_lowq.fit(X[mask], y_trans)
         z = self.est_lowq.predict(X)
-        if self.bound in ["S", "B"]:
-            pred_lowq = back_transform_in_bounds(z, self.l, pred_median)
-        else:
-            pred_lowq = back_transform_in_semibound_upper(z, pred_median)
+        pred_lowq = back_transform_in_bounds(z, self.l, pred_median)
 
         # upper quantile model
         y_trans = (y - pred_median) / (pred_median - pred_lowq)
         mask = y_trans > 0
         y_trans = y_trans[mask]
-        if self.bound in ["S", "U"]:
+        if self.bound == "S":
             y_trans = transform_from_semibound_lower(y_trans, 0)
-        else:
+        elif self.bound == "B":
             y_trans = transform_from_bounds(y_trans, 0, (self.u - pred_median) / (pred_median - pred_lowq))
         self.est_highq.fit(X[mask], y_trans)
 
         return self
 
-    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> np.ndarray:
+    def predict(self, X: Union[pd.DataFrame, np.ndarray]) -> tuple:
         if self.bound == "S":
             pred_median = back_transform_in_semibound_lower(self.est_median.predict(X), self.l)
             pred_lowq = back_transform_in_bounds(self.est_lowq.predict(X), self.l, pred_median)
@@ -712,21 +815,11 @@ class QPD_RegressorChain(BaseEstimator):
             pred_median = back_transform_in_bounds(self.est_median.predict(X), self.l, self.u)
             pred_lowq = back_transform_in_bounds(self.est_lowq.predict(X), self.l, pred_median)
             pred_highq = back_transform_in_bounds(self.est_highq.predict(X), pred_median, self.u)
-        else:
-            pred_median = self.est_median.predict(X)
-            pred_lowq = back_transform_in_semibound_upper(self.est_lowq.predict(X), pred_median)
-            pred_highq = back_transform_in_semibound_lower(self.est_lowq.predict(X), pred_median)
 
-        qpd = []
-        for i in range(len(X)):
-            if self.bound == "S":
-                qpd.append(
-                    J_QPD_extended_S(self.alpha, pred_lowq[i], pred_median[i], pred_highq[i], self.l, shape=self.shape)
-                )
-            elif self.bound == "B":
-                qpd.append(J_QPD_extended_B(self.alpha, pred_lowq[i], pred_median[i], pred_highq[i], self.l, self.u))
-            else:
-                qpd.append(J_QPD_extended_U(self.alpha, pred_lowq[i], pred_median[i], pred_highq[i]))
+        if self.bound == "S":
+            qpd = J_QPD_S(self.alpha, pred_lowq, pred_median, pred_highq, self.l)
+        elif self.bound == "B":
+            qpd = J_QPD_B(self.alpha, pred_lowq, pred_median, pred_highq, self.l, self.u)
 
         return pred_lowq, pred_median, pred_highq, qpd
 
