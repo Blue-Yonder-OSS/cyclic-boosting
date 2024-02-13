@@ -109,8 +109,8 @@ class TornadoAnalysisModule():
         cols = self.dataset.select_dtypes(include=['float']).columns
         self.targets = [c for c in cols]
         targets = [c for c in cols]
-        _logger.info(f"Auto analysis target {targets} \n")
 
+        _logger.info(f"  Target features: {targets} \n")
         if 'date' in self.dataset.columns:
             self.dataset.index = self.dataset["date"].values
             self.dataset = self.dataset[targets]
@@ -213,8 +213,12 @@ class TornadoAnalysisModule():
         elif interval.seconds == 3600:
             data_interval = "H"
             self.data_interval = "hourly"
-        _logger.info(f"Data interval is '{self.data_interval}'. If not, give\n"
-                     "    the data_interval option in the TornadoDataModule.\n")
+
+        _logger.info(f"  Data interval is '{self.data_interval}'\n")
+        _logger.info(
+            "  if it is not correct, set 'data_interval' option at TornadoDataModule\n"
+            )
+
         if self.data_interval in ["monthly", "weekly", "daily"]:
             self.dataset.index = [i.date() for i in self.dataset.index]
         self.dataset = self.dataset.asfreq(freq=data_interval)

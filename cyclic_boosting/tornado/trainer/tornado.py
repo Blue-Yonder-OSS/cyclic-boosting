@@ -232,7 +232,7 @@ class InteractionSearchModel(TornadoBase):
             y_pred = estimator.predict(X_valid)
 
             # log
-            eval_history = evaluator.eval(y_valid, y_pred, estimator, verbose)
+            eval_history = evaluator.eval(y_valid, y_pred, estimator, verbose=False)
             mgr_attr = self.manager.get_attr()
             logger.log(estimator,
                        eval_history, mgr_attr, verbose=verbose)
@@ -540,7 +540,7 @@ class ForwardSelectionModel(TornadoBase):
             evaluator.eval(y_valid, y_pred, estimator, verbose)
 
             # log
-            eval_history = evaluator.eval(y_valid, y_pred, estimator, verbose)
+            eval_history = evaluator.eval(y_valid, y_pred, estimator, verbose=False)
             mgr_attr = self.manager.get_attr()
             logger.log(estimator, eval_history, mgr_attr)
             self.manager.clear()
@@ -898,7 +898,7 @@ class QPDInteractionSearchModel(TornadoBase):
                 y_pred,
                 args["quantile"],
                 estimator,
-                verbose=verbose,
+                verbose=False,
                 )
             mgr_attr = self.manager.get_attr()
 

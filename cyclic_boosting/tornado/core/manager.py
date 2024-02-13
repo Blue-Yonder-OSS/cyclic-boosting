@@ -197,6 +197,8 @@ class ManagerBase:
                                              is_time_series=self.is_time_series,
                                              data_interval=self.data_interval,
                                              )
+
+            _logger.info("[START] Auto analysis \n")
             self.report = analyzer.analyze()
             for prop, analyzed_features in self.report.items():
                 if prop == "is_unordered":
@@ -221,12 +223,15 @@ class ManagerBase:
                         self.feature_properties[feature] = flag
                     else:
                         self.feature_properties[feature] |= flag
+            _logger.info("[END] Auto analysis \n\n")
         else :
             self.feature_properties = {k: v for k, v in fp.items()}
 
         if verbose:
+            _logger.info("Feature properties\n")
             for key, value in self.report.items():
                 _logger.info(f"    {key}: {value}\n")
+            _logger.info("\n")
 
     def set_smoother(self, smoothers: dict = None) -> None:
         """Set smoothers for the model.

@@ -283,11 +283,11 @@ class TornadoDataModule():
         dataset = preprocess.load_dataset(self.src)
 
         if self.auto_preprocess:
+            _logger.info("[START]: Auto feature engineering \n")
+
             n_features_original = len(dataset.columns) - 1
-            _logger.info(f"\rn_features: {n_features_original} ->")
 
             preprocess.check_data(dataset, self.is_time_series)
-
             self.train, self.valid = train_test_split(
                 dataset,
                 test_size=test_size,
@@ -298,22 +298,21 @@ class TornadoDataModule():
                                                       self.target)
 
             n_features_preprocessed = len(self.train.columns) - 1
-            _logger.info(f"\rn_features: {n_features_original} -> "
-                         f"{n_features_preprocessed} ->")
-
             self.remove_features()
 
             n_features_selected = len(self.features) - 1
-            _logger.info(f"\rn_features: {n_features_original} -> "
-                         f"{n_features_preprocessed} -> "
-                         f"{n_features_selected}\n")
-            _logger.info(f"{self.features}\n")
-
             self.preprocessors = preprocess.get_preprocessors()
             with open(self.log_path, "wb") as p:
                 log = {"preprocessors": self.preprocessors,
                        "features": self.features}
                 pickle.dump(log, p)
+
+            _logger.info(
+                f"  Original     -> {n_features_original} features\n"
+                f"  Preprocessed -> {n_features_preprocessed} features\n"
+                f"  Selected     -> {n_features_selected} features\n"
+            )
+            _logger.info("[END] Auto feature engineering \n\n")
 
         else:
             self.train, self.valid = train_test_split(
