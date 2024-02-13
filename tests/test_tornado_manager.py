@@ -2,10 +2,10 @@ import datetime
 import numpy as np
 import pandas as pd
 from itertools import combinations
-from cyclic_boosting.tornado.core.module import (
-    TornadoModule,
-    ForwardSelectionModule,
-    PriorPredForwardSelectionModule
+from cyclic_boosting.tornado.core.manager import (
+    TornadoManager,
+    ForwardSelectionManager,
+    PriorPredForwardSelectionManager
 )
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
 import pytest
@@ -58,7 +58,7 @@ def test_tornado_module(prepare_data, manager_base_params):
             "date": dates
         }
     )
-    manager = TornadoModule(is_time_series=True)
+    manager = TornadoManager(is_time_series=True)
 
     # get_attr
     params = manager.get_attr()
@@ -157,7 +157,7 @@ def test_forward_selection_module(prepare_data):
     X.loc[:, "SALES"] = y.copy()
     names = {k: k.lower() for k in X.columns}
     X.rename(names, axis=1, inplace=True)
-    manager = ForwardSelectionModule(is_time_series=True)
+    manager = ForwardSelectionManager(is_time_series=True)
 
     # init
     manager.init(X.copy(), "SALES")
@@ -180,7 +180,7 @@ def test_prior_pred_forward_selection_module(prepare_data):
     X.loc[:, "SALES"] = y
     names = {k: k.lower() for k in X.columns}
     X.rename(names, axis=1, inplace=True)
-    manager = PriorPredForwardSelectionModule(is_time_series=True)
+    manager = PriorPredForwardSelectionManager(is_time_series=True)
 
     # init
     manager.init(X.copy(), "SALES")

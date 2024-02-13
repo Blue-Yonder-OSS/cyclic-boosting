@@ -73,7 +73,7 @@ class TornadoBase:
         pass
 
 
-class Tornado(TornadoBase):
+class InteractionSearchModel(TornadoBase):
     """Class that controls learning in Tornado.
 
     This class fits a model with single features as the base, then adds
@@ -347,7 +347,7 @@ class Tornado(TornadoBase):
             return pd.DataFrame(pmfs, columns=x)
 
 
-class ForwardTrainer(TornadoBase):
+class ForwardSelectionModel(TornadoBase):
     """Class that controls learning using Forward Selection method in Tornado.
 
     Learning in this class is divided into two steps. The first step is to
@@ -654,7 +654,7 @@ class ForwardTrainer(TornadoBase):
             return pd.DataFrame(pmfs, columns=x)
 
 
-class QPDForwardTrainer(TornadoBase):
+class QPDInteractionSearchModel(TornadoBase):
     """Class that controls learning using quantile regression in Tornado.
 
     This class uses a model with quantile regression and

@@ -34,7 +34,7 @@ _logger.addHandler(handler)
 
 
 @six.add_metaclass(abc.ABCMeta)
-class TornadoModuleBase:
+class ManagerBase:
     """Base class handling model settings in the recursive learning.
 
     Attributes
@@ -387,7 +387,7 @@ class TornadoModuleBase:
         pass
 
 
-class TornadoModule(TornadoModuleBase):
+class TornadoManager(ManagerBase):
     """Class handling the model settings in ordinary Tornado.
 
     Controls the settings of the model in recursive learning in ordinary
@@ -482,7 +482,7 @@ class TornadoModule(TornadoModuleBase):
             return False
 
 
-class ForwardSelectionModule(TornadoModule):
+class ForwardSelectionManager(TornadoManager):
     """Class handling the model settings in forward selection of Tornado.
 
     Controls the settings of the model in recursive learning in forward
@@ -612,7 +612,7 @@ class ForwardSelectionModule(TornadoModule):
             return False
 
 
-class PriorPredForwardSelectionModule(TornadoModule):
+class PriorPredForwardSelectionManager(TornadoManager):
     """Handle the model setting in forward selection with prior prediction.
 
     Control the settings of the model in recursive learning in forward
