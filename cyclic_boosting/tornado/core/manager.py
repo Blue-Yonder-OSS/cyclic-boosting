@@ -50,6 +50,10 @@ class ManagerBase:
         "weekly", "monthly", or None. If None (default), the interval will be
         inferred and set automatically.
 
+    combination : int
+        Maximum number of features included in the combination of
+        interaction terms created from the given features. Default is 2.
+
     max_iter : int
         Maximal number of iteration. This is used in each estimator. Default
         is 10.
@@ -117,6 +121,7 @@ class ManagerBase:
         manual_feature_property=None,
         is_time_series=True,
         data_interval=None,
+        combination=2,
         max_iter=10,
         task="regression",
         dist="poisson",
@@ -125,6 +130,7 @@ class ManagerBase:
         self.manual_feature_property = manual_feature_property
         self.is_time_series = is_time_series
         self.data_interval = data_interval
+        self.combination = combination
         self.max_iter = max_iter
         self.task = task
         self.dist = dist
@@ -269,7 +275,7 @@ class ManagerBase:
         self.smoothers = dict()
         self.observers = dict()
 
-    def init(self, dataset, target, n_comb=2) -> None:
+    def init(self, dataset, target) -> None:
         """Set initial settings for the model.
 
         Set up the model, generate interaction terms, and drop unneeded
@@ -283,10 +289,6 @@ class ManagerBase:
 
         target : str
             Name of the target valiable
-
-        n_comb : int
-            Maximum number of features included in the combination of
-            interaction terms created from the given features. Default is 2.
         """
         self.target = target.lower()
         self.y = np.asarray(dataset[self.target])
@@ -307,7 +309,7 @@ class ManagerBase:
         self.init_model_attr["feature_properties"] = self.feature_properties
 
         # NOTE: run after feature_properties is into init_model_params
-        self.set_interaction(n_comb=n_comb)
+        self.set_interaction(combination=self.combination)
         self.init_model_attr["interaction"] = self.interaction_term
 
         # NOTE: run after X and feature_property are into init_model_params
@@ -372,7 +374,7 @@ class ManagerBase:
         pass
 
     @abc.abstractmethod
-    def set_interaction(self, n_comb=2) -> None:
+    def set_interaction(self, combination=2) -> None:
         """Abstract methods to set interaction terms."""
         pass
 
@@ -411,6 +413,7 @@ class TornadoManager(ManagerBase):
                  manual_feature_property=None,
                  is_time_series=True,
                  data_interval=None,
+                 combination=2,
                  max_iter=10,
                  dist="poisson",
                  model=None,
@@ -419,6 +422,7 @@ class TornadoManager(ManagerBase):
             manual_feature_property,
             is_time_series,
             data_interval,
+            combination=combination,
             max_iter=max_iter,
             dist=dist,
             model=model,
@@ -439,21 +443,21 @@ class TornadoManager(ManagerBase):
         feature.append(self.interaction_term[idx])
         self.features = feature
 
-    def set_interaction(self, n_comb=2) -> None:
+    def set_interaction(self, combination=2) -> None:
         """Set interaction terms for the model.
 
         Parameters
         ----------
-        n_comb : int
+        combination : int
             Maximum number of features included in the combination of
             interaction terms created from the given features. Default is 2.
         """
-        if n_comb <= 1:
+        if combination <= 1:
             raise ValueError("interaction size must be more than 2")
-        elif n_comb >= 3:
+        elif combination >= 3:
             ("WARNING: many interaction terms might cause long training")
 
-        for s in range(2, n_comb + 1):
+        for s in range(2, combination + 1):
             feature = self.init_model_attr["features"]
             comb = itertools.combinations(feature, s)
             self.interaction_term += [c for c in comb]
@@ -510,6 +514,7 @@ class ForwardSelectionManager(TornadoManager):
                  manual_feature_property=None,
                  is_time_series=True,
                  data_interval=None,
+                 combination=2,
                  max_iter=10,
                  dist="poisson",
                  ) -> None:
@@ -517,6 +522,7 @@ class ForwardSelectionManager(TornadoManager):
             manual_feature_property,
             is_time_series,
             data_interval,
+            combination=combination,
             max_iter=max_iter,
             dist=dist,
             )
