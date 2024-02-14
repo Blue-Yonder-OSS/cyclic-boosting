@@ -137,6 +137,7 @@ class InteractionSearchModel(TornadoBase):
         verbose : bool
             Whether to display standard output or not. Default is True.
         """
+        target = target.lower()
         evaluator = Evaluator()
         mgr_attr = self.manager.get_attr()
         training_round = ["SKIP", mgr_attr["second_round"]]
@@ -416,6 +417,7 @@ class ForwardSelectionModel(TornadoBase):
         verbose : bool
             Whether to display standard output or not. Default is True.
         """
+        target = target.lower()
         evaluator = Evaluator()
         mgr_attr = self.manager.get_attr()
         training_round = [mgr_attr["first_round"], mgr_attr["second_round"]]
@@ -760,6 +762,7 @@ class QPDInteractionSearchModel(TornadoBase):
         verbose : bool
             Whether to display standard output or not. Default is True.
         """
+        target = target.lower()
         evaluator = QuantileEvaluator()
         mgr_attr = self.manager.get_attr()
         training_round = [mgr_attr["first_round"], mgr_attr["second_round"]]

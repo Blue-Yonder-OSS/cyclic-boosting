@@ -111,7 +111,7 @@ class TornadoAnalysisModule():
         targets = [c for c in cols]
 
         _logger.info(f"  Target features: {targets} \n")
-        if 'date' in self.dataset.columns:
+        if self.is_time_series and "date" in self.dataset.columns:
             self.dataset.index = self.dataset["date"].values
             self.dataset = self.dataset[targets]
             self.calc_daily_average()
@@ -120,10 +120,12 @@ class TornadoAnalysisModule():
             self.check_monotonicity()
             self.check_seasonality()
             self.check_linearity()
+        elif self.is_time_series and 'date' not in self.dataset.columns:
+            raise ValueError("Dataset must have 'date' column on "
+                             "time-series prediction."
+                             "if not, set 'False' to 'is_time_series' option"
+                             "at Manager")
         else:
-            if self.is_time_series:
-                raise ValueError("Dataset must have 'date' column on "
-                                 "time-series prediction")
             self.dataset = self.dataset[targets]
 
         return self.report

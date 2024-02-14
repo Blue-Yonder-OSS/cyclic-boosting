@@ -299,14 +299,14 @@ class ManagerBase:
         self.y = np.asarray(dataset[self.target])
         self.X = dataset.drop(self.target, axis=1)
 
-        if not self.is_time_series:
-            self.X = self.X.drop("date", axis=1)
-
         # set and save model parameter
         if self.manual_feature_property:
             self.set_feature_property(fp=self.manual_feature_property)
         else:
             self.set_feature_property()
+        if self.is_time_series:
+            # instead, dayofweek and dayofyear are generated
+            self.X = self.X.drop("date", axis=1)
         self.init_model_attr["X"] = self.X
         self.init_model_attr["y"] = self.y
         self.features = list(self.feature_properties.keys())
