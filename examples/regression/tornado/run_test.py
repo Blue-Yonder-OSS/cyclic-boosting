@@ -8,6 +8,7 @@ import warnings
 warnings.filterwarnings("ignore", message="RuntimeWarning")
 
 path = "./data.csv"
+path = "examples/regression/tornado/data.csv"
 df = pd.read_csv(path)
 
 
@@ -33,7 +34,7 @@ df_test.to_csv("./data_test.csv", index=False)
 from cyclic_boosting.tornado import Generator, Manager, Tornado
 
 data_deliverler = Generator.TornadoDataModule("data_test.csv")
-manager = Manager.ForwardSelectionModule(dist="poisson")
+manager = Manager.ForwardSelectionModule(dist="nbinom")
 tornado_model = Tornado.ForwardTrainer(data_deliverler, manager)
 # manager = Manager.BFForwardSelectionModule(dist="qpd")
 # tornado_model = Tornado.QPDForwardTrainer(data_deliverler, manager)
