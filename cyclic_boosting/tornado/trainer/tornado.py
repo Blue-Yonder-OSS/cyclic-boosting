@@ -39,13 +39,13 @@ class TornadoBase:
     data_deliverer : TornadoDataModule
         A class that controls data preparation.
 
-    manager : One of the classes in the module.py
-        Base class is :class:`TornadoModule`
+    manager : One of the classes in the manager.py
+        Base class is :class:`TornadoManager`
     """
 
-    def __init__(self, DataModule, TornadoModule):
+    def __init__(self, DataModule, TornadoManager):
         self.data_deliverer = DataModule
-        self.manager = TornadoModule
+        self.manager = TornadoManager
 
     @abc.abstractmethod
     def fit(self,
@@ -63,7 +63,7 @@ class TornadoBase:
     @abc.abstractmethod
     def tornado(self, X):
         """Abstract method for model training."""
-        # write cyclic model training steps with handling by TornadoModule
+        # write cyclic model training steps with handling by TornadoManager
         pass
 
     @abc.abstractmethod
@@ -87,8 +87,8 @@ class InteractionSearchModel(TornadoBase):
     data_deliverer : TornadoDataModule
         Class that controls data preparation.
 
-    manager : One of the module classes
-        Class with TornadoModule as base class
+    manager : One of the manager classes
+        Class with TornadoManager as base class
 
     estimator : sklearn.pipeline.Pipeline
         Pipeline with steps including binning and CB
@@ -97,8 +97,8 @@ class InteractionSearchModel(TornadoBase):
         Estimator for parameter c of the negative binomial distribution.
     """
 
-    def __init__(self, DataModule, TornadoModule):
-        super().__init__(DataModule, TornadoModule)
+    def __init__(self, DataModule, TornadoManager):
+        super().__init__(DataModule, TornadoManager)
         self.estimator = None
         self.nbinomc = None
 
@@ -340,7 +340,7 @@ class InteractionSearchModel(TornadoBase):
             else:
                 min_x = range[0]
                 max_x = range[1]
-            x = np.arange(min_x, max_x)
+            x = np.linspace(start=min_x, stop=max_x, num=100).astype(int)
             pmfs = list()
             for dist in pd_func:
                 pmfs.append(dist.pmf(x))
@@ -364,8 +364,8 @@ class ForwardSelectionModel(TornadoBase):
     data_deliverer : TornadoDataModule
         Class that controls data preparation.
 
-    manager : One of the module classes
-        Class with TornadoModule as base class
+    manager : One of the manager classes
+        Class with TornadoManager as base class
 
     estimator : sklearn.pipeline.Pipeline
         Pipeline with steps including binning and CB
@@ -374,8 +374,8 @@ class ForwardSelectionModel(TornadoBase):
         Estimator for parameter c of the negative binomial distribution.
     """
 
-    def __init__(self, DataModule, TornadoModule):
-        super().__init__(DataModule, TornadoModule)
+    def __init__(self, DataModule, TornadoManager):
+        super().__init__(DataModule, TornadoManager)
         self.estimator = None
         self.nbinomc = None
 
@@ -648,7 +648,7 @@ class ForwardSelectionModel(TornadoBase):
             else:
                 min_x = range[0]
                 max_x = range[1]
-            x = np.arange(min_x, max_x)
+            x = np.linspace(start=min_x, stop=max_x, num=100).astype(int)
             pmfs = list()
             for dist in pd_func:
                 pmfs.append(dist.pmf(x))
@@ -677,8 +677,8 @@ class QPDInteractionSearchModel(TornadoBase):
     data_deliverer : TornadoDataModule
         Class that controls data preparation.
 
-    manager : One of the module classes
-        Class with TornadoModule as base class
+    manager : One of the manager classes
+        Class with TornadoManager as base class
 
     quantile : float
         Lower quantile QPD symmetric-percentile triplet (SPT). Defaoult is 0.1.
@@ -704,13 +704,13 @@ class QPDInteractionSearchModel(TornadoBase):
 
     def __init__(self,
                  DataModule,
-                 TornadoModule,
+                 TornadoManager,
                  quantile=0.1,
                  bound="U",
                  lower=0.0,
                  upper=1.0,
                  ):
-        super().__init__(DataModule, TornadoModule)
+        super().__init__(DataModule, TornadoManager)
         self.quantile = [quantile, 0.5, 1 - quantile]
         self.bound = bound
         self.lower = lower
