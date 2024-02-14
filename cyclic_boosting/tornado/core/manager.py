@@ -412,6 +412,12 @@ class TornadoManager(ManagerBase):
 
     mode : str
         Current round
+
+    Notes
+    -----
+    Some attributes are inherited from the base class and can be configured
+    when creating a class instance. See the Attributes of base class for a
+    description.
     """
 
     def __init__(self,
@@ -513,6 +519,12 @@ class ForwardSelectionManager(TornadoManager):
 
     target_features : list
         List of features for variable selection
+
+    Notes
+    -----
+    Some attributes are inherited from the base class and can be configured
+    when creating a class instance. See the Attributes of base class for a
+    description.
     """
 
     def __init__(self,
@@ -642,6 +654,12 @@ class PriorPredForwardSelectionManager(TornadoManager):
 
     mode : str
         Current round
+
+    Notes
+    -----
+    Some attributes are inherited from the base class and can be configured
+    when creating a class instance. See the Attributes of base class for a
+    description.
     """
 
     def __init__(self,
