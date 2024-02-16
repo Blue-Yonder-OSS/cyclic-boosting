@@ -1,6 +1,7 @@
 """contain the evaluation functions referenced by evaluator classes."""
 import numpy as np
 from numpy import abs, square, nanmean, nanmedian, nansum
+from scipy.stats import wasserstein_distance
 
 
 def mean_deviation(y, yhat) -> float:
@@ -324,3 +325,39 @@ def mean_pinball_loss(y, yhat, alpha) -> float:
     loss = alpha * sign * diff - (1 - alpha) * (1 - sign) * diff
     output_errors = np.average(loss, axis=0)
     return output_errors
+
+
+def probability_distribution_accuracy(y, pd_func) -> float:
+    """Calculate probability distribution accuracy.
+
+    Accuracy of the probability distribution calculated based on Wasserstein
+    distance between the cumulative distribution function (CDF) of the
+    predicted probability distribution at each observed value and the uniform
+    distribution. The value range is from 0 to 1. The closer to 1, the better
+    the accuracy. For more details, https://arxiv.org/abs/2009.07052.
+
+    Parameters
+    ----------
+    y : numpy.ndarray
+        Ground truth
+
+    pd_func : list of scipy.stats._distn_infrastructure.rv_frozen
+        List of instances obtained from the predict_proba function of the
+        tornado predictor with the option output="func". Each instance is a
+        fitted method collection. For more information,
+        https://docs.scipy.org/doc/scipy/reference/stats.html
+
+    Returns
+    -------
+    float
+        Probability distribution accuracy
+    """
+    cdf_values = np.array([])
+    for i, dist in enumerate(pd_func):
+        cdf_value = dist.cdf(y[i])
+        cdf_values = np.append(cdf_values, cdf_value)
+    cdf_values = cdf_values[~np.isnan(cdf_values)]
+    uniform_cdf_values = np.random.rand(len(cdf_values))
+    emd = wasserstein_distance(cdf_values, uniform_cdf_values)
+    acc = np.nanmean(1 - 2 * emd)
+    return acc
