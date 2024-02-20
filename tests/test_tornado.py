@@ -3,7 +3,7 @@ from cyclic_boosting.tornado.trainer import tornado
 import shutil
 
 
-def test_tornado(prepare_data):
+def test_interaction_search_model(prepare_data):
     X, y = prepare_data
     df, target = X.iloc[:200].copy(), y[:200].copy()
     df.loc[:, "sales"] = target
@@ -17,7 +17,7 @@ def test_tornado(prepare_data):
     shutil.rmtree('./models')
 
 
-def test_forward_trainer(prepare_data):
+def test_forward_selection_model(prepare_data):
     X, y = prepare_data
     df, target = X.iloc[:200].copy(), y[:200].copy()
     df.loc[:, "sales"] = target
@@ -31,7 +31,7 @@ def test_forward_trainer(prepare_data):
     shutil.rmtree('./models')
 
 
-def test_qpd_forward_trainer(prepare_data):
+def test_qpd_interaction_search_model(prepare_data):
     X, y = prepare_data
     df, target = X.iloc[:200].copy(), y[:200].copy()
     df.loc[:, "sales"] = target

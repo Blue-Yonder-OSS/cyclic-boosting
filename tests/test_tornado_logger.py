@@ -34,7 +34,7 @@ def prepare_log_data() -> dict:
 
 @pytest.fixture(scope="module")
 def prepare_tornado_modules() -> tuple:
-    # manager = ForwardSelectionModule()
+    # manager = ForwardSelectionManager()
     manager_attr = {
         "end": 100,
         "experiment": 1,

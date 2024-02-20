@@ -39,7 +39,7 @@ def manager_base_params():
     return params
 
 
-def test_tornado_module(prepare_data, manager_base_params):
+def test_tornado_manager(prepare_data, manager_base_params):
     X, y = prepare_data
     X, y = X[:100].copy(), y[:100].copy()
     X.loc[:, "SALES"] = y.copy()
@@ -151,7 +151,7 @@ def test_tornado_module(prepare_data, manager_base_params):
     manager.manage()
 
 
-def test_forward_selection_module(prepare_data):
+def test_forward_selection_manager(prepare_data):
     X, y = prepare_data
     X, y = X[:100].copy(), y[:100].copy()
     X.loc[:, "SALES"] = y.copy()
@@ -174,7 +174,7 @@ def test_forward_selection_module(prepare_data):
     manager.update()
 
 
-def test_prior_pred_forward_selection_module(prepare_data):
+def test_prior_pred_forward_selection_manager(prepare_data):
     X, y = prepare_data
     X, y = X[:100].copy(), y[:100].copy()
     X.loc[:, "SALES"] = y
