@@ -34,7 +34,7 @@ def prepare_log_data() -> dict:
 
 @pytest.fixture(scope="module")
 def prepare_tornado_modules() -> tuple:
-    # manager = ForwardSelectionModule()
+    # manager = ForwardSelectionManager()
     manager_attr = {
         "end": 100,
         "experiment": 1,
@@ -68,29 +68,29 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
     # parameters
     save_dir = "./save_dir"
     f_name = "temp"
-    policy = "COD"
-    f_round, s_round = "first", "second"
+    criterion = "COD"
+    first_round, second_round = "first", "second"
     eval = log_data["metrics"]
     bench_mark = {k: (v - 1) for k, v in log_data["metrics"].items()}
 
-    logger = ForwardLogger(save_dir=save_dir, policy=policy)
+    logger = ForwardLogger(save_dir=save_dir, criterion=criterion)
 
     desired = {
         "iter": 0,
         "save_dir": save_dir,
-        "policy": policy,
-        "first_round": f_round,
-        "second_round": s_round,
+        "criterion": criterion,
+        "first_round": first_round,
+        "second_round": second_round,
         "log_data": dict(),
         "CODs": dict(),
         "model_dir": None,
     }
-    assert logger.get_params() == desired
+    assert logger.get_attr() == desired
 
     params = {"log_data": log_data}
     desired.update(params)
-    logger.set_params(params)
-    assert logger.get_params()["log_data"] == log_data
+    logger.set_attr(params)
+    assert logger.get_attr()["log_data"] == log_data
     del desired
 
     logger.make_dir()
@@ -124,7 +124,7 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
     shutil.rmtree(model_dir)
 
     logger.reset_count()
-    assert logger.get_params()["iter"] == 0
+    assert logger.get_attr()["iter"] == 0
 
     try:
         logger.output(eval, None)
@@ -134,37 +134,37 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
     params = {
         "iter": 100,
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     logger.hold(est, eval, manager_attr, verbose=True, save=True)
-    assert log_data == logger.get_params()["log_data"]
+    assert log_data == logger.get_attr()["log_data"]
     ext = ".pkl"
     os.remove(os.path.join(save_dir, f_name + ext))
 
     # check for validation
     params = {
-        "policy": policy,
+        "criterion": criterion,
         "bench_mark": {"metrics": bench_mark}
     }
-    logger.set_params(params)
-    assert logger.validate(eval), f"{policy} logic is wrong"
+    logger.set_attr(params)
+    assert logger.validate(eval), f"{criterion} logic is wrong"
 
-    policy = "PINBALL"
+    criterion = "PINBALL"
     bench_mark = {k: (v + 1) for k, v in log_data["metrics"].items()}
     params = {
-        "policy": policy,
+        "criterion": criterion,
         "bench_mark": {"metrics": bench_mark}
     }
-    logger.set_params(params)
-    assert logger.validate(eval), f"{policy} logic is wrong"
+    logger.set_attr(params)
+    assert logger.validate(eval), f"{criterion} logic is wrong"
 
     # check for 2 steps round training
     # first round
     param = {
         "iter": 100,
-        "first_round": f_round,
+        "first_round": first_round,
         "bench_mark": {"metrics": bench_mark},
         }
-    logger.set_params(param)
+    logger.set_attr(param)
     try:
         logger.log(est, eval, manager_attr)
     except Exception as error:
@@ -172,12 +172,12 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
 
     # second round
     param = {
-        "second_round": s_round,
+        "second_round": second_round,
         "bench_mark": {"metrics": bench_mark},
         }
-    logger.set_params(param)
+    logger.set_attr(param)
     param = {
-        "mode": s_round,
+        "mode": second_round,
         }
     manager_attr.update(param)
     try:
@@ -193,18 +193,18 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
     # parameters
     save_dir = "./save_dir"
     f_name = "temp"
-    policy = "COD"
-    f_round, s_round = "first", "second"
+    criterion = "COD"
+    first_round, second_round = "first", "second"
     eval = log_data["metrics"]
     bench_mark = {k: (v - 1) for k, v in log_data["metrics"].items()}
 
     logger = PriorPredForwardLogger(
         save_dir=save_dir,
-        policy=policy
+        criterion=criterion
     )
 
     param = {
-        "mode": f_round,
+        "mode": first_round,
         "experiment": 1,
         "end": 1,
         "features": ["dummy"],
@@ -219,40 +219,40 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
     params = {
         "iter": 100,
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     logger.hold(est, eval, manager_attr, verbose=True, save=True)
-    assert log_data == logger.get_params()["log_data"]
+    assert log_data == logger.get_attr()["log_data"]
     ext = ".pkl"
     os.remove(os.path.join(save_dir, f_name + ext))
 
     # check for validation
-    policy = "COD"
+    criterion = "COD"
     params = {
-        "policy": policy,
+        "criterion": criterion,
         "bench_mark": {"metrics": bench_mark}
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     logger.validate(eval)
-    assert logger.validate(eval), f"{policy} logic is wrong"
+    assert logger.validate(eval), f"{criterion} logic is wrong"
 
-    policy = "PINBALL"
+    criterion = "PINBALL"
     bench_mark = {k: (v + 1) for k, v in log_data["metrics"].items()}
     params = {
-        "policy": policy,
+        "criterion": criterion,
         "bench_mark": {"metrics": bench_mark}
     }
-    logger.set_params(params)
+    logger.set_attr(params)
     logger.validate(eval)
-    assert logger.validate(eval), f"{policy} logic is wrong"
+    assert logger.validate(eval), f"{criterion} logic is wrong"
 
     # check for 2 steps round training
     # first round
     param = {
         "iter": 100,
-        "first_round": f_round,
+        "first_round": first_round,
         "bench_mark": {"metrics": bench_mark},
         }
-    logger.set_params(param)
+    logger.set_attr(param)
     try:
         logger.log(est, eval, manager_attr)
     except Exception as error:
@@ -260,12 +260,12 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
 
     # second round
     param = {
-        "second_round": s_round,
+        "second_round": second_round,
         "bench_mark": {"metrics": bench_mark},
         }
-    logger.set_params(param)
+    logger.set_attr(param)
     param = {
-        "mode": s_round,
+        "mode": second_round,
         }
     manager_attr.update(param)
     try:

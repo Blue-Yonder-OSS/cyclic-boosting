@@ -1,4 +1,3 @@
-import warnings
 from logging import WARNING
 
 import numpy as np
@@ -134,10 +133,6 @@ def test_check_data():
         "expanding": {},
         "dayofweek": {},
         "dayofyear": {},
-        "standardization": {},
-        "logarithmic": {},
-        "rank": {},
-        "rankgauss": {}
         }
     test_data_time_series = create_time_series_test_data(10, 5)
     preprocessor.check_data(test_data_time_series, is_time_series=True)
@@ -152,10 +147,6 @@ def test_check_data():
         "encode_category": {"label_encoding": {}},
         "check_dtype": {},
         "check_cardinality": {},
-        "standardization": {},
-        "logarithmic": {},
-        "rank": {},
-        "rankgauss": {}
         }
     test_data_non_time_series = create_non_time_series_test_data(10, 5)
     preprocessor.check_data(test_data_non_time_series, is_time_series=False)

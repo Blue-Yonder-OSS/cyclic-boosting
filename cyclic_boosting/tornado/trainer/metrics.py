@@ -1,6 +1,6 @@
 """contain the evaluation functions referenced by evaluator classes."""
 import numpy as np
-from numpy import abs, square, nanmean, nanmedian, nansum
+from numpy import abs, nanmean, nanmedian, nansum, square
 
 
 def mean_deviation(y, yhat) -> float:
@@ -242,57 +242,50 @@ def F(y, yhat, k) -> float:
     regression_variance = nansum((yhat - nanmean(y)) ** 2) / k
     return regression_variance / residual_variance
 
-
-def F_quantile(
-    y,
-    yhat_q1,
-    yhat_q2,
-    q1,
-    k,
-) -> float:
-    """Calculate the F value considering the quartile point.
-
-    The F value, also known as the ratio of variances, is a statistical
-    measure used in analysis of variance (ANOVA) and other methods. It
-    compares the variability between group means with the variability within
-    groups. It is calculated as the ratio of the "mean square of the
-    regression variation" to the "mean square of the residual variation." The
-    larger the value, the more meaningful the obtained regression equation is.
-
-    Parameters
-    ----------
-    y : numpy.ndarray
-        Ground truth
-
-    yhat_q1 : numpy.ndarray
-        Predicted value at quantile 1
-
-    yhat_q2 : numpy.ndarray
-        Predicted value at quantile 2
-
-    q1 : float
-        Quantile
-
-    k : int
-        Number of features (explanatory variables)
-
-    Returns
-    -------
-    float
-        F-value
-    """
-    # from scipy.stats import f
-    q2 = 1 - q1
-    n = len(y)
-    q_range = q2 - q1
-    rss_indep = sum(square(v) for v in [yhat_q1, yhat_q2])
-    rss_part = (rss_indep[1] - rss_indep[0]) / (q_range)
-    sse_full = nansum(square(y - nanmean(y)))
-    rss_full = sse_full - nansum(rss_indep)
-    F_value = rss_part / (rss_full / (n - k - 1))
-    # p_value = 1 - f.cdf(F_value, 1, n - k - 1)
-    print("F-value: %.4f" % F_value)
-    return F_value
+# experimental code
+# def F_quantile(y,
+#                yhat_q1, yhat_q2, q1, k, ) -> float:
+#     """Calculate the F value considering the quartile point.
+#
+#     The F value, also known as the ratio of variances, is a statistical
+#     measure used in analysis of variance (ANOVA) and other methods. It
+#     compares the variability between group means with the variability within
+#     groups. It is calculated as the ratio of the "mean square of the
+#     regression variation" to the "mean square of the residual variation." The
+#     larger the value, the more meaningful the obtained regression equation is.
+#
+#     Parameters
+#     ----------
+#     y : numpy.ndarray
+#         Ground truth
+#
+#     yhat_q1 : numpy.ndarray
+#         Predicted value at quantile 1
+#
+#     yhat_q2 : numpy.ndarray
+#         Predicted value at quantile 2
+#
+#     q1 : float
+#         Quantile
+#
+#     k : int
+#         Number of features (explanatory variables)
+#
+#     Returns
+#     -------
+#     float
+#         F-value
+#     """
+#     q2 = 1 - q1
+#     n = len(y)
+#     q_range = q2 - q1
+#     rss_indep = sum(square(v) for v in [yhat_q1, yhat_q2])
+#     rss_part = (rss_indep[1] - rss_indep[0]) / (q_range)
+#     sse_full = nansum(square(y - nanmean(y)))
+#     rss_full = sse_full - nansum(rss_indep)
+#     F_value = rss_part / (rss_full / (n - k - 1))
+#     # p_value = 1 - f.cdf(F_value, 1, n - k - 1)
+#     return F_value
 
 
 def mean_pinball_loss(y, yhat, alpha) -> float:
@@ -324,3 +317,48 @@ def mean_pinball_loss(y, yhat, alpha) -> float:
     loss = alpha * sign * diff - (1 - alpha) * (1 - sign) * diff
     output_errors = np.average(loss, axis=0)
     return output_errors
+
+
+def probability_distribution_accuracy(y, pd_func) -> float:
+    """Calculate probability distribution accuracy.
+
+    Accuracy of the probability distribution calculated based on Wasserstein
+    distance between the cumulative distribution function (CDF) of the
+    predicted probability distribution at each observed value and the uniform
+    distribution. The value range is from 0 to 1. The closer to 1, the better
+    the accuracy. For more details, https://arxiv.org/abs/2009.07052.
+
+    Parameters
+    ----------
+    y : numpy.ndarray
+        Ground truth
+
+    pd_func : list of scipy.stats._distn_infrastructure.rv_frozen
+        List of instances obtained from the predict_proba function of the
+        tornado predictor with the option output="func". Each instance is a
+        fitted method collection. For more information,
+        https://docs.scipy.org/doc/scipy/reference/stats.html
+
+    Returns
+    -------
+    float
+        Probability distribution accuracy
+    """
+    cdf_values = np.array([])
+    for i, dist in enumerate(pd_func):
+        cdf_value = dist.cdf(y[i])
+        cdf_values = np.append(cdf_values, cdf_value)
+    cdf_values = cdf_values[~np.isnan(cdf_values)]
+
+    counts, _ = np.histogram(cdf_values, bins=100)
+    n_cdf_bins = len(counts)
+    pmf = counts / np.sum(counts)
+    unif = np.full_like(pmf, 1.0 / len(pmf))
+
+    cdf_pmf = np.cumsum(pmf)
+    cdf_unif = np.cumsum(unif)
+    wasser_distance = 2.0 * np.sum(np.abs(cdf_pmf - cdf_unif)) / len(cdf_pmf)
+    wasser_distance = wasser_distance * n_cdf_bins / (n_cdf_bins - 1.0)
+
+    acc = np.nanmean(1 - 2 * wasser_distance)
+    return acc

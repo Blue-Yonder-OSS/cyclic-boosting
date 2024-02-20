@@ -1,6 +1,7 @@
 import numpy as np
 
 from cyclic_boosting.tornado.trainer import metrics
+from scipy.stats import poisson
 
 
 def test_mean_deviation() -> None:
@@ -88,4 +89,14 @@ def test_mean_pinball_loss() -> None:
     y = yhat - (1/2 * yhat)
     desired = 2.0
     actual = metrics.mean_pinball_loss(y, yhat, alpha=0.2)
+    np.testing.assert_almost_equal(actual, desired, decimal=3)
+
+
+def test_probability_distribution_accuracy() -> None:
+    y = np.arange(1, 10)
+    pd_func = list()
+    for mu in y:
+        pd_func.append(poisson(mu))
+    desired = 0.153
+    actual = metrics.probability_distribution_accuracy(y, pd_func)
     np.testing.assert_almost_equal(actual, desired, decimal=3)
