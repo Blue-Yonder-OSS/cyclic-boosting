@@ -1,26 +1,26 @@
 """Handle model settings."""
 from __future__ import annotations
-import logging
 
 import abc
-import six
 import itertools
+import logging
+from typing import TYPE_CHECKING
+
 import numpy as np
+import six
 
-from cyclic_boosting import flags, common_smoothers, observers
-
-# from cyclic_boosting.plots import plot_analysis
+from cyclic_boosting import common_smoothers, flags, observers
 from cyclic_boosting.pipelines import (
-    pipeline_CBPoissonRegressor as PoissonRegressor,
-    pipeline_CBNBinomC as NBinomC,
-    pipeline_CBMultiplicativeQuantileRegressor as MultiplicativeQuantileRegressor,
     pipeline_CBAdditiveQuantileRegressor as AdditiveQuantileRegressor,
 )
+from cyclic_boosting.pipelines import (
+    pipeline_CBMultiplicativeQuantileRegressor as MultiplicativeQuantileRegressor,
+)
+from cyclic_boosting.pipelines import pipeline_CBNBinomC as NBinomC
+from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor as PoissonRegressor
+from cyclic_boosting.smoothing.onedim import IsotonicRegressor, SeasonalSmoother
 
-from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
 from .analysis import TornadoAnalysisModule
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
@@ -34,7 +34,7 @@ _logger.addHandler(handler)
 
 
 @six.add_metaclass(abc.ABCMeta)
-class TornadoModuleBase:
+class ManagerBase:
     """Base class handling model settings in the recursive learning.
 
     Attributes
@@ -49,6 +49,10 @@ class TornadoModuleBase:
         The data collection interval which can be one of "hourly", "daily",
         "weekly", "monthly", or None. If None (default), the interval will be
         inferred and set automatically.
+
+    combination : int
+        Maximum number of features included in the combination of
+        interaction terms created from the given features. Default is 2.
 
     max_iter : int
         Maximal number of iteration. This is used in each estimator. Default
@@ -117,6 +121,7 @@ class TornadoModuleBase:
         manual_feature_property=None,
         is_time_series=True,
         data_interval=None,
+        combination=2,
         max_iter=10,
         task="regression",
         dist="poisson",
@@ -125,6 +130,7 @@ class TornadoModuleBase:
         self.manual_feature_property = manual_feature_property
         self.is_time_series = is_time_series
         self.data_interval = data_interval
+        self.combination = combination
         self.max_iter = max_iter
         self.task = task
         self.dist = dist
@@ -144,8 +150,8 @@ class TornadoModuleBase:
         self.experiment = 0
         self.end = 0
 
-    def get_params(self) -> dict:
-        """Get class parameters.
+    def get_attr(self) -> dict:
+        """Get class attributes.
 
         Get the attributes of the class not starting with "__" as a dictionary.
 
@@ -153,7 +159,7 @@ class TornadoModuleBase:
         -------
         dict
             Dictionary with class attribute names as keys and class attribute
-            values as values.
+            as values.
         """
         class_vars = dict()
         for attr_name, value in self.__dict__.items():
@@ -162,14 +168,14 @@ class TornadoModuleBase:
 
         return class_vars
 
-    def set_params(self, params: dict) -> None:
-        """Set class parameters.
+    def set_attr(self, params: dict) -> None:
+        """Set class attributes.
 
         Parameters
         ----------
         params : dict
             Parameters to be set. Dictionary with attribute names as keys and
-            attribute values as values.
+            attribute as values.
         """
         for attr_name, value in params.items():
             self.__dict__[attr_name] = value
@@ -191,6 +197,8 @@ class TornadoModuleBase:
                                              is_time_series=self.is_time_series,
                                              data_interval=self.data_interval,
                                              )
+
+            _logger.info("[START] Auto analysis \n")
             self.report = analyzer.analyze()
             for prop, analyzed_features in self.report.items():
                 if prop == "is_unordered":
@@ -215,12 +223,15 @@ class TornadoModuleBase:
                         self.feature_properties[feature] = flag
                     else:
                         self.feature_properties[feature] |= flag
+            _logger.info("[END] Auto analysis \n\n")
         else :
             self.feature_properties = {k: v for k, v in fp.items()}
 
         if verbose:
+            _logger.info("Feature properties\n")
             for key, value in self.report.items():
                 _logger.info(f"    {key}: {value}\n")
+            _logger.info("\n")
 
     def set_smoother(self, smoothers: dict = None) -> None:
         """Set smoothers for the model.
@@ -269,7 +280,7 @@ class TornadoModuleBase:
         self.smoothers = dict()
         self.observers = dict()
 
-    def init(self, dataset, target, n_comb=2) -> None:
+    def init(self, dataset, target) -> None:
         """Set initial settings for the model.
 
         Set up the model, generate interaction terms, and drop unneeded
@@ -283,23 +294,19 @@ class TornadoModuleBase:
 
         target : str
             Name of the target valiable
-
-        n_comb : int
-            Maximum number of features included in the combination of
-            interaction terms created from the given features. Default is 2.
         """
         self.target = target.lower()
         self.y = np.asarray(dataset[self.target])
         self.X = dataset.drop(self.target, axis=1)
-
-        if not self.is_time_series:
-            self.X = self.X.drop("date", axis=1)
 
         # set and save model parameter
         if self.manual_feature_property:
             self.set_feature_property(fp=self.manual_feature_property)
         else:
             self.set_feature_property()
+        if self.is_time_series:
+            # instead, dayofweek and dayofyear are generated
+            self.X = self.X.drop("date", axis=1)
         self.init_model_attr["X"] = self.X
         self.init_model_attr["y"] = self.y
         self.features = list(self.feature_properties.keys())
@@ -307,7 +314,7 @@ class TornadoModuleBase:
         self.init_model_attr["feature_properties"] = self.feature_properties
 
         # NOTE: run after feature_properties is into init_model_params
-        self.set_interaction(n_comb=n_comb)
+        self.set_interaction(combination=self.combination)
         self.init_model_attr["interaction"] = self.interaction_term
 
         # NOTE: run after X and feature_property are into init_model_params
@@ -372,7 +379,7 @@ class TornadoModuleBase:
         pass
 
     @abc.abstractmethod
-    def set_interaction(self, n_comb=2) -> None:
+    def set_interaction(self, combination=2) -> None:
         """Abstract methods to set interaction terms."""
         pass
 
@@ -387,7 +394,7 @@ class TornadoModuleBase:
         pass
 
 
-class TornadoModule(TornadoModuleBase):
+class TornadoManager(ManagerBase):
     """Class handling the model settings in ordinary Tornado.
 
     Controls the settings of the model in recursive learning in ordinary
@@ -405,12 +412,19 @@ class TornadoModule(TornadoModuleBase):
 
     mode : str
         Current round
+
+    Notes
+    -----
+    Some attributes are inherited from the base class and can be configured
+    when creating a class instance. See the Attributes of base class for a
+    description.
     """
 
     def __init__(self,
                  manual_feature_property=None,
                  is_time_series=True,
                  data_interval=None,
+                 combination=2,
                  max_iter=10,
                  dist="poisson",
                  model=None,
@@ -419,6 +433,7 @@ class TornadoModule(TornadoModuleBase):
             manual_feature_property,
             is_time_series,
             data_interval,
+            combination=combination,
             max_iter=max_iter,
             dist=dist,
             model=model,
@@ -439,21 +454,21 @@ class TornadoModule(TornadoModuleBase):
         feature.append(self.interaction_term[idx])
         self.features = feature
 
-    def set_interaction(self, n_comb=2) -> None:
+    def set_interaction(self, combination=2) -> None:
         """Set interaction terms for the model.
 
         Parameters
         ----------
-        n_comb : int
+        combination : int
             Maximum number of features included in the combination of
             interaction terms created from the given features. Default is 2.
         """
-        if n_comb <= 1:
+        if combination <= 1:
             raise ValueError("interaction size must be more than 2")
-        elif n_comb >= 3:
+        elif combination >= 3:
             ("WARNING: many interaction terms might cause long training")
 
-        for s in range(2, n_comb + 1):
+        for s in range(2, combination + 1):
             feature = self.init_model_attr["features"]
             comb = itertools.combinations(feature, s)
             self.interaction_term += [c for c in comb]
@@ -482,7 +497,7 @@ class TornadoModule(TornadoModuleBase):
             return False
 
 
-class ForwardSelectionModule(TornadoModule):
+class ForwardSelectionManager(TornadoManager):
     """Class handling the model settings in forward selection of Tornado.
 
     Controls the settings of the model in recursive learning in forward
@@ -504,12 +519,19 @@ class ForwardSelectionModule(TornadoModule):
 
     target_features : list
         List of features for variable selection
+
+    Notes
+    -----
+    Some attributes are inherited from the base class and can be configured
+    when creating a class instance. See the Attributes of base class for a
+    description.
     """
 
     def __init__(self,
                  manual_feature_property=None,
                  is_time_series=True,
                  data_interval=None,
+                 combination=2,
                  max_iter=10,
                  dist="poisson",
                  ) -> None:
@@ -517,6 +539,7 @@ class ForwardSelectionModule(TornadoModule):
             manual_feature_property,
             is_time_series,
             data_interval,
+            combination=combination,
             max_iter=max_iter,
             dist=dist,
             )
@@ -612,7 +635,7 @@ class ForwardSelectionModule(TornadoModule):
             return False
 
 
-class PriorPredForwardSelectionModule(TornadoModule):
+class PriorPredForwardSelectionManager(TornadoManager):
     """Handle the model setting in forward selection with prior prediction.
 
     Control the settings of the model in recursive learning in forward
@@ -631,6 +654,12 @@ class PriorPredForwardSelectionModule(TornadoModule):
 
     mode : str
         Current round
+
+    Notes
+    -----
+    Some attributes are inherited from the base class and can be configured
+    when creating a class instance. See the Attributes of base class for a
+    description.
     """
 
     def __init__(self,

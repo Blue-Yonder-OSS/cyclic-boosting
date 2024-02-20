@@ -1,20 +1,21 @@
 """Evaluation of the model of Tornado's training."""
+import abc
 import logging
 
-import abc
-import six
 import numpy as np
+import six
+
 from .metrics import (
-    mean_deviation,
-    mean_absolute_deviation,
-    mean_square_error,
-    mean_absolute_error,
-    median_absolute_error,
-    weighted_absolute_percentage_error,
-    symmetric_mean_absolute_percentage_error,
-    coefficient_of_determination,
     F,
+    coefficient_of_determination,
+    mean_absolute_deviation,
+    mean_absolute_error,
+    mean_deviation,
     mean_pinball_loss,
+    mean_square_error,
+    median_absolute_error,
+    symmetric_mean_absolute_percentage_error,
+    weighted_absolute_percentage_error,
 )
 
 _logger = logging.getLogger(__name__)

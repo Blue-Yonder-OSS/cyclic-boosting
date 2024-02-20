@@ -2,10 +2,10 @@ import datetime
 import numpy as np
 import pandas as pd
 from itertools import combinations
-from cyclic_boosting.tornado.core.module import (
-    TornadoModule,
-    ForwardSelectionModule,
-    PriorPredForwardSelectionModule
+from cyclic_boosting.tornado.core.manager import (
+    TornadoManager,
+    ForwardSelectionManager,
+    PriorPredForwardSelectionManager
 )
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
 import pytest
@@ -39,7 +39,7 @@ def manager_base_params():
     return params
 
 
-def test_tornado_module(prepare_data, manager_base_params):
+def test_tornado_manager(prepare_data, manager_base_params):
     X, y = prepare_data
     X, y = X[:100].copy(), y[:100].copy()
     X.loc[:, "SALES"] = y.copy()
@@ -58,23 +58,23 @@ def test_tornado_module(prepare_data, manager_base_params):
             "date": dates
         }
     )
-    manager = TornadoModule(is_time_series=True)
+    manager = TornadoManager(is_time_series=True)
 
-    # get_params
-    params = manager.get_params()
-    for p, desired in zip(params.items(), manager.get_params().items()):
+    # get_attr
+    params = manager.get_attr()
+    for p, desired in zip(params.items(), manager.get_attr().items()):
         assert p[1] == desired[1], p[0]
 
-    # set_params
+    # set_attr
     manager_base_params.update({"end": 10000, "X": X_dummy})
-    manager.set_params(manager_base_params)
-    params = manager.get_params()
+    manager.set_attr(manager_base_params)
+    params = manager.get_attr()
     assert params["end"] == manager_base_params["end"]
 
     # feature_properties
     attr = "feature_properties"
     manager_base_params.update({"end": 0, "X": X})
-    manager.set_params(manager_base_params)
+    manager.set_attr(manager_base_params)
     manager.set_feature_property()
 
     # set_feature
@@ -82,10 +82,10 @@ def test_tornado_module(prepare_data, manager_base_params):
     attr = "features"
     desired = ["int", "float", "object"]
     manager_base_params.update({"interaction_term": [("a", "b")]})
-    manager.set_params(manager_base_params)
+    manager.set_attr(manager_base_params)
     manager.set_feature(desired)
     desired.append(("a", "b"))
-    res = manager.get_params()
+    res = manager.get_attr()
     is_same = res[attr] == desired
     assert is_same, f"{func}'s result is {res[attr]}, {desired}"
 
@@ -98,9 +98,9 @@ def test_tornado_module(prepare_data, manager_base_params):
         "X": X_dummy,
         "interaction_term": list()
         })
-    manager.set_params(manager_base_params)
+    manager.set_attr(manager_base_params)
     manager.set_interaction()
-    res = manager.get_params()
+    res = manager.get_attr()
     is_same = res[attr] == desired
     assert is_same, f"{func}'s result is {res[attr]}, {desired}"
 
@@ -113,9 +113,9 @@ def test_tornado_module(prepare_data, manager_base_params):
         "has_down_monotonicity": ["down"]
     }
     manager_base_params.update({"report": report_dummy})
-    manager.set_params(manager_base_params)
+    manager.set_attr(manager_base_params)
     manager.set_smoother()
-    res = list(manager.get_params()[attr].values())
+    res = list(manager.get_attr()[attr].values())
     assert isinstance(res[0], SeasonalSmoother)
     assert isinstance(res[1], IsotonicRegressor)
     assert isinstance(res[2], IsotonicRegressor)
@@ -130,9 +130,9 @@ def test_tornado_module(prepare_data, manager_base_params):
         "init_model_attr": {"X": X_dummy},
         "feature_properties": {"int": 1},
     }
-    manager.set_params(param)
+    manager.set_attr(param)
     manager.drop_unused_features()
-    res = manager.get_params()
+    res = manager.get_attr()
     desired = ["int"]
     is_same = list(res[attr].columns) == desired
     assert is_same, f"{func}'s result is {res[attr].columns}, {desired}"
@@ -151,13 +151,13 @@ def test_tornado_module(prepare_data, manager_base_params):
     manager.manage()
 
 
-def test_forward_selection_module(prepare_data):
+def test_forward_selection_manager(prepare_data):
     X, y = prepare_data
     X, y = X[:100].copy(), y[:100].copy()
     X.loc[:, "SALES"] = y.copy()
     names = {k: k.lower() for k in X.columns}
     X.rename(names, axis=1, inplace=True)
-    manager = ForwardSelectionModule(is_time_series=True)
+    manager = ForwardSelectionManager(is_time_series=True)
 
     # init
     manager.init(X.copy(), "SALES")
@@ -174,13 +174,13 @@ def test_forward_selection_module(prepare_data):
     manager.update()
 
 
-def test_prior_pred_forward_selection_module(prepare_data):
+def test_prior_pred_forward_selection_manager(prepare_data):
     X, y = prepare_data
     X, y = X[:100].copy(), y[:100].copy()
     X.loc[:, "SALES"] = y
     names = {k: k.lower() for k in X.columns}
     X.rename(names, axis=1, inplace=True)
-    manager = PriorPredForwardSelectionModule(is_time_series=True)
+    manager = PriorPredForwardSelectionManager(is_time_series=True)
 
     # init
     manager.init(X.copy(), "SALES")
