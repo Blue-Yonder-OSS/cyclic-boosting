@@ -1,7 +1,6 @@
 """contain the evaluation functions referenced by evaluator classes."""
 import numpy as np
 from numpy import abs, square, nanmean, nanmedian, nansum
-from scipy.stats import wasserstein_distance
 
 
 def mean_deviation(y, yhat) -> float:
@@ -357,7 +356,16 @@ def probability_distribution_accuracy(y, pd_func) -> float:
         cdf_value = dist.cdf(y[i])
         cdf_values = np.append(cdf_values, cdf_value)
     cdf_values = cdf_values[~np.isnan(cdf_values)]
-    uniform_cdf_values = np.random.rand(len(cdf_values))
-    emd = wasserstein_distance(cdf_values, uniform_cdf_values)
-    acc = np.nanmean(1 - 2 * emd)
+
+    counts, _ = np.histogram(cdf_values, bins=100)
+    n_cdf_bins = len(counts)
+    pmf = counts / np.sum(counts)
+    unif = np.full_like(pmf, 1.0 / len(pmf))
+
+    cdf_pmf = np.cumsum(pmf)
+    cdf_unif = np.cumsum(unif)
+    wasser_distance = 2.0 * np.sum(np.abs(cdf_pmf - cdf_unif)) / len(cdf_pmf)
+    wasser_distance = wasser_distance * n_cdf_bins / (n_cdf_bins - 1.0)
+
+    acc = np.nanmean(1 - 2 * wasser_distance)
     return acc
