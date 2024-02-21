@@ -257,6 +257,7 @@ def test_generate_trainset(caplog):
 def test_generate_testset(caplog):
     caplog.set_level(INFO)
     path = "./test_data.csv"
+    log_path = "./test_data.pkl"
     data_deliverer = datamodule.TornadoDataModule(path)
     correlated_data = create_correlated_data(100, True)
     t = np.arange(0, 100 * 0.1, 0.1)
@@ -274,3 +275,4 @@ def test_generate_testset(caplog):
 
     pd.testing.assert_frame_equal(dataset, desired_dataset)
     os.remove(path)
+    os.remove(log_path)
