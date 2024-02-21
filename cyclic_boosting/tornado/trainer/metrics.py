@@ -138,7 +138,7 @@ def weighted_absolute_percentage_error(y, yhat) -> float:
     float
         Weighted absolute percentage error (WAPE)
     """
-    return nansum(abs(y - yhat) * y) / nansum(y)
+    return nansum(abs(y - yhat) * y) / nansum(y * y)
 
 
 def symmetric_mean_absolute_percentage_error(y, yhat) -> float:
