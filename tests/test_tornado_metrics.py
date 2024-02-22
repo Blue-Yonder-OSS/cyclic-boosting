@@ -52,6 +52,14 @@ def test_weighted_absolute_percentage_error() -> None:
     np.testing.assert_almost_equal(actual, desired, decimal=3)
 
 
+def test_weighted_mean_absolute_percentage_error() -> None:
+    yhat = np.arange(1, 10)
+    y = yhat - (1/4 * yhat)
+    desired = 0.333
+    actual = metrics.weighted_mean_absolute_percentage_error(y, yhat)
+    np.testing.assert_almost_equal(actual, desired, decimal=3)
+
+
 def test_symmetric_mean_absolute_percentage_error() -> None:
     yhat = np.arange(1, 10)
     y = yhat - (1/2 * yhat)

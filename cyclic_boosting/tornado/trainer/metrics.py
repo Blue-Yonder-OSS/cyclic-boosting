@@ -165,6 +165,32 @@ def symmetric_mean_absolute_percentage_error(y, yhat) -> float:
     return smape
 
 
+def weighted_mean_absolute_percentage_error(y, yhat) -> float:
+    """Calculate the weighted mean absolute percentage error (WMAPE).
+
+    WMAPE represents the average of the absolute percentage error
+    between the actual and predicted values, using a weighted average
+    instead of treating the error at each data point equally.
+    The smaller the value, the more accurate the model.
+
+    Parameters
+    ----------
+    y : numpy.ndarray
+        Ground truth
+
+    yhat : numpy.ndarray
+        Predicted value
+
+    Returns
+    -------
+    float
+        Symmetric mean absolute percentage error (SMAPE)
+    """
+
+    wmape = np.nansum(np.abs(y - yhat) * y) / np.nansum(y * y)
+    return wmape
+
+
 def mean_y(y, **args) -> float:
     """Calculate the mean.
 
