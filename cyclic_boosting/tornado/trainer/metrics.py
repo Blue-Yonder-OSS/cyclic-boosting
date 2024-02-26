@@ -143,7 +143,7 @@ def weighted_absolute_percentage_error(y, yhat) -> float:
     float
         Weighted absolute percentage error (WAPE)
     """
-    wape = nansum(abs(y - yhat) * y) / nansum(y * y)
+    wape = nansum(abs(y - yhat)) / nansum(y)
     return wape
 
 
@@ -192,8 +192,7 @@ def weighted_mean_absolute_percentage_error(y, yhat) -> float:
     float
         Symmetric mean absolute percentage error (SMAPE)
     """
-
-    wmape = np.nansum(np.abs(y - yhat) * y) / np.nansum(y * y)
+    wmape = np.nansum(np.abs(y - yhat)) / np.nansum(y)
     return wmape
 
 
