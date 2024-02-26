@@ -276,51 +276,6 @@ def F(y, yhat, k) -> float:
     f_value = regression_variance / residual_variance
     return f_value
 
-# experimental code
-# def F_quantile(y,
-#                yhat_q1, yhat_q2, q1, k, ) -> float:
-#     """Calculate the F value considering the quartile point.
-#
-#     The F value, also known as the ratio of variances, is a statistical
-#     measure used in analysis of variance (ANOVA) and other methods. It
-#     compares the variability between group means with the variability within
-#     groups. It is calculated as the ratio of the "mean square of the
-#     regression variation" to the "mean square of the residual variation." The
-#     larger the value, the more meaningful the obtained regression equation is.
-#
-#     Parameters
-#     ----------
-#     y : numpy.ndarray
-#         Ground truth
-#
-#     yhat_q1 : numpy.ndarray
-#         Predicted value at quantile 1
-#
-#     yhat_q2 : numpy.ndarray
-#         Predicted value at quantile 2
-#
-#     q1 : float
-#         Quantile
-#
-#     k : int
-#         Number of features (explanatory variables)
-#
-#     Returns
-#     -------
-#     float
-#         F-value
-#     """
-#     q2 = 1 - q1
-#     n = len(y)
-#     q_range = q2 - q1
-#     rss_indep = sum(square(v) for v in [yhat_q1, yhat_q2])
-#     rss_part = (rss_indep[1] - rss_indep[0]) / (q_range)
-#     sse_full = nansum(square(y - nanmean(y)))
-#     rss_full = sse_full - nansum(rss_indep)
-#     F_value = rss_part / (rss_full / (n - k - 1))
-#     # p_value = 1 - f.cdf(F_value, 1, n - k - 1)
-#     return F_value
-
 
 def mean_pinball_loss(y, yhat, alpha) -> float:
     """Calculate the mean pinball loss.
