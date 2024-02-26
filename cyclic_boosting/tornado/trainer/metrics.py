@@ -22,7 +22,8 @@ def mean_deviation(y, yhat) -> float:
     float
         Mean deviation (MD)
     """
-    return nanmean(y - yhat)
+    md = nanmean(y - yhat)
+    return md
 
 
 def mean_absolute_deviation(y, yhat) -> float:
@@ -44,7 +45,8 @@ def mean_absolute_deviation(y, yhat) -> float:
     float
         Mean absolute deviation (MAD)
     """
-    return nanmean(abs(nanmean(y) - yhat))
+    mad = nanmean(abs(nanmean(y) - yhat))
+    return mad
 
 
 def mean_square_error(y, yhat) -> float:
@@ -67,7 +69,8 @@ def mean_square_error(y, yhat) -> float:
     float
         Mean square error (MSE)
     """
-    return nanmean(square(y - yhat))
+    mse = nanmean(square(y - yhat))
+    return mse
 
 
 def mean_absolute_error(y, yhat) -> float:
@@ -90,7 +93,8 @@ def mean_absolute_error(y, yhat) -> float:
     float
         Mean absolute error (MAE)
     """
-    return nanmean(abs(y - yhat))
+    mae = nanmean(abs(y - yhat))
+    return mae
 
 
 def median_absolute_error(y, yhat) -> float:
@@ -113,7 +117,8 @@ def median_absolute_error(y, yhat) -> float:
     float
         Median absolute error (MedAE)
     """
-    return nanmedian(abs(y - yhat))
+    medae = nanmedian(abs(y - yhat))
+    return medae
 
 
 def weighted_absolute_percentage_error(y, yhat) -> float:
@@ -138,7 +143,8 @@ def weighted_absolute_percentage_error(y, yhat) -> float:
     float
         Weighted absolute percentage error (WAPE)
     """
-    return nansum(abs(y - yhat) * y) / nansum(y * y)
+    wape = nansum(abs(y - yhat) * y) / nansum(y * y)
+    return wape
 
 
 def symmetric_mean_absolute_percentage_error(y, yhat) -> float:
@@ -204,7 +210,8 @@ def mean_y(y, **args) -> float:
     float
         Mean
     """
-    return nanmean(y)
+    mean = nanmean(y)
+    return mean
 
 
 def coefficient_of_determination(y, yhat, k) -> float:
@@ -234,7 +241,8 @@ def coefficient_of_determination(y, yhat, k) -> float:
     n = len(y)
     numerator = nansum((y - yhat) ** 2) / (n - k - 1)
     denominator = nansum((y - nanmean(y)) ** 2) / (n - 1)
-    return 1 - (numerator / denominator)
+    cod = 1 - (numerator / denominator)
+    return cod
 
 
 def F(y, yhat, k) -> float:
@@ -266,7 +274,8 @@ def F(y, yhat, k) -> float:
     n = len(y)
     residual_variance = nansum((y - yhat) ** 2) / (n - k - 1)
     regression_variance = nansum((yhat - nanmean(y)) ** 2) / k
-    return regression_variance / residual_variance
+    f_value = regression_variance / residual_variance
+    return f_value
 
 # experimental code
 # def F_quantile(y,
@@ -341,8 +350,8 @@ def mean_pinball_loss(y, yhat, alpha) -> float:
     diff = y - yhat
     sign = (diff >= 0).astype(diff.dtype)
     loss = alpha * sign * diff - (1 - alpha) * (1 - sign) * diff
-    output_errors = np.average(loss, axis=0)
-    return output_errors
+    mean_loss = np.average(loss, axis=0)
+    return mean_loss
 
 
 def probability_distribution_accuracy(y, pd_func) -> float:
