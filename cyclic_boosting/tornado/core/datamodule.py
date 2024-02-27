@@ -288,10 +288,16 @@ class TornadoDataModule():
             n_features_original = len(dataset.columns) - 1
 
             preprocess.check_data(dataset, self.is_time_series)
-            self.train, self.valid = train_test_split(
-                dataset,
-                test_size=test_size,
-                random_state=seed)
+            if self.is_time_series:
+                self.train, self.valid = train_test_split(
+                    dataset,
+                    test_size=test_size,
+                    shuffle=False)
+            else:
+                self.train, self.valid = train_test_split(
+                    dataset,
+                    test_size=test_size,
+                    random_state=seed)
 
             self.train, self.valid = preprocess.apply(self.train,
                                                       self.valid,
@@ -351,21 +357,20 @@ class TornadoDataModule():
         preprocess = Preprocess(self.params)
         X = preprocess.tolowerstr(X)
 
-        # NOTE self.valid is dummy to run
         if self.preprocessors:
             preprocess.set_preprocessors(self.preprocessors)
-            self.train, self.valid = preprocess.apply(X,
-                                                      X,
-                                                      self.target)
+            self.train, _ = preprocess.apply(X,
+                                             X,
+                                             self.target)
             self.remove_features()
 
         else:
             if self.is_time_series:
                 self.preprocessors["todatetime"] = {}
                 preprocess.set_preprocessors(self.preprocessors)
-                self.train, self.valid = preprocess.apply(X,
-                                                          X,
-                                                          self.target)
+                self.train, _ = preprocess.apply(X,
+                                                 X,
+                                                 self.target)
         X = self.train
         if self.target in X.columns:
             X = X.drop(self.target, axis=1)
