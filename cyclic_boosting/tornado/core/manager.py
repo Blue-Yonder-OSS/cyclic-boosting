@@ -665,13 +665,15 @@ class PriorPredForwardSelectionManager(TornadoManager):
     def __init__(self,
                  manual_feature_property=None,
                  is_time_series=True,
+                 combination=2,
                  max_iter=10,
-                 dist="qpd",
+                 dist="poisson",
                  model="additive",
                  ) -> None:
         super().__init__(
             manual_feature_property,
             is_time_series,
+            combination=combination,
             max_iter=max_iter,
             dist=dist,
             model=model,
