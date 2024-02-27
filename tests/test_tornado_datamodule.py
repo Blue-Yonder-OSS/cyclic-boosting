@@ -236,6 +236,10 @@ def test_generate_trainset(caplog):
                                                     is_time_series=True,
                                                     )
 
+    src = pd.read_csv(path)
+    desired = src.head(int(len(src)*0.8))
+    pd.testing.assert_index_equal(train.index, desired.index)
+
     for logger_name, log_level, message in caplog.record_tuples:
         if 'datamodule' in logger_name and "->" in message:
             n_features = re.findall(r"\d+", message)
