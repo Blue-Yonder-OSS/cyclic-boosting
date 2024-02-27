@@ -1,6 +1,6 @@
 """contain the evaluation functions referenced by evaluator classes."""
 import numpy as np
-from numpy import abs, nanmean, nanmedian, nansum, square
+from numpy import abs, nanmean, nanmedian, nansum, square, cumsum
 
 
 def mean_deviation(y, yhat) -> float:
@@ -22,7 +22,8 @@ def mean_deviation(y, yhat) -> float:
     float
         Mean deviation (MD)
     """
-    return nanmean(y - yhat)
+    md = nanmean(y - yhat)
+    return md
 
 
 def mean_absolute_deviation(y, yhat) -> float:
@@ -44,7 +45,8 @@ def mean_absolute_deviation(y, yhat) -> float:
     float
         Mean absolute deviation (MAD)
     """
-    return nanmean(abs(nanmean(y) - yhat))
+    mad = nanmean(abs(nanmean(y) - yhat))
+    return mad
 
 
 def mean_square_error(y, yhat) -> float:
@@ -67,7 +69,8 @@ def mean_square_error(y, yhat) -> float:
     float
         Mean square error (MSE)
     """
-    return nanmean(square(y - yhat))
+    mse = nanmean(square(y - yhat))
+    return mse
 
 
 def mean_absolute_error(y, yhat) -> float:
@@ -90,7 +93,8 @@ def mean_absolute_error(y, yhat) -> float:
     float
         Mean absolute error (MAE)
     """
-    return nanmean(abs(y - yhat))
+    mae = nanmean(abs(y - yhat))
+    return mae
 
 
 def median_absolute_error(y, yhat) -> float:
@@ -113,7 +117,8 @@ def median_absolute_error(y, yhat) -> float:
     float
         Median absolute error (MedAE)
     """
-    return nanmedian(abs(y - yhat))
+    medae = nanmedian(abs(y - yhat))
+    return medae
 
 
 def weighted_absolute_percentage_error(y, yhat) -> float:
@@ -138,7 +143,8 @@ def weighted_absolute_percentage_error(y, yhat) -> float:
     float
         Weighted absolute percentage error (WAPE)
     """
-    return nansum(abs(y - yhat) * y) / nansum(y)
+    wape = nansum(abs(y - yhat)) / nansum(y)
+    return wape
 
 
 def symmetric_mean_absolute_percentage_error(y, yhat) -> float:
@@ -165,6 +171,31 @@ def symmetric_mean_absolute_percentage_error(y, yhat) -> float:
     return smape
 
 
+def weighted_mean_absolute_percentage_error(y, yhat) -> float:
+    """Calculate the weighted mean absolute percentage error (WMAPE).
+
+    WMAPE represents the average of the absolute percentage error
+    between the actual and predicted values, using a weighted average
+    instead of treating the error at each data point equally.
+    The smaller the value, the more accurate the model.
+
+    Parameters
+    ----------
+    y : numpy.ndarray
+        Ground truth
+
+    yhat : numpy.ndarray
+        Predicted value
+
+    Returns
+    -------
+    float
+        Symmetric mean absolute percentage error (SMAPE)
+    """
+    wmape = nansum(abs(y - yhat)) / nansum(y)
+    return wmape
+
+
 def mean_y(y, **args) -> float:
     """Calculate the mean.
 
@@ -178,7 +209,8 @@ def mean_y(y, **args) -> float:
     float
         Mean
     """
-    return nanmean(y)
+    mean = nanmean(y)
+    return mean
 
 
 def coefficient_of_determination(y, yhat, k) -> float:
@@ -208,7 +240,8 @@ def coefficient_of_determination(y, yhat, k) -> float:
     n = len(y)
     numerator = nansum((y - yhat) ** 2) / (n - k - 1)
     denominator = nansum((y - nanmean(y)) ** 2) / (n - 1)
-    return 1 - (numerator / denominator)
+    cod = 1 - (numerator / denominator)
+    return cod
 
 
 def F(y, yhat, k) -> float:
@@ -240,52 +273,8 @@ def F(y, yhat, k) -> float:
     n = len(y)
     residual_variance = nansum((y - yhat) ** 2) / (n - k - 1)
     regression_variance = nansum((yhat - nanmean(y)) ** 2) / k
-    return regression_variance / residual_variance
-
-# experimental code
-# def F_quantile(y,
-#                yhat_q1, yhat_q2, q1, k, ) -> float:
-#     """Calculate the F value considering the quartile point.
-#
-#     The F value, also known as the ratio of variances, is a statistical
-#     measure used in analysis of variance (ANOVA) and other methods. It
-#     compares the variability between group means with the variability within
-#     groups. It is calculated as the ratio of the "mean square of the
-#     regression variation" to the "mean square of the residual variation." The
-#     larger the value, the more meaningful the obtained regression equation is.
-#
-#     Parameters
-#     ----------
-#     y : numpy.ndarray
-#         Ground truth
-#
-#     yhat_q1 : numpy.ndarray
-#         Predicted value at quantile 1
-#
-#     yhat_q2 : numpy.ndarray
-#         Predicted value at quantile 2
-#
-#     q1 : float
-#         Quantile
-#
-#     k : int
-#         Number of features (explanatory variables)
-#
-#     Returns
-#     -------
-#     float
-#         F-value
-#     """
-#     q2 = 1 - q1
-#     n = len(y)
-#     q_range = q2 - q1
-#     rss_indep = sum(square(v) for v in [yhat_q1, yhat_q2])
-#     rss_part = (rss_indep[1] - rss_indep[0]) / (q_range)
-#     sse_full = nansum(square(y - nanmean(y)))
-#     rss_full = sse_full - nansum(rss_indep)
-#     F_value = rss_part / (rss_full / (n - k - 1))
-#     # p_value = 1 - f.cdf(F_value, 1, n - k - 1)
-#     return F_value
+    f_value = regression_variance / residual_variance
+    return f_value
 
 
 def mean_pinball_loss(y, yhat, alpha) -> float:
@@ -315,8 +304,8 @@ def mean_pinball_loss(y, yhat, alpha) -> float:
     diff = y - yhat
     sign = (diff >= 0).astype(diff.dtype)
     loss = alpha * sign * diff - (1 - alpha) * (1 - sign) * diff
-    output_errors = np.average(loss, axis=0)
-    return output_errors
+    mean_loss = nanmean(loss, axis=0)
+    return mean_loss
 
 
 def probability_distribution_accuracy(y, pd_func) -> float:
@@ -352,13 +341,13 @@ def probability_distribution_accuracy(y, pd_func) -> float:
 
     counts, _ = np.histogram(cdf_values, bins=100)
     n_cdf_bins = len(counts)
-    pmf = counts / np.sum(counts)
+    pmf = counts / nansum(counts)
     unif = np.full_like(pmf, 1.0 / len(pmf))
 
-    cdf_pmf = np.cumsum(pmf)
-    cdf_unif = np.cumsum(unif)
-    wasser_distance = 2.0 * np.sum(np.abs(cdf_pmf - cdf_unif)) / len(cdf_pmf)
+    cdf_pmf = cumsum(pmf)
+    cdf_unif = cumsum(unif)
+    wasser_distance = 2.0 * nansum(abs(cdf_pmf - cdf_unif)) / len(cdf_pmf)
     wasser_distance = wasser_distance * n_cdf_bins / (n_cdf_bins - 1.0)
 
-    acc = np.nanmean(1 - 2 * wasser_distance)
+    acc = nanmean(1 - 2 * wasser_distance)
     return acc
