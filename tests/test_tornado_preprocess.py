@@ -127,6 +127,7 @@ def test_check_data():
         "encode_category": {"label_encoding": {}},
         "check_dtype": {},
         "check_cardinality": {},
+        "check_data_leakage": {},
         "todatetime": {},
         "lag": {},
         "rolling": {},
@@ -147,6 +148,7 @@ def test_check_data():
         "encode_category": {"label_encoding": {}},
         "check_dtype": {},
         "check_cardinality": {},
+        "check_data_leakage": {},
         }
     test_data_non_time_series = create_non_time_series_test_data(10, 5)
     preprocessor.check_data(test_data_non_time_series, is_time_series=False)
@@ -416,6 +418,23 @@ def test_check_dtype(caplog):
     msg = ("Please check the columns ['continuous_0'].\n"
            "    Ensure that categorical variables are of 'int' type\n"
            "    and continuous variables are of 'float' type.")
+    logger_name = 'cyclic_boosting.tornado.core.preprocess'
+    assert [(logger_name, WARNING, msg)] == caplog.record_tuples
+
+
+def test_check_data_leakage(caplog):
+    caplog.set_level(WARNING)
+    preprocessor = preprocess.Preprocess(opt={})
+    test_data_time_series = create_time_series_test_data(10, 4)
+    test_data_time_series.loc[:, "continuous_0"] = test_data_time_series.loc[:, "target"]
+    train, valid = split_dataset(test_data_time_series)
+    train, valid = preprocessor.check_data_leakage(train,
+                                                   valid,
+                                                   "target",
+                                                   False)
+
+    msg = ("The Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
+           "    Confirmation is recommended due to the possibility of target leakage.")
     logger_name = 'cyclic_boosting.tornado.core.preprocess'
     assert [(logger_name, WARNING, msg)] == caplog.record_tuples
 

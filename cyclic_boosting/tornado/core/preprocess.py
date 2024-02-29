@@ -10,6 +10,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 from sklearn.feature_extraction import FeatureHasher
 from sklearn.preprocessing import (
     KBinsDiscretizer,
@@ -177,6 +178,7 @@ class Preprocess():
         self.preprocessors["encode_category"] = {"label_encoding": {}}
         self.preprocessors["check_dtype"] = {}
         self.preprocessors["check_cardinality"] = {}
+        self.preprocessors["check_data_leakage"] = {}
 
         if "date" in col_names:
             self.preprocessors["todatetime"] = {}
@@ -687,11 +689,11 @@ class Preprocess():
         """
         if not params_exist:
             dataset = pd.concat([train, valid])
-            float_datset = dataset.drop(columns=target).select_dtypes("float")
+            float_dataset = dataset.drop(columns=target).select_dtypes("float")
 
             float_integer_cols = []
-            for col in float_datset.columns:
-                if float_datset[col].apply(lambda x: x.is_integer()).all():
+            for col in float_dataset.columns:
+                if float_dataset[col].apply(lambda x: x.is_integer()).all():
                     float_integer_cols.append(col)
 
             if len(float_integer_cols) > 0:
@@ -700,6 +702,49 @@ class Preprocess():
                                 "    and continuous variables are of 'float' type.")
 
             self.set_preprocessors({"check_dtype": {}})
+
+        return train, valid
+
+    def check_data_leakage(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Warn for possible target leakage.
+
+        Warn of possible target leakage when VIF (Variance Inflation Factor)
+        of the objective variable is infinite.
+
+        Parameters
+        ----------
+        train: pandas.DataFrame
+            Training data
+
+        valid: pandas.DataFrame
+            Validation data
+
+        target: str
+            Name of the target variable.
+
+        params_exist: bool
+            Whether parameters are given (manually or as history).
+
+        Returns
+        -------
+        tuple
+            (pandas.DataFrame, pandas.DataFrame)
+            Training and validation data
+        """
+        if not params_exist:
+            dataset = pd.concat([train, valid])
+            dataset = dataset.select_dtypes(include=["int", "float"])
+
+            vif = pd.DataFrame(index=dataset.columns)
+            vif["VIF Factor"] = [variance_inflation_factor(dataset.values, i)
+                                 for i in range(dataset.shape[1])]
+            is_target_leaked = vif.loc[target, "VIF Factor"] == np.inf
+
+            if is_target_leaked:
+                _logger.warning("The Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
+                                "    Confirmation is recommended due to the possibility of target leakage.")
+
+            self.set_preprocessors({"check_data_leakage": {}})
 
         return train, valid
 
