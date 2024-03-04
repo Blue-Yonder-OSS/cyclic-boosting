@@ -433,8 +433,10 @@ def test_check_data_leakage(caplog):
                                                    "target",
                                                    False)
 
-    msg = ("The Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
-           "    Confirmation is recommended due to the possibility of target leakage.")
+    msg = ("Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
+           "This means that there is a very high association (multi-collinearity)\n"
+           "between the explanatory variables and the objective variable.\n"
+           "Confirmation is recommended due to the possibility of target leakage.")
     logger_name = 'cyclic_boosting.tornado.core.preprocess'
     assert [(logger_name, WARNING, msg)] == caplog.record_tuples
 

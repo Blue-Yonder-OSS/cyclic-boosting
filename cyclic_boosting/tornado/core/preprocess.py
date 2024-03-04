@@ -741,8 +741,10 @@ class Preprocess():
             is_target_leaked = vif.loc[target, "VIF Factor"] == np.inf
 
             if is_target_leaked:
-                _logger.warning("The Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
-                                "    Confirmation is recommended due to the possibility of target leakage.")
+                _logger.warning("Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
+                                "This means that there is a very high association (multi-collinearity)\n"
+                                "between the explanatory variables and the objective variable.\n"
+                                "Confirmation is recommended due to the possibility of target leakage.")
 
             self.set_preprocessors({"check_data_leakage": {}})
 
