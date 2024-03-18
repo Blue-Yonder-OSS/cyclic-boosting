@@ -283,7 +283,7 @@ class TornadoDataModule():
         dataset = preprocess.load_dataset(self.src)
 
         if self.auto_preprocess:
-            _logger.info("[START]: Auto feature engineering \n")
+            _logger.info("[START] Auto feature engineering \n")
 
             n_features_original = len(dataset.columns) - 1
 

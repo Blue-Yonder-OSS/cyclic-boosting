@@ -152,18 +152,24 @@ class InteractionSearchModel(TornadoBase):
 
         # recursive interaction search
         self.manager.init(train_set, target)
+        stage = "\n=== [{0}] {1} ===\n"
+        status = "START"
+        _logger.info(stage.format(status, mgr_attr['second_round']))
+
         logger_attr = self.tornado(target,
                                    valid_set,
                                    logger,
                                    evaluator,
                                    verbose,
                                    )
-
         best_model_path = os.path.join(logger_attr["model_dir"],
                                        f'model_{logger_attr["log_data"]["iter"]}.pkl',
                                        )
         with open(best_model_path, "rb") as f:
             self.estimator = pickle.load(f)
+
+        status = "END"
+        _logger.info(stage.format(status, mgr_attr['second_round']))
 
         # c parameter estimator for proba prediction
         mgr_attr = self.manager.get_attr()
@@ -432,17 +438,17 @@ class ForwardSelectionModel(TornadoBase):
 
         # 1. rucursive single variable regression
         # This step is to find valid features
-        status = "\n=== [ROUND] {} ===\n"
-        _logger.info(status.format(mgr_attr['first_round']))
-
         self.manager.init(train_set, target)
+        stage = "\n=== [{0}] {1} ===\n"
+        status = "START"
+        _logger.info(stage.format(status, mgr_attr['first_round']))
+
         logger_attr = self.tornado(target,
                                    valid_set,
                                    logger,
                                    evaluator,
                                    verbose,
                                    )
-
         valid_features = list()
         for feature, eval_result in logger_attr["CODs"].items():
             if eval_result["F"] > 2:
@@ -458,8 +464,13 @@ class ForwardSelectionModel(TornadoBase):
         logger.reset_count()
         evaluator.clear()
 
+        status = "END"
+        _logger.info(stage.format(status, mgr_attr['first_round']))
+
         # 2. multiple variable regression with forward selection
-        _logger.info(status.format(mgr_attr['second_round']))
+        status = "START"
+        _logger.info(stage.format(status, mgr_attr['second_round']))
+
         logger_attr = self.tornado(target,
                                    valid_set,
                                    logger,
@@ -472,6 +483,9 @@ class ForwardSelectionModel(TornadoBase):
                                        )
         with open(best_model_path, "rb") as f:
             self.estimator = pickle.load(f)
+
+        status = "END"
+        _logger.info(stage.format(status, mgr_attr['second_round']))
 
         # c parameter estimator for proba prediction
         mgr_attr = self.manager.get_attr()
@@ -747,9 +761,10 @@ class PriorPredInteractionSearchModel(TornadoBase):
 
         # prior prediction for quick interaction search
         self.manager.init(train_set, target)
+        stage = "\n=== [{0}] {1} ===\n"
+        status = "START"
+        _logger.info(stage.format(status, mgr_attr['first_round']))
 
-        status = "\n=== [ROUND] {} ===\n"
-        _logger.info(status.format(mgr_attr['first_round']))
         base_model = self.tornado(target,
                                   valid_set,
                                   logger,
@@ -781,8 +796,13 @@ class PriorPredInteractionSearchModel(TornadoBase):
         logger.reset_count()
         evaluator.clear()
 
+        status = "END"
+        _logger.info(stage.format(status, mgr_attr['first_round']))
+
         # quick interaction search with prior pred
-        _logger.info(status.format(mgr_attr['second_round']))
+        status = "START"
+        _logger.info(stage.format(status, mgr_attr['second_round']))
+
         _ = self.tornado(target,
                          valid_set,
                          logger,
@@ -790,9 +810,10 @@ class PriorPredInteractionSearchModel(TornadoBase):
                          verbose,
                          )
         _logger.info(f"\nDetect {len(logger.valid_interactions)} interactions\n")
+        status = "END"
+        _logger.info(stage.format(status, mgr_attr['second_round']))
 
         # model setting for estimation
-        _logger.info(status.format("Interaction model training"))
         base = [x for x in init_model_attr["feature_properties"].keys()]
         interaction = logger.get_attr()["valid_interactions"]
         features = base + interaction
@@ -1108,8 +1129,9 @@ class QPDInteractionSearchModel(TornadoBase):
             is_time_series=mgr_attr["is_time_series"]
         )
 
-        status = "\n=== [ROUND] {} ===\n"
-        _logger.info(status.format(mgr_attr['first_round']))
+        stage = "\n=== [{0}] {1} ===\n"
+        status = "START"
+        _logger.info(stage.format(status, mgr_attr['first_round']))
 
         # prior prediction for quick interaction search
         self.manager.init(train_set, target)
@@ -1144,8 +1166,13 @@ class QPDInteractionSearchModel(TornadoBase):
         logger.reset_count()
         evaluator.clear()
 
+        status = "END"
+        _logger.info(stage.format(status, mgr_attr['first_round']))
+
         # quick interaction search with prior pred
-        _logger.info(status.format(mgr_attr['second_round']))
+        status = "START"
+        _logger.info(stage.format(status, mgr_attr['second_round']))
+
         _ = self.tornado(target,
                          valid_set,
                          logger,
@@ -1153,7 +1180,10 @@ class QPDInteractionSearchModel(TornadoBase):
                          verbose,
                          args={"quantile": self.quantile[0]},
                          )
+
         _logger.info(f"\nDetect {len(logger.valid_interactions)} interactions\n")
+        status = "END"
+        _logger.info(stage.format(status, mgr_attr['second_round']))
 
         # model setting for QPD estimation
         _logger.info(status.format("QPD estimator training"))
