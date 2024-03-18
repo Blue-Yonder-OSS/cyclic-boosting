@@ -1,6 +1,7 @@
 """
 Plots for the Cyclic Boosting family
 """
+
 from __future__ import absolute_import, division, print_function
 
 import contextlib
