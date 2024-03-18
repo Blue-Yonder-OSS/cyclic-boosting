@@ -1,4 +1,5 @@
 """Preparation (handling preprocessing) of data for the Tornado module."""
+
 import logging
 import pickle
 from itertools import combinations
@@ -19,7 +20,7 @@ handler.terminator = ""
 _logger.addHandler(handler)
 
 
-class TornadoDataModule():
+class TornadoDataModule:
     """
     TornadoDataModule is a class that handles data preprocessing.
 
@@ -106,8 +107,7 @@ class TornadoDataModule():
 
     """
 
-    def __init__(self, src, save_dir=None, auto_preprocess=True,
-                 log_path=None, params={}) -> None:
+    def __init__(self, src, save_dir=None, auto_preprocess=True, log_path=None, params={}) -> None:
         super().__init__()
         self.src = src
         self.save_dir = save_dir
@@ -142,7 +142,7 @@ class TornadoDataModule():
                 self.features = []
         else:
             if isinstance(self.src, str):
-                self.log_path = self.src[:self.src.rfind(".")] + ".pkl"
+                self.log_path = self.src[: self.src.rfind(".")] + ".pkl"
             else:
                 _logger.info("preprocessing log is created at current working directory")
                 self.log_path = "./preprocessing.pkl"
@@ -171,12 +171,12 @@ class TornadoDataModule():
         features = corr.index
 
         for feature in features:
-            if (abs(corr.loc[feature, self.target]) < corr_rl):
+            if abs(corr.loc[feature, self.target]) < corr_rl:
                 features = features.drop(feature)
 
         droped_features = []
         for feature1, feature2 in combinations(features.drop(self.target), 2):
-            if (abs(corr.loc[feature1, feature2]) > corr_ul):
+            if abs(corr.loc[feature1, feature2]) > corr_ul:
                 if not set([feature1, feature2]) & set(droped_features):
                     feature = corr.loc[[feature1, feature2], self.target].abs().idxmin()
                     features = features.drop(feature)
@@ -210,14 +210,12 @@ class TornadoDataModule():
         while vif_max >= c:
             vif = pd.DataFrame()
             with np.errstate(divide="ignore"):
-                vif["VIF"] = [variance_inflation_factor(dataset.values, i)
-                              for i in range(dataset.shape[1])]
+                vif["VIF"] = [variance_inflation_factor(dataset.values, i) for i in range(dataset.shape[1])]
             vif["features"] = dataset.columns
             vif_max_idx = vif["VIF"].idxmax()
             vif_max = vif["VIF"].max()
             if vif_max >= c:
-                dataset.drop(columns=vif["features"][vif_max_idx],
-                             inplace=True)
+                dataset.drop(columns=vif["features"][vif_max_idx], inplace=True)
                 vif_max = vif["VIF"].drop(vif_max_idx).max()
 
         if has_date:
@@ -241,12 +239,13 @@ class TornadoDataModule():
             self.train = self.train.loc[:, self.features]
             self.valid = self.valid.loc[:, self.features]
 
-    def generate_trainset(self,
-                          target,
-                          test_size,
-                          seed=0,
-                          is_time_series=False,
-                          ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def generate_trainset(
+        self,
+        target,
+        test_size,
+        seed=0,
+        is_time_series=False,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate a dataset for prediction.
 
         This function loads a dataset from a specified path, applies
@@ -289,19 +288,11 @@ class TornadoDataModule():
 
             preprocess.check_data(dataset, self.is_time_series)
             if self.is_time_series:
-                self.train, self.valid = train_test_split(
-                    dataset,
-                    test_size=test_size,
-                    shuffle=False)
+                self.train, self.valid = train_test_split(dataset, test_size=test_size, shuffle=False)
             else:
-                self.train, self.valid = train_test_split(
-                    dataset,
-                    test_size=test_size,
-                    random_state=seed)
+                self.train, self.valid = train_test_split(dataset, test_size=test_size, random_state=seed)
 
-            self.train, self.valid = preprocess.apply(self.train,
-                                                      self.valid,
-                                                      self.target)
+            self.train, self.valid = preprocess.apply(self.train, self.valid, self.target)
 
             n_features_preprocessed = len(self.train.columns) - 1
             self.remove_features()
@@ -309,8 +300,7 @@ class TornadoDataModule():
             n_features_selected = len(self.features) - 1
             self.preprocessors = preprocess.get_preprocessors()
             with open(self.log_path, "wb") as p:
-                log = {"preprocessors": self.preprocessors,
-                       "features": self.features}
+                log = {"preprocessors": self.preprocessors, "features": self.features}
                 pickle.dump(log, p)
 
             _logger.info(
@@ -321,23 +311,19 @@ class TornadoDataModule():
             _logger.info("[END] Auto feature engineering \n\n")
 
         else:
-            self.train, self.valid = train_test_split(
-                dataset,
-                test_size=test_size,
-                random_state=seed)
+            self.train, self.valid = train_test_split(dataset, test_size=test_size, random_state=seed)
 
             if self.is_time_series:
                 self.preprocessors["todatetime"] = {}
                 preprocess.set_preprocessors(self.preprocessors)
-                self.train, self.valid = preprocess.apply(self.train,
-                                                          self.valid,
-                                                          self.target)
+                self.train, self.valid = preprocess.apply(self.train, self.valid, self.target)
 
         return self.train, self.valid
 
-    def generate_testset(self,
-                         X,
-                         ) -> pd.DataFrame:
+    def generate_testset(
+        self,
+        X,
+    ) -> pd.DataFrame:
         """Generate a dataset for prediction.
 
         This function apply some preprocessing if `generete_trainset` method run before.
@@ -359,18 +345,14 @@ class TornadoDataModule():
 
         if self.preprocessors:
             preprocess.set_preprocessors(self.preprocessors)
-            self.train, _ = preprocess.apply(X,
-                                             X,
-                                             self.target)
+            self.train, _ = preprocess.apply(X, X, self.target)
             self.remove_features()
 
         else:
             if self.is_time_series:
                 self.preprocessors["todatetime"] = {}
                 preprocess.set_preprocessors(self.preprocessors)
-                self.train, _ = preprocess.apply(X,
-                                                 X,
-                                                 self.target)
+                self.train, _ = preprocess.apply(X, X, self.target)
         X = self.train
         if self.target in X.columns:
             X = X.drop(self.target, axis=1)

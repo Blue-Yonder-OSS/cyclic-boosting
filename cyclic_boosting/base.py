@@ -261,6 +261,7 @@ class CyclicBoostingBase(
         tuple of three stop criteria are satisfied:
         ``(stop_iterations, stop_factor_change, stop_loss_change)``
     """
+
     supports_pandas = True
     inc_fitting = False
     no_deepcopy = {"feature_properties"}

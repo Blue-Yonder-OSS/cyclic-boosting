@@ -3,6 +3,7 @@
 Standard output and output of files containing the best model, its settings,
 evaluation results, graph plots, etc.
 """
+
 import abc
 import copy
 import logging
@@ -153,7 +154,7 @@ class LoggerBase:
 
             # feature
             f.write("=== Feature ===\n")
-            for feature in self.log_data['features']:
+            for feature in self.log_data["features"]:
                 f.write(f"{feature}\n")
             f.write("\n")
 
@@ -412,14 +413,14 @@ class ForwardLogger(LoggerBase):
             self.bench_mark = copy.deepcopy(self.log_data)
 
     def log_multiple(
-            self,
-            est,
-            eval_result,
-            mng_attr,
-            first_iter,
-            last_iter,
-            verbose=True,
-            ) -> None:
+        self,
+        est,
+        eval_result,
+        mng_attr,
+        first_iter,
+        last_iter,
+        verbose=True,
+    ) -> None:
         """Log a multiple regression analysis.
 
         This function stores the best model information.
@@ -504,7 +505,7 @@ class ForwardLogger(LoggerBase):
                 eval_result,
                 mng_attr,
                 is_last_iter,
-                )
+            )
         elif mng_attr["mode"] == self.second_round:
             self.log_multiple(
                 est,
@@ -513,7 +514,7 @@ class ForwardLogger(LoggerBase):
                 is_first_iter,
                 is_last_iter,
                 verbose,
-                )
+            )
 
 
 class PriorPredForwardLogger(LoggerBase):
@@ -685,14 +686,15 @@ class PriorPredForwardLogger(LoggerBase):
             self.hold(est, eval_result, mng_attr, save=False, verbose=False)
             self.bench_mark = copy.deepcopy(self.log_data)
 
-    def log_multiple(self,
-                     est,
-                     eval_result,
-                     mng_attr,
-                     first_iter,
-                     _,
-                     verbose=True,
-                     ) -> None:
+    def log_multiple(
+        self,
+        est,
+        eval_result,
+        mng_attr,
+        first_iter,
+        _,
+        verbose=True,
+    ) -> None:
         """Log a multiple regression analysis.
 
         This function stores the best model information.
@@ -766,7 +768,7 @@ class PriorPredForwardLogger(LoggerBase):
                 eval_result,
                 mng_attr,
                 is_last_iter,
-                )
+            )
         elif mng_attr["mode"] == self.second_round:
             self.log_multiple(
                 est,
@@ -775,4 +777,4 @@ class PriorPredForwardLogger(LoggerBase):
                 is_first_iter,
                 is_last_iter,
                 verbose,
-                )
+            )

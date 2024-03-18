@@ -1,4 +1,5 @@
 """Handle model settings."""
+
 from __future__ import annotations
 
 import abc
@@ -193,10 +194,11 @@ class ManagerBase:
             Whether to display standard output or not. Default is True.
         """
         if fp is None:
-            analyzer = TornadoAnalysisModule(self.X,
-                                             is_time_series=self.is_time_series,
-                                             data_interval=self.data_interval,
-                                             )
+            analyzer = TornadoAnalysisModule(
+                self.X,
+                is_time_series=self.is_time_series,
+                data_interval=self.data_interval,
+            )
 
             _logger.info("[START] Auto analysis \n")
             self.report = analyzer.analyze()
@@ -224,7 +226,7 @@ class ManagerBase:
                     else:
                         self.feature_properties[feature] |= flag
             _logger.info("[END] Auto analysis \n\n")
-        else :
+        else:
             self.feature_properties = {k: v for k, v in fp.items()}
 
         if verbose:
@@ -364,9 +366,9 @@ class ManagerBase:
                 self.regressor = PoissonRegressor(**param)
             elif self.dist == "nbinomc":
                 param["mean_prediction_column"] = "yhat_mean"
-                param["feature_properties"]["yhat_mean_feature"] = (flags.IS_CONTINUOUS |
-                                                                    flags.HAS_MISSING |
-                                                                    flags.MISSING_NOT_LEARNED)
+                param["feature_properties"]["yhat_mean_feature"] = (
+                    flags.IS_CONTINUOUS | flags.HAS_MISSING | flags.MISSING_NOT_LEARNED
+                )
                 param["feature_groups"].append("yhat_mean_feature")
                 return NBinomC(**param)
 
@@ -422,15 +424,16 @@ class TornadoManager(ManagerBase):
     description.
     """
 
-    def __init__(self,
-                 manual_feature_property=None,
-                 is_time_series=True,
-                 data_interval=None,
-                 combination=2,
-                 max_iter=10,
-                 dist="poisson",
-                 model=None,
-                 ) -> None:
+    def __init__(
+        self,
+        manual_feature_property=None,
+        is_time_series=True,
+        data_interval=None,
+        combination=2,
+        max_iter=10,
+        dist="poisson",
+        model=None,
+    ) -> None:
         super().__init__(
             manual_feature_property,
             is_time_series,
@@ -439,7 +442,7 @@ class TornadoManager(ManagerBase):
             max_iter=max_iter,
             dist=dist,
             model=model,
-            )
+        )
         self.first_round = "dummy"
         self.second_round = "interaction search"
         self.mode = self.second_round
@@ -529,14 +532,15 @@ class ForwardSelectionManager(TornadoManager):
     description.
     """
 
-    def __init__(self,
-                 manual_feature_property=None,
-                 is_time_series=True,
-                 data_interval=None,
-                 combination=2,
-                 max_iter=10,
-                 dist="poisson",
-                 ) -> None:
+    def __init__(
+        self,
+        manual_feature_property=None,
+        is_time_series=True,
+        data_interval=None,
+        combination=2,
+        max_iter=10,
+        dist="poisson",
+    ) -> None:
         super().__init__(
             manual_feature_property,
             is_time_series,
@@ -544,7 +548,7 @@ class ForwardSelectionManager(TornadoManager):
             combination=combination,
             max_iter=max_iter,
             dist=dist,
-            )
+        )
         self.first_round = "single_regression_analysis"
         self.second_round = "multiple_regression_analysis"
         self.mode = self.first_round
@@ -664,14 +668,15 @@ class PriorPredForwardSelectionManager(TornadoManager):
     description.
     """
 
-    def __init__(self,
-                 manual_feature_property=None,
-                 is_time_series=True,
-                 combination=2,
-                 max_iter=10,
-                 dist="poisson",
-                 model="additive",
-                 ) -> None:
+    def __init__(
+        self,
+        manual_feature_property=None,
+        is_time_series=True,
+        combination=2,
+        max_iter=10,
+        dist="poisson",
+        model="additive",
+    ) -> None:
         super().__init__(
             manual_feature_property,
             is_time_series,
@@ -679,7 +684,7 @@ class PriorPredForwardSelectionManager(TornadoManager):
             max_iter=max_iter,
             dist=dist,
             model=model,
-            )
+        )
         self.first_round = "prior_prediction_with_single_variables"
         self.second_round = "interaction_search"
         self.mode = self.first_round

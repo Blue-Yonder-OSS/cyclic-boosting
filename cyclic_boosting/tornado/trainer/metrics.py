@@ -1,4 +1,5 @@
 """contain the evaluation functions referenced by evaluator classes."""
+
 import numpy as np
 from numpy import abs, nanmean, nanmedian, nansum, square, cumsum
 

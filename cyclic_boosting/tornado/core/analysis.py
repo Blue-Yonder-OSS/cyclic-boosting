@@ -1,4 +1,5 @@
 """Automatically analyze features and give flags."""
+
 import logging
 
 import numpy as np
@@ -11,11 +12,11 @@ _logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter(fmt="%(message)s"))
-handler.terminator = ''
+handler.terminator = ""
 _logger.addHandler(handler)
 
 
-class TornadoAnalysisModule():
+class TornadoAnalysisModule:
     """TornadoAnalysisModule is a class for automatic feature analysis.
 
     This class automates the process of analyzing the characteristics of each
@@ -67,19 +68,18 @@ class TornadoAnalysisModule():
     assumed that these continuous features are of float type.
     """
 
-    def __init__(self, dataset, is_time_series=True,
-                 data_interval=None):
+    def __init__(self, dataset, is_time_series=True, data_interval=None):
         self.dataset = dataset
         self.targets = list()
         self.report = {
-            'is_unordered': list(),
-            'is_continuous': list(),
-            'has_trend': list(),
-            'has_seasonality': list(),
-            'has_up_monotonicity': list(),
-            'has_down_monotonicity': list(),
-            'has_linearity': list(),
-            'has_missing': list()
+            "is_unordered": list(),
+            "is_continuous": list(),
+            "has_trend": list(),
+            "has_seasonality": list(),
+            "has_up_monotonicity": list(),
+            "has_down_monotonicity": list(),
+            "has_linearity": list(),
+            "has_missing": list(),
         }
         self.is_time_series = is_time_series
         self.P_THRESH = 0.05
@@ -106,7 +106,7 @@ class TornadoAnalysisModule():
         self.int_or_float_feature_property()
         self.check_missing()
 
-        cols = self.dataset.select_dtypes(include=['float']).columns
+        cols = self.dataset.select_dtypes(include=["float"]).columns
         self.targets = [c for c in cols]
         targets = [c for c in cols]
 
@@ -120,11 +120,13 @@ class TornadoAnalysisModule():
             self.check_monotonicity()
             self.check_seasonality()
             self.check_linearity()
-        elif self.is_time_series and 'date' not in self.dataset.columns:
-            raise ValueError("Dataset must have 'date' column on "
-                             "time-series prediction."
-                             "if not, set 'False' to 'is_time_series' option"
-                             "at Manager")
+        elif self.is_time_series and "date" not in self.dataset.columns:
+            raise ValueError(
+                "Dataset must have 'date' column on "
+                "time-series prediction."
+                "if not, set 'False' to 'is_time_series' option"
+                "at Manager"
+            )
         else:
             self.dataset = self.dataset[targets]
 
@@ -137,14 +139,14 @@ class TornadoAnalysisModule():
         categorical or continuous, depending on the input. The input is "cat"
         for categorical features and "con" for continuous features.
         """
-        cols = self.dataset.select_dtypes(include=['int', 'float', 'object'])
-        _logger.info('is a categorical or continuous variable?')
+        cols = self.dataset.select_dtypes(include=["int", "float", "object"])
+        _logger.info("is a categorical or continuous variable?")
         for col in cols:
             fp_str = input(f"please enter {col} is [cat/con] ")
-            if fp_str == 'cat':
-                self.report['is_unordered'].append(col)
-            elif fp_str == 'con':
-                self.report['is_continuous'].append(col)
+            if fp_str == "cat":
+                self.report["is_unordered"].append(col)
+            elif fp_str == "con":
+                self.report["is_continuous"].append(col)
             else:
                 raise ValueError("please type 'cat' or 'con'")
 
@@ -157,12 +159,12 @@ class TornadoAnalysisModule():
         of type int, and the continuous feature flag to features of type
         float.
         """
-        cols = self.dataset.select_dtypes(include=['int', 'float'])
+        cols = self.dataset.select_dtypes(include=["int", "float"])
         for col in cols:
             if isinstance(self.dataset[col][0], np.int64):
-                self.report['is_unordered'].append(col)
+                self.report["is_unordered"].append(col)
             elif isinstance(self.dataset[col][0], np.float64):
-                self.report['is_continuous'].append(col)
+                self.report["is_continuous"].append(col)
 
     def calc_daily_average(self) -> None:
         """Average features in the dataset by time.
@@ -194,8 +196,10 @@ class TornadoAnalysisModule():
         elif self.data_interval == "hourly":
             interval = pd.Timedelta(hours=1)
         else:
-            raise ValueError("data_interval must be 'monthly', 'weekly', \
-                             'daily', or 'hourly'.")
+            raise ValueError(
+                "data_interval must be 'monthly', 'weekly', \
+                             'daily', or 'hourly'."
+            )
 
         if interval.days in [28, 29, 30, 31]:
             if self.dataset.index.to_series().dt.day.mode()[0] == 1:
@@ -204,10 +208,8 @@ class TornadoAnalysisModule():
                 data_interval = "M"
             self.data_interval = "monthly"
         elif interval.days == 7:
-            dayofweek = [
-                "W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"]
-            data_interval = dayofweek[self.dataset.index.to_series().dt.
-                                      dayofweek.mode()[0]]
+            dayofweek = ["W-MON", "W-TUE", "W-WED", "W-THU", "W-FRI", "W-SAT", "W-SUN"]
+            data_interval = dayofweek[self.dataset.index.to_series().dt.dayofweek.mode()[0]]
             self.data_interval = "weekly"
         elif interval.days == 1:
             data_interval = "D"
@@ -217,15 +219,12 @@ class TornadoAnalysisModule():
             self.data_interval = "hourly"
 
         _logger.info(f"  Data interval is '{self.data_interval}'\n")
-        _logger.info(
-            "  if it is not correct, set 'data_interval' option at TornadoDataModule\n"
-            )
+        _logger.info("  if it is not correct, set 'data_interval' option at TornadoDataModule\n")
 
         if self.data_interval in ["monthly", "weekly", "daily"]:
             self.dataset.index = [i.date() for i in self.dataset.index]
         self.dataset = self.dataset.asfreq(freq=data_interval)
-        self.dataset = self.dataset.interpolate(method='linear',
-                                                limit_direction='both')
+        self.dataset = self.dataset.interpolate(method="linear", limit_direction="both")
 
     def check_trend(self) -> None:
         """Detect trends in features.
@@ -233,13 +232,13 @@ class TornadoAnalysisModule():
         This function uses the Mann-Kendall trend test to assess each feature
         for the presence of a trend.
         """
-        self.report['has_trend'] = []
+        self.report["has_trend"] = []
         for col in self.targets:
             decmp = self.decompose(self.dataset[col])
             decmp_trend = pd.DataFrame(decmp.trend)
             flag = mk.original_test(decmp_trend)[0] != "no trend"
             if flag:
-                self.report['has_trend'].append(col)
+                self.report["has_trend"].append(col)
 
     def fft(self, data):
         """Perform FFT (Fast Fourier Transform) analysis on time-series data.
@@ -256,7 +255,7 @@ class TornadoAnalysisModule():
         """
         n = len(data)
         amp = fft(data.values)
-        amp = (2.0 / n) * (np.abs(amp[0:n // 2]))
+        amp = (2.0 / n) * (np.abs(amp[0 : n // 2]))
 
         return amp
 
@@ -278,16 +277,17 @@ class TornadoAnalysisModule():
             The decomposition result containing seasonal and trend components.
         """
         if self.data_interval == "monthly":
-            periods = (12)
+            periods = 12
         elif self.data_interval == "weekly":
             periods = (4, 52)
         elif self.data_interval == "daily":
             periods = (7, 30, 365)
         elif self.data_interval == "hourly":
-            periods = (24, 24*7, 24*30, 24*365)
+            periods = (24, 24 * 7, 24 * 30, 24 * 365)
         else:
-            _logger.warning("Seasonality detection is only supported for\n"
-                            "    hourly, daily, weekly, and monthly data.")
+            _logger.warning(
+                "Seasonality detection is only supported for\n" "    hourly, daily, weekly, and monthly data."
+            )
         decomposer = MSTL(data, periods=periods)
         res = decomposer.fit()
 
@@ -315,7 +315,7 @@ class TornadoAnalysisModule():
                 else:
                     is_seasonality.append(False)
             if np.any(is_seasonality):
-                self.report['has_seasonality'].append(col)
+                self.report["has_seasonality"].append(col)
 
     def check_monotonicity(self) -> None:
         """Detect monotonicity in features.
@@ -326,9 +326,9 @@ class TornadoAnalysisModule():
         for col in self.targets:
             diff = self.dataset[col].diff().dropna()
             if np.all(diff.values > 0):
-                self.report['has_up_monotonicity'].append(col)
+                self.report["has_up_monotonicity"].append(col)
             elif np.all(diff.values < 0):
-                self.report['has_down_monotonicity'].append(col)
+                self.report["has_down_monotonicity"].append(col)
 
     def check_linearity(self) -> None:
         """Detect linearity in features.
@@ -338,13 +338,12 @@ class TornadoAnalysisModule():
         """
         # NOTE: very rough
         for col in self.targets:
-            corr = np.corrcoef(np.arange(len(self.dataset[col])),
-                               self.dataset[col].values)
+            corr = np.corrcoef(np.arange(len(self.dataset[col])), self.dataset[col].values)
             if corr[0, 1] > self.C_THRESH:
-                self.report['has_linearity'].append(col)
+                self.report["has_linearity"].append(col)
 
     def check_missing(self) -> None:
         """Determine the presence of missing data."""
         count = self.dataset.isnull().sum()
         missing = count[count > 0]
-        self.report['has_missing'] = [i for i in missing.index]
+        self.report["has_missing"] = [i for i in missing.index]

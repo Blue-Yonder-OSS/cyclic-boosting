@@ -1,4 +1,5 @@
 """Evaluation of the model of Tornado's training."""
+
 import abc
 import logging
 
@@ -150,7 +151,7 @@ class QuantileEvaluator(EvaluatorBase):
         self.eval_funcs = {
             "PINBALL": mean_pinball_loss,
             "COD": coefficient_of_determination,
-            }
+        }
 
     def eval(self, y, yhat, q, est, verbose=True, digit=5):
         """Perform the evaluation.

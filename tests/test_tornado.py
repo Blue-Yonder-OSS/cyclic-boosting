@@ -14,7 +14,7 @@ def test_interaction_search_model(prepare_data):
     predictor.fit(target="sales", criterion="COD", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
-    shutil.rmtree('./models')
+    shutil.rmtree("./models")
 
 
 def test_forward_selection_model(prepare_data):
@@ -28,7 +28,7 @@ def test_forward_selection_model(prepare_data):
     predictor.fit(target="sales", criterion="COD", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
-    shutil.rmtree('./models')
+    shutil.rmtree("./models")
 
 
 def test_prior_pred_interaction_search_model(prepare_data):
@@ -42,12 +42,12 @@ def test_prior_pred_interaction_search_model(prepare_data):
     predictor.fit(target="sales", criterion="COD", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
-    shutil.rmtree('./models')
+    shutil.rmtree("./models")
 
 
 def test_qpd_interaction_search_model(prepare_data):
     X, y = prepare_data
-    df, target = X.iloc[:200].copy(), y[:200].copy()
+    df, target = X.copy(), y.copy()  # need a dataset included enough data size to train
     df.loc[:, "sales"] = target
 
     data_deliverer = datamodule.TornadoDataModule(df)
@@ -55,9 +55,9 @@ def test_qpd_interaction_search_model(prepare_data):
         max_iter=10,
         model="additive",
         dist="qpd",
-        )
-    predictor = tornado.QPDInteractionSearchModel(data_deliverer, manager_)
+    )
+    predictor = tornado.QPDInteractionSearchModel(data_deliverer, manager_, bound="S", lower=0)
     predictor.fit(target="sales", criterion="PINBALL", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
-    shutil.rmtree('./models')
+    shutil.rmtree("./models")

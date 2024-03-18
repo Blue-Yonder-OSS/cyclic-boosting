@@ -1,4 +1,5 @@
 """Control Recursive Learning in Tornado."""
+
 from __future__ import annotations
 
 import abc
@@ -48,14 +49,15 @@ class TornadoBase:
         self.manager = TornadoManager
 
     @abc.abstractmethod
-    def fit(self,
-            target,
-            test_size=0.2,
-            seed=0,
-            save_dir="./models",
-            criterion="COD",
-            verbose=True,
-            ) -> None:
+    def fit(
+        self,
+        target,
+        test_size=0.2,
+        seed=0,
+        save_dir="./models",
+        criterion="COD",
+        verbose=True,
+    ) -> None:
         """Abstract method for model fitting."""
         # write main fitting steps using Estimator, Evaluator, Logger, DataModule
         pass
@@ -102,14 +104,15 @@ class InteractionSearchModel(TornadoBase):
         self.estimator = None
         self.nbinomc = None
 
-    def fit(self,
-            target,
-            test_size=0.2,
-            seed=0,
-            save_dir="./models",
-            criterion="COD",
-            verbose=True,
-            ) -> None:
+    def fit(
+        self,
+        target,
+        test_size=0.2,
+        seed=0,
+        save_dir="./models",
+        criterion="COD",
+        verbose=True,
+    ) -> None:
         """Control the sequence of learning of the model.
 
         Prepare instances and datasets for training, then train the model.
@@ -148,28 +151,30 @@ class InteractionSearchModel(TornadoBase):
             test_size,
             seed,
             is_time_series=mgr_attr["is_time_series"],
-            )
+        )
 
         # recursive interaction search
         self.manager.init(train_set, target)
         stage = "\n=== [{0}] {1} ===\n"
         status = "START"
-        _logger.info(stage.format(status, mgr_attr['second_round']))
+        _logger.info(stage.format(status, mgr_attr["second_round"]))
 
-        logger_attr = self.tornado(target,
-                                   valid_set,
-                                   logger,
-                                   evaluator,
-                                   verbose,
-                                   )
-        best_model_path = os.path.join(logger_attr["model_dir"],
-                                       f'model_{logger_attr["log_data"]["iter"]}.pkl',
-                                       )
+        logger_attr = self.tornado(
+            target,
+            valid_set,
+            logger,
+            evaluator,
+            verbose,
+        )
+        best_model_path = os.path.join(
+            logger_attr["model_dir"],
+            f'model_{logger_attr["log_data"]["iter"]}.pkl',
+        )
         with open(best_model_path, "rb") as f:
             self.estimator = pickle.load(f)
 
         status = "END"
-        _logger.info(stage.format(status, mgr_attr['second_round']))
+        _logger.info(stage.format(status, mgr_attr["second_round"]))
 
         # c parameter estimator for proba prediction
         mgr_attr = self.manager.get_attr()
@@ -181,16 +186,16 @@ class InteractionSearchModel(TornadoBase):
                 "feature_properties": estimator_params["feature_properties"],
                 "features": estimator_params["feature_groups"],
                 "observers": estimator_params["observers"],
-                "smoothers": estimator_params["smoother_choice"].explicit_smoothers
-                }
+                "smoothers": estimator_params["smoother_choice"].explicit_smoothers,
+            }
             self.manager.set_attr(update_params)
 
             self.nbinomc = self.manager.build()
 
             X_train = copy.deepcopy(self.manager.X)
             y_train = copy.deepcopy(self.manager.y)
-            X_train['yhat_mean'] = self.estimator.predict(X_train.copy())
-            X_train["yhat_mean_feature"] = X_train['yhat_mean']
+            X_train["yhat_mean"] = self.estimator.predict(X_train.copy())
+            X_train["yhat_mean_feature"] = X_train["yhat_mean"]
             self.nbinomc.fit(X_train.copy(), np.float64(y_train))
 
             self.manager.set_attr({"dist": "nbinom"})
@@ -241,8 +246,7 @@ class InteractionSearchModel(TornadoBase):
             # log
             eval_history = evaluator.eval(y_valid, y_pred, estimator, verbose=False)
             mgr_attr = self.manager.get_attr()
-            logger.log(estimator,
-                       eval_history, mgr_attr, verbose=verbose)
+            logger.log(estimator, eval_history, mgr_attr, verbose=verbose)
             self.manager.clear()
 
             # update param
@@ -271,11 +275,12 @@ class InteractionSearchModel(TornadoBase):
 
         return y_pred
 
-    def predict_proba(self,
-                      X,
-                      output="pmf",
-                      range=None,
-                      ) -> Union[list, pd.DataFrame]:
+    def predict_proba(
+        self,
+        X,
+        output="pmf",
+        range=None,
+    ) -> Union[list, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         List containing instances of a fitted method collection or
@@ -322,7 +327,7 @@ class InteractionSearchModel(TornadoBase):
             X["yhat_mean"] = y_pred
             X["yhat_mean_feature"] = X["yhat_mean"]
             c = self.nbinomc.predict(X)
-            var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
+            var = X["yhat_mean"] + c * X["yhat_mean"] * X["yhat_mean"]
 
             ps = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
             ns = np.where(var > 0, y_pred * ps / (1 - ps), 1)
@@ -385,14 +390,15 @@ class ForwardSelectionModel(TornadoBase):
         self.estimator = None
         self.nbinomc = None
 
-    def fit(self,
-            target,
-            test_size=0.2,
-            seed=0,
-            save_dir="./models",
-            criterion="COD",
-            verbose=True,
-            ) -> None:
+    def fit(
+        self,
+        target,
+        test_size=0.2,
+        seed=0,
+        save_dir="./models",
+        criterion="COD",
+        verbose=True,
+    ) -> None:
         """Control the sequence of model learning using Forward Selection.
 
         Prepare instances and datasets for training, then train the model.
@@ -441,14 +447,15 @@ class ForwardSelectionModel(TornadoBase):
         self.manager.init(train_set, target)
         stage = "\n=== [{0}] {1} ===\n"
         status = "START"
-        _logger.info(stage.format(status, mgr_attr['first_round']))
+        _logger.info(stage.format(status, mgr_attr["first_round"]))
 
-        logger_attr = self.tornado(target,
-                                   valid_set,
-                                   logger,
-                                   evaluator,
-                                   verbose,
-                                   )
+        logger_attr = self.tornado(
+            target,
+            valid_set,
+            logger,
+            evaluator,
+            verbose,
+        )
         valid_features = list()
         for feature, eval_result in logger_attr["CODs"].items():
             if eval_result["F"] > 2:
@@ -465,27 +472,29 @@ class ForwardSelectionModel(TornadoBase):
         evaluator.clear()
 
         status = "END"
-        _logger.info(stage.format(status, mgr_attr['first_round']))
+        _logger.info(stage.format(status, mgr_attr["first_round"]))
 
         # 2. multiple variable regression with forward selection
         status = "START"
-        _logger.info(stage.format(status, mgr_attr['second_round']))
+        _logger.info(stage.format(status, mgr_attr["second_round"]))
 
-        logger_attr = self.tornado(target,
-                                   valid_set,
-                                   logger,
-                                   evaluator,
-                                   verbose,
-                                   )
+        logger_attr = self.tornado(
+            target,
+            valid_set,
+            logger,
+            evaluator,
+            verbose,
+        )
 
-        best_model_path = os.path.join(logger_attr["model_dir"],
-                                       f'model_{logger_attr["log_data"]["iter"]}.pkl',
-                                       )
+        best_model_path = os.path.join(
+            logger_attr["model_dir"],
+            f'model_{logger_attr["log_data"]["iter"]}.pkl',
+        )
         with open(best_model_path, "rb") as f:
             self.estimator = pickle.load(f)
 
         status = "END"
-        _logger.info(stage.format(status, mgr_attr['second_round']))
+        _logger.info(stage.format(status, mgr_attr["second_round"]))
 
         # c parameter estimator for proba prediction
         mgr_attr = self.manager.get_attr()
@@ -497,16 +506,16 @@ class ForwardSelectionModel(TornadoBase):
                 "feature_properties": estimator_params["feature_properties"],
                 "features": estimator_params["feature_groups"],
                 "observers": estimator_params["observers"],
-                "smoothers": estimator_params["smoother_choice"].explicit_smoothers
-                }
+                "smoothers": estimator_params["smoother_choice"].explicit_smoothers,
+            }
             self.manager.set_attr(update_params)
 
             self.nbinomc = self.manager.build()
 
             X_train = copy.deepcopy(self.manager.X)
             y_train = copy.deepcopy(self.manager.y)
-            X_train['yhat_mean'] = self.estimator.predict(X_train.copy())
-            X_train["yhat_mean_feature"] = X_train['yhat_mean']
+            X_train["yhat_mean"] = self.estimator.predict(X_train.copy())
+            X_train["yhat_mean_feature"] = X_train["yhat_mean"]
             self.nbinomc.fit(X_train.copy(), np.float64(y_train))
 
             self.manager.set_attr({"dist": "nbinom"})
@@ -587,11 +596,12 @@ class ForwardSelectionModel(TornadoBase):
 
         return y_pred
 
-    def predict_proba(self,
-                      X,
-                      output="pmf",
-                      range=None,
-                      ) -> Union[list, pd.DataFrame]:
+    def predict_proba(
+        self,
+        X,
+        output="pmf",
+        range=None,
+    ) -> Union[list, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         List containing instances of a fitted method collection or
@@ -638,7 +648,7 @@ class ForwardSelectionModel(TornadoBase):
             X["yhat_mean"] = y_pred
             X["yhat_mean_feature"] = X["yhat_mean"]
             c = self.nbinomc.predict(X)
-            var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
+            var = X["yhat_mean"] + c * X["yhat_mean"] * X["yhat_mean"]
 
             ps = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
             ns = np.where(var > 0, y_pred * ps / (1 - ps), 1)
@@ -705,14 +715,15 @@ class PriorPredInteractionSearchModel(TornadoBase):
         self.estimator = None
         self.nbinomc = None
 
-    def fit(self,
-            target,
-            test_size=0.2,
-            seed=0,
-            save_dir="./models",
-            criterion="COD",
-            verbose=True,
-            ) -> None:
+    def fit(
+        self,
+        target,
+        test_size=0.2,
+        seed=0,
+        save_dir="./models",
+        criterion="COD",
+        verbose=True,
+    ) -> None:
         """Control the sequence of model learning using Forward Selection.
 
         Prepare instances and datasets for training, then train the model.
@@ -753,24 +764,22 @@ class PriorPredInteractionSearchModel(TornadoBase):
         logger = PriorPredForwardLogger(criterion, save_dir, training_round)
 
         train_set, valid_set = self.data_deliverer.generate_trainset(
-            target,
-            test_size,
-            seed,
-            is_time_series=mgr_attr["is_time_series"]
+            target, test_size, seed, is_time_series=mgr_attr["is_time_series"]
         )
 
         # prior prediction for quick interaction search
         self.manager.init(train_set, target)
         stage = "\n=== [{0}] {1} ===\n"
         status = "START"
-        _logger.info(stage.format(status, mgr_attr['first_round']))
+        _logger.info(stage.format(status, mgr_attr["first_round"]))
 
-        base_model = self.tornado(target,
-                                  valid_set,
-                                  logger,
-                                  evaluator,
-                                  verbose,
-                                  )
+        base_model = self.tornado(
+            target,
+            valid_set,
+            logger,
+            evaluator,
+            verbose,
+        )
 
         X_train_init = mgr_attr["init_model_attr"]["X"].copy()  # use at final step
         X_train = X_train_init.copy()
@@ -786,32 +795,33 @@ class PriorPredInteractionSearchModel(TornadoBase):
         model_params = {k: v for k, v in mgr_attr["model_params"].items()}
         model_params["prior_prediction_column"] = col
         next_setting = {
-            "mode": mgr_attr['second_round'],
+            "mode": mgr_attr["second_round"],
             "experiment": 0,
             "X": X_train.copy(),
             "model_params": model_params,
-            "init_model_attr": init_model_attr
-            }
+            "init_model_attr": init_model_attr,
+        }
         self.manager.set_attr(next_setting)
         logger.reset_count()
         evaluator.clear()
 
         status = "END"
-        _logger.info(stage.format(status, mgr_attr['first_round']))
+        _logger.info(stage.format(status, mgr_attr["first_round"]))
 
         # quick interaction search with prior pred
         status = "START"
-        _logger.info(stage.format(status, mgr_attr['second_round']))
+        _logger.info(stage.format(status, mgr_attr["second_round"]))
 
-        _ = self.tornado(target,
-                         valid_set,
-                         logger,
-                         evaluator,
-                         verbose,
-                         )
+        _ = self.tornado(
+            target,
+            valid_set,
+            logger,
+            evaluator,
+            verbose,
+        )
         _logger.info(f"\nDetect {len(logger.valid_interactions)} interactions\n")
         status = "END"
-        _logger.info(stage.format(status, mgr_attr['second_round']))
+        _logger.info(stage.format(status, mgr_attr["second_round"]))
 
         # model setting for estimation
         base = [x for x in init_model_attr["feature_properties"].keys()]
@@ -824,12 +834,8 @@ class PriorPredInteractionSearchModel(TornadoBase):
         model_params = {
             "feature_properties": init_model_attr["feature_properties"],
             "feature_groups": features,
-            }
-        setting = {
-            "X": X_train_init,
-            "model_params": model_params,
-            "init_model_attr": init_model_attr
-            }
+        }
+        setting = {"X": X_train_init, "model_params": model_params, "init_model_attr": init_model_attr}
         self.manager.set_attr(setting)
         self.estimator = self.manager.build()
         _ = self.estimator.fit(X_train, y_train)
@@ -845,16 +851,16 @@ class PriorPredInteractionSearchModel(TornadoBase):
                 "feature_properties": estimator_params["feature_properties"],
                 "features": estimator_params["feature_groups"],
                 "observers": estimator_params["observers"],
-                "smoothers": estimator_params["smoother_choice"].explicit_smoothers
-                }
+                "smoothers": estimator_params["smoother_choice"].explicit_smoothers,
+            }
             self.manager.set_attr(update_params)
 
             self.nbinomc = self.manager.build()
 
             X_train = copy.deepcopy(self.manager.X)
             y_train = copy.deepcopy(self.manager.y)
-            X_train['yhat_mean'] = self.estimator.predict(X_train.copy())
-            X_train["yhat_mean_feature"] = X_train['yhat_mean']
+            X_train["yhat_mean"] = self.estimator.predict(X_train.copy())
+            X_train["yhat_mean_feature"] = X_train["yhat_mean"]
             self.nbinomc.fit(X_train.copy(), np.float64(y_train))
 
             self.manager.set_attr({"dist": "nbinom"})
@@ -927,11 +933,12 @@ class PriorPredInteractionSearchModel(TornadoBase):
 
         return y_pred
 
-    def predict_proba(self,
-                      X,
-                      output="pdf",
-                      range=None,
-                      ) -> Union[list, pd.DataFrame]:
+    def predict_proba(
+        self,
+        X,
+        output="pdf",
+        range=None,
+    ) -> Union[list, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         List containing instances of a fitted method collection or
@@ -978,7 +985,7 @@ class PriorPredInteractionSearchModel(TornadoBase):
             X["yhat_mean"] = y_pred
             X["yhat_mean_feature"] = X["yhat_mean"]
             c = self.nbinomc.predict(X)
-            var = X['yhat_mean'] + c * X['yhat_mean'] * X['yhat_mean']
+            var = X["yhat_mean"] + c * X["yhat_mean"] * X["yhat_mean"]
 
             ps = np.minimum(np.where(var > 0, y_pred / var, 1 - 1e-8), 1 - 1e-8)
             ns = np.where(var > 0, y_pred * ps / (1 - ps), 1)
@@ -1039,7 +1046,7 @@ class QPDInteractionSearchModel(TornadoBase):
 
     bound : str
         Different modes defined by supported target range, options are ``S``
-        (semi-bound), ``B`` (bound), and ``U`` (unbound). Default is "U".
+        (semi-bound) and ``B`` (bound). Default is "S".
 
     lower : float
         lower bound of supported range (only active for bound and semi-bound
@@ -1056,14 +1063,15 @@ class QPDInteractionSearchModel(TornadoBase):
         Pipeline with steps including binning and CB
     """
 
-    def __init__(self,
-                 DataModule,
-                 TornadoManager,
-                 quantile=0.1,
-                 bound="U",
-                 lower=0.0,
-                 upper=1.0,
-                 ):
+    def __init__(
+        self,
+        DataModule,
+        TornadoManager,
+        quantile=0.1,
+        bound="S",
+        lower=0.0,
+        upper=1.0,
+    ):
         super().__init__(DataModule, TornadoManager)
         self.quantile = [quantile, 0.5, 1 - quantile]
         self.bound = bound
@@ -1075,14 +1083,15 @@ class QPDInteractionSearchModel(TornadoBase):
         if quantile >= 0.5:
             raise ValueError("quantile must be quantile < 0.5")
 
-    def fit(self,
-            target,
-            test_size=0.2,
-            seed=0,
-            save_dir="./models",
-            criterion="PINBALL",
-            verbose=True,
-            ) -> None:
+    def fit(
+        self,
+        target,
+        test_size=0.2,
+        seed=0,
+        save_dir="./models",
+        criterion="PINBALL",
+        verbose=True,
+    ) -> None:
         """Control the sequence of model learning using QPD.
 
         Prepare instances and datasets for training, then train the model.
@@ -1123,25 +1132,23 @@ class QPDInteractionSearchModel(TornadoBase):
         logger = PriorPredForwardLogger(criterion, save_dir, training_round)
 
         train_set, valid_set = self.data_deliverer.generate_trainset(
-            target,
-            test_size,
-            seed,
-            is_time_series=mgr_attr["is_time_series"]
+            target, test_size, seed, is_time_series=mgr_attr["is_time_series"]
         )
 
         stage = "\n=== [{0}] {1} ===\n"
         status = "START"
-        _logger.info(stage.format(status, mgr_attr['first_round']))
+        _logger.info(stage.format(status, mgr_attr["first_round"]))
 
         # prior prediction for quick interaction search
         self.manager.init(train_set, target)
-        base_model = self.tornado(target,
-                                  valid_set,
-                                  logger,
-                                  evaluator,
-                                  verbose,
-                                  args={"quantile": self.quantile[0]},
-                                  )
+        base_model = self.tornado(
+            target,
+            valid_set,
+            logger,
+            evaluator,
+            verbose,
+            args={"quantile": self.quantile[0]},
+        )
 
         X_train = mgr_attr["init_model_attr"]["X"].copy()
         X_valid = valid_set.drop(target, axis=1)
@@ -1156,34 +1163,35 @@ class QPDInteractionSearchModel(TornadoBase):
         model_params = {k: v for k, v in mgr_attr["model_params"].items()}
         model_params["prior_prediction_column"] = col
         next_setting = {
-            "mode": mgr_attr['second_round'],
+            "mode": mgr_attr["second_round"],
             "experiment": 0,
             "X": X_train.copy(),
             "model_params": model_params,
-            "init_model_attr": init_model_attr
-            }
+            "init_model_attr": init_model_attr,
+        }
         self.manager.set_attr(next_setting)
         logger.reset_count()
         evaluator.clear()
 
         status = "END"
-        _logger.info(stage.format(status, mgr_attr['first_round']))
+        _logger.info(stage.format(status, mgr_attr["first_round"]))
 
         # quick interaction search with prior pred
         status = "START"
-        _logger.info(stage.format(status, mgr_attr['second_round']))
+        _logger.info(stage.format(status, mgr_attr["second_round"]))
 
-        _ = self.tornado(target,
-                         valid_set,
-                         logger,
-                         evaluator,
-                         verbose,
-                         args={"quantile": self.quantile[0]},
-                         )
+        _ = self.tornado(
+            target,
+            valid_set,
+            logger,
+            evaluator,
+            verbose,
+            args={"quantile": self.quantile[0]},
+        )
 
         _logger.info(f"\nDetect {len(logger.valid_interactions)} interactions\n")
         status = "END"
-        _logger.info(stage.format(status, mgr_attr['second_round']))
+        _logger.info(stage.format(status, mgr_attr["second_round"]))
 
         # model setting for QPD estimation
         _logger.info(status.format("QPD estimator training"))
@@ -1196,7 +1204,7 @@ class QPDInteractionSearchModel(TornadoBase):
         model_params = {
             "feature_properties": init_model_attr["feature_properties"],
             "feature_groups": features,
-            }
+        }
         est_quantiles = list()
         for quantile in self.quantile:
             model_params["quantile"] = quantile
@@ -1265,7 +1273,7 @@ class QPDInteractionSearchModel(TornadoBase):
                 args["quantile"],
                 estimator,
                 verbose=False,
-                )
+            )
             mgr_attr = self.manager.get_attr()
 
             # log
@@ -1304,11 +1312,12 @@ class QPDInteractionSearchModel(TornadoBase):
 
         return y_pred
 
-    def predict_proba(self,
-                      X,
-                      output="pdf",
-                      range=None,
-                      ) -> Union[list, pd.DataFrame]:
+    def predict_proba(
+        self,
+        X,
+        output="pdf",
+        range=None,
+    ) -> Union[list, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         Instances of the fitted method collection for a particular probability
@@ -1348,6 +1357,7 @@ class QPDInteractionSearchModel(TornadoBase):
             return qpd
         elif output == "pdf":
             from findiff import FinDiff
+
             min_xs = list()
             max_xs = list()
             if range is None:

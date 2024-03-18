@@ -5,7 +5,7 @@ from itertools import combinations
 from cyclic_boosting.tornado.core.manager import (
     TornadoManager,
     ForwardSelectionManager,
-    PriorPredForwardSelectionManager
+    PriorPredForwardSelectionManager,
 )
 from cyclic_boosting.smoothing.onedim import SeasonalSmoother, IsotonicRegressor
 import pytest
@@ -15,7 +15,7 @@ import pytest
 def manager_base_params():
     params = {
         "mfp": None,
-        "is_ts":  True,
+        "is_ts": True,
         "data_interval": None,
         "task": "regression",
         "dist": "poisson",
@@ -34,7 +34,7 @@ def manager_base_params():
         "model_params": dict(),
         "max_interaction": 0,
         "experiment": 0,
-        "end": 0
+        "end": 0,
     }
     return params
 
@@ -49,14 +49,9 @@ def test_tornado_manager(prepare_data, manager_base_params):
     length = 10
     data = np.arange(length).astype(np.int64)
     start_date = datetime.datetime.today().date()
-    dates = pd.date_range(start=start_date, periods=length, freq='D')
+    dates = pd.date_range(start=start_date, periods=length, freq="D")
     X_dummy = pd.DataFrame(
-        {
-            "int": data,
-            "float": data.astype(np.float64),
-            "object": data.astype(object),
-            "date": dates
-        }
+        {"int": data, "float": data.astype(np.float64), "object": data.astype(object), "date": dates}
     )
     manager = TornadoManager(is_time_series=True)
 
@@ -93,11 +88,9 @@ def test_tornado_manager(prepare_data, manager_base_params):
     func = "set_interaction"
     attr = "interaction_term"
     desired = [x for x in combinations(X_dummy.columns, 2)]
-    manager_base_params.update({
-        "init_model_attr": {"features": list(X_dummy.columns)},
-        "X": X_dummy,
-        "interaction_term": list()
-        })
+    manager_base_params.update(
+        {"init_model_attr": {"features": list(X_dummy.columns)}, "X": X_dummy, "interaction_term": list()}
+    )
     manager.set_attr(manager_base_params)
     manager.set_interaction()
     res = manager.get_attr()
@@ -107,11 +100,7 @@ def test_tornado_manager(prepare_data, manager_base_params):
     # set_smoother
     func = "set_smoother"
     attr = "smoothers"
-    report_dummy = {
-        "has_seasonality": ["seasonal"],
-        "has_up_monotonicity": ["up"],
-        "has_down_monotonicity": ["down"]
-    }
+    report_dummy = {"has_seasonality": ["seasonal"], "has_up_monotonicity": ["up"], "has_down_monotonicity": ["down"]}
     manager_base_params.update({"report": report_dummy})
     manager.set_attr(manager_base_params)
     manager.set_smoother()
