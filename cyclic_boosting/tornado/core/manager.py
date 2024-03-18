@@ -364,7 +364,9 @@ class ManagerBase:
                 self.regressor = PoissonRegressor(**param)
             elif self.dist == "nbinomc":
                 param["mean_prediction_column"] = "yhat_mean"
-                param["feature_properties"]["yhat_mean_feature"] = flags.IS_CONTINUOUS | flags.HAS_MISSING | flags.MISSING_NOT_LEARNED
+                param["feature_properties"]["yhat_mean_feature"] = (flags.IS_CONTINUOUS |
+                                                                    flags.HAS_MISSING |
+                                                                    flags.MISSING_NOT_LEARNED)
                 param["feature_groups"].append("yhat_mean_feature")
                 return NBinomC(**param)
 

@@ -1244,7 +1244,9 @@ class Preprocess():
         if len(object_train.columns) > 0:
             opt = self.get_opt("feature_hashing")
             if params_exist:
-                opt.setdefault("n_features", self.get_preprocessors()["encode_category"]["feature_hashing"]["n_features"])
+                opt.setdefault("n_features",
+                               self.get_preprocessors()["encode_category"]["feature_hashing"]["n_features"]
+                               )
             else:
                 opt.setdefault("n_features", 10)
             opt.setdefault("input_type", "string")
