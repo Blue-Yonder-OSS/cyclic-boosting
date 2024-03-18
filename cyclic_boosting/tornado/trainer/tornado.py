@@ -1046,7 +1046,7 @@ class QPDInteractionSearchModel(TornadoBase):
 
     bound : str
         Different modes defined by supported target range, options are ``S``
-        (semi-bound), ``B`` (bound), and ``U`` (unbound). Default is "U".
+        (semi-bound) and ``B`` (bound). Default is "S".
 
     lower : float
         lower bound of supported range (only active for bound and semi-bound
@@ -1068,7 +1068,7 @@ class QPDInteractionSearchModel(TornadoBase):
         DataModule,
         TornadoManager,
         quantile=0.1,
-        bound="U",
+        bound="S",
         lower=0.0,
         upper=1.0,
     ):
