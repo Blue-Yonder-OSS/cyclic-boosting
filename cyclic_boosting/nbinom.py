@@ -1,6 +1,7 @@
 """
 Cyclic Boosting Negative Binomial c regressor. var = mu + c * mu * mu
 """
+
 from __future__ import absolute_import, division, print_function
 
 import logging

@@ -1,5 +1,6 @@
 """Convenient smoother mappings from feature property values (and tuples) to
 typical smoothers used for the Cyclic Boosting regressor"""
+
 from __future__ import absolute_import, division, print_function
 
 import logging
@@ -166,6 +167,7 @@ class SmootherChoice(object):
         (default = None)
 
     """
+
     neutral_factor_link = 0
 
     def __init__(self, use_regression_type=True, use_normalization=True, explicit_smoothers=None):

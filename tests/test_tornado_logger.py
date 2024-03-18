@@ -3,10 +3,7 @@ import os
 import shutil
 import numpy as np
 import pandas as pd
-from cyclic_boosting.tornado.trainer.logger import (
-    ForwardLogger,
-    PriorPredForwardLogger
-)
+from cyclic_boosting.tornado.trainer.logger import ForwardLogger, PriorPredForwardLogger
 from cyclic_boosting.pipelines import (
     pipeline_CBPoissonRegressor,
 )
@@ -19,15 +16,9 @@ def prepare_log_data() -> dict:
     log_data = {
         "iter": 100,
         "features": ["dummy"],
-        "feature_properties": {
-            "dummy": flags.IS_CONTINUOUS
-        },
+        "feature_properties": {"dummy": flags.IS_CONTINUOUS},
         "smoothers": dict(),
-        "metrics": {
-            "COD": 1.0,
-            "F": 1.0,
-            "PINBALL": 1.0
-        }
+        "metrics": {"COD": 1.0, "F": 1.0, "PINBALL": 1.0},
     }
     return log_data
 
@@ -40,9 +31,7 @@ def prepare_tornado_modules() -> tuple:
         "experiment": 1,
         "mode": "first",
         "features": ["dummy"],
-        "feature_properties": {
-            "dummy": flags.IS_CONTINUOUS
-            },
+        "feature_properties": {"dummy": flags.IS_CONTINUOUS},
         "smoothers": dict(),
     }
     col = "dummy"
@@ -52,8 +41,7 @@ def prepare_tornado_modules() -> tuple:
         observers=[
             observers.PlottingObserver(iteration=1),
             observers.PlottingObserver(iteration=-1),
-        ]
-
+        ],
     )
     X = pd.DataFrame(np.arange(10), columns=[col])
     y = np.arange(10)
@@ -141,19 +129,13 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
     os.remove(os.path.join(save_dir, f_name + ext))
 
     # check for validation
-    params = {
-        "criterion": criterion,
-        "bench_mark": {"metrics": bench_mark}
-    }
+    params = {"criterion": criterion, "bench_mark": {"metrics": bench_mark}}
     logger.set_attr(params)
     assert logger.validate(eval), f"{criterion} logic is wrong"
 
     criterion = "PINBALL"
     bench_mark = {k: (v + 1) for k, v in log_data["metrics"].items()}
-    params = {
-        "criterion": criterion,
-        "bench_mark": {"metrics": bench_mark}
-    }
+    params = {"criterion": criterion, "bench_mark": {"metrics": bench_mark}}
     logger.set_attr(params)
     assert logger.validate(eval), f"{criterion} logic is wrong"
 
@@ -163,7 +145,7 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
         "iter": 100,
         "first_round": first_round,
         "bench_mark": {"metrics": bench_mark},
-        }
+    }
     logger.set_attr(param)
     try:
         logger.log(est, eval, manager_attr)
@@ -174,11 +156,11 @@ def test_forward_logger(prepare_log_data, prepare_tornado_modules) -> None:
     param = {
         "second_round": second_round,
         "bench_mark": {"metrics": bench_mark},
-        }
+    }
     logger.set_attr(param)
     param = {
         "mode": second_round,
-        }
+    }
     manager_attr.update(param)
     try:
         logger.log(est, eval, manager_attr)
@@ -198,17 +180,14 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
     eval = log_data["metrics"]
     bench_mark = {k: (v - 1) for k, v in log_data["metrics"].items()}
 
-    logger = PriorPredForwardLogger(
-        save_dir=save_dir,
-        criterion=criterion
-    )
+    logger = PriorPredForwardLogger(save_dir=save_dir, criterion=criterion)
 
     param = {
         "mode": first_round,
         "experiment": 1,
         "end": 1,
         "features": ["dummy"],
-        }
+    }
     manager_attr.update(param)
     try:
         logger.output(eval, manager_attr)
@@ -227,20 +206,14 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
 
     # check for validation
     criterion = "COD"
-    params = {
-        "criterion": criterion,
-        "bench_mark": {"metrics": bench_mark}
-    }
+    params = {"criterion": criterion, "bench_mark": {"metrics": bench_mark}}
     logger.set_attr(params)
     logger.validate(eval)
     assert logger.validate(eval), f"{criterion} logic is wrong"
 
     criterion = "PINBALL"
     bench_mark = {k: (v + 1) for k, v in log_data["metrics"].items()}
-    params = {
-        "criterion": criterion,
-        "bench_mark": {"metrics": bench_mark}
-    }
+    params = {"criterion": criterion, "bench_mark": {"metrics": bench_mark}}
     logger.set_attr(params)
     logger.validate(eval)
     assert logger.validate(eval), f"{criterion} logic is wrong"
@@ -251,7 +224,7 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
         "iter": 100,
         "first_round": first_round,
         "bench_mark": {"metrics": bench_mark},
-        }
+    }
     logger.set_attr(param)
     try:
         logger.log(est, eval, manager_attr)
@@ -262,11 +235,11 @@ def test_prior_pred_forward_logger(prepare_log_data, prepare_tornado_modules) ->
     param = {
         "second_round": second_round,
         "bench_mark": {"metrics": bench_mark},
-        }
+    }
     logger.set_attr(param)
     param = {
         "mode": second_round,
-        }
+    }
     manager_attr.update(param)
     try:
         logger.log(est, eval, manager_attr)

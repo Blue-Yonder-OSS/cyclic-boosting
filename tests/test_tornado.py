@@ -14,7 +14,7 @@ def test_interaction_search_model(prepare_data):
     predictor.fit(target="sales", criterion="COD", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
-    shutil.rmtree('./models')
+    shutil.rmtree("./models")
 
 
 def test_forward_selection_model(prepare_data):
@@ -28,7 +28,7 @@ def test_forward_selection_model(prepare_data):
     predictor.fit(target="sales", criterion="COD", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
-    shutil.rmtree('./models')
+    shutil.rmtree("./models")
 
 
 def test_prior_pred_interaction_search_model(prepare_data):
@@ -42,7 +42,7 @@ def test_prior_pred_interaction_search_model(prepare_data):
     predictor.fit(target="sales", criterion="COD", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
-    shutil.rmtree('./models')
+    shutil.rmtree("./models")
 
 
 def test_qpd_interaction_search_model(prepare_data):
@@ -55,9 +55,9 @@ def test_qpd_interaction_search_model(prepare_data):
         max_iter=10,
         model="additive",
         dist="qpd",
-        )
+    )
     predictor = tornado.QPDInteractionSearchModel(data_deliverer, manager_)
     predictor.fit(target="sales", criterion="PINBALL", verbose=False)
     _ = predictor.predict(df)
     _ = predictor.predict_proba(df, output="proba")
-    shutil.rmtree('./models')
+    shutil.rmtree("./models")

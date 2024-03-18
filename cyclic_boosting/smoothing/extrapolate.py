@@ -29,6 +29,7 @@ feature `time`.
     the weekday, the month day or the day number in the year. Please use normal
     smoothers for that.
 """
+
 from __future__ import absolute_import, division, print_function
 
 import numpy as np

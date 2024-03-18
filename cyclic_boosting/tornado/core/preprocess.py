@@ -4,6 +4,7 @@ Data preprocessing and feature engineering techniques.
 Processing necessary for data loading, checking, and other preprocessing
 tasks, as well as various feature engineering methods.
 """
+
 import logging
 from typing import Tuple
 
@@ -27,7 +28,7 @@ import warnings
 _logger = logging.getLogger(__name__)
 
 
-class Preprocess():
+class Preprocess:
     """
     Preprocess is a class for performing data preprocessing.
 
@@ -151,8 +152,7 @@ class Preprocess():
             elif src.endswith(".xlsx"):
                 df = pd.read_excel(src)
             else:
-                _logger.error("The file format is not supported.\n"
-                              "Please use the csv or xlsx format.")
+                _logger.error("The file format is not supported.\n" "Please use the csv or xlsx format.")
         elif isinstance(src, pd.DataFrame):
             df = src
         else:
@@ -195,9 +195,11 @@ class Preprocess():
                 self.preprocessors["expanding"] = {}
 
         elif is_time_series:
-            _logger.error("If this is a forecast of time-series data,\n"
-                          " a 'date' column is required to identify\n"
-                          " the datetime of the data.")
+            _logger.error(
+                "If this is a forecast of time-series data,\n"
+                " a 'date' column is required to identify\n"
+                " the datetime of the data."
+            )
 
         # self.preprocessors["standardization"] = {}
         # self.preprocessors["logarithmic"] = {}
@@ -252,10 +254,7 @@ class Preprocess():
         preprocessors = self.get_preprocessors().copy()
 
         for prep, params in preprocessors.items():
-            train, valid = eval(f"self.{prep}")(self.train_raw.copy(),
-                                                self.valid_raw.copy(),
-                                                target,
-                                                any(params))
+            train, valid = eval(f"self.{prep}")(self.train_raw.copy(), self.valid_raw.copy(), target, any(params))
             train[self.train.columns] = self.train
             valid[self.valid.columns] = self.valid
             self.train = train.copy()
@@ -417,15 +416,12 @@ class Preprocess():
             Lag size with maximum autocorrelation coefficient and lag size
             with maximum partial autocorrelation coefficient.
         """
-        nlags = int(len(time_based_average_data)/2-1)
+        nlags = int(len(time_based_average_data) / 2 - 1)
         nlags = min(nlags, 500)
-        autocorrelation = sm.tsa.stattools.acf(time_based_average_data,
-                                               nlags=nlags)
-        partial_autocorrelation = sm.tsa.stattools.pacf(time_based_average_data,
-                                                        method="ywm",
-                                                        nlags=nlags)
-        idx_autocorrelation = np.argmax(autocorrelation[1:])+1
-        idx_partial_autocorrelation = np.argmax(partial_autocorrelation[1:])+1
+        autocorrelation = sm.tsa.stattools.acf(time_based_average_data, nlags=nlags)
+        partial_autocorrelation = sm.tsa.stattools.pacf(time_based_average_data, method="ywm", nlags=nlags)
+        idx_autocorrelation = np.argmax(autocorrelation[1:]) + 1
+        idx_partial_autocorrelation = np.argmax(partial_autocorrelation[1:]) + 1
 
         return idx_autocorrelation, idx_partial_autocorrelation
 
@@ -656,10 +652,12 @@ class Preprocess():
                     high_cardinality_cols.append(col)
 
             if len(high_cardinality_cols) > 0:
-                _logger.warning(f"The cardinality of the {high_cardinality_cols} column is very high.\n"
-                                "    By using methods such as hierarchical grouping,\n"
-                                "    the cardinality can be reduced,\n"
-                                "    leading to an improvement in inference accuracy.")
+                _logger.warning(
+                    f"The cardinality of the {high_cardinality_cols} column is very high.\n"
+                    "    By using methods such as hierarchical grouping,\n"
+                    "    the cardinality can be reduced,\n"
+                    "    leading to an improvement in inference accuracy."
+                )
 
             self.set_preprocessors({"check_cardinality": {}})
 
@@ -698,9 +696,11 @@ class Preprocess():
                     float_integer_cols.append(col)
 
             if len(float_integer_cols) > 0:
-                _logger.warning(f"Please check the columns {float_integer_cols}.\n"
-                                "    Ensure that categorical variables are of 'int' type\n"
-                                "    and continuous variables are of 'float' type.")
+                _logger.warning(
+                    f"Please check the columns {float_integer_cols}.\n"
+                    "    Ensure that categorical variables are of 'int' type\n"
+                    "    and continuous variables are of 'float' type."
+                )
 
             self.set_preprocessors({"check_dtype": {}})
 
@@ -739,15 +739,16 @@ class Preprocess():
 
             with warnings.catch_warnings(record=True) as w:
                 vif = pd.DataFrame(index=dataset.columns)
-                vif["VIF Factor"] = [variance_inflation_factor(dataset.values, i)
-                                     for i in range(dataset.shape[1])]
+                vif["VIF Factor"] = [variance_inflation_factor(dataset.values, i) for i in range(dataset.shape[1])]
                 is_target_leaked = vif.loc[target, "VIF Factor"] == np.inf
 
                 if is_target_leaked and len(w) > 0:
-                    _logger.warning("Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
-                                    "This means that there is a very high association (multi-collinearity)\n"
-                                    "between the explanatory variables and the objective variable.\n"
-                                    "Confirmation is recommended due to the possibility of target leakage.")
+                    _logger.warning(
+                        "Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
+                        "This means that there is a very high association (multi-collinearity)\n"
+                        "between the explanatory variables and the objective variable.\n"
+                        "Confirmation is recommended due to the possibility of target leakage."
+                    )
 
             self.set_preprocessors({"check_data_leakage": {}})
 
@@ -1139,15 +1140,11 @@ class Preprocess():
             for i, c in enumerate(object_dataset.columns):
                 columns += [f"{c}_{v}" for v in ohe.categories_[i]]
 
-            train_ohe = pd.DataFrame(ohe.transform(train[object_dataset.columns]),
-                                     index=train.index, columns=columns)
-            valid_ohe = pd.DataFrame(ohe.transform(valid[object_dataset.columns]),
-                                     index=valid.index, columns=columns)
+            train_ohe = pd.DataFrame(ohe.transform(train[object_dataset.columns]), index=train.index, columns=columns)
+            valid_ohe = pd.DataFrame(ohe.transform(valid[object_dataset.columns]), index=valid.index, columns=columns)
 
-            train = pd.concat([train.drop(object_dataset.columns, axis=1),
-                               train_ohe], axis=1)
-            valid = pd.concat([valid.drop(object_dataset.columns, axis=1),
-                               valid_ohe], axis=1)
+            train = pd.concat([train.drop(object_dataset.columns, axis=1), train_ohe], axis=1)
+            valid = pd.concat([valid.drop(object_dataset.columns, axis=1), valid_ohe], axis=1)
 
             self.train.drop(object_dataset.columns, axis=1, inplace=True)
             self.valid.drop(object_dataset.columns, axis=1, inplace=True)
@@ -1244,9 +1241,9 @@ class Preprocess():
         if len(object_train.columns) > 0:
             opt = self.get_opt("feature_hashing")
             if params_exist:
-                opt.setdefault("n_features",
-                               self.get_preprocessors()["encode_category"]["feature_hashing"]["n_features"]
-                               )
+                opt.setdefault(
+                    "n_features", self.get_preprocessors()["encode_category"]["feature_hashing"]["n_features"]
+                )
             else:
                 opt.setdefault("n_features", 10)
             opt.setdefault("input_type", "string")
@@ -1257,10 +1254,12 @@ class Preprocess():
                 fh = FeatureHasher(**opt)
                 hash_train = fh.transform(object_train[col].astype(str).values[:, np.newaxis].tolist())
                 hash_valid = fh.transform(object_valid[col].astype(str).values[:, np.newaxis].tolist())
-                hash_train = pd.DataFrame(hash_train.todense(), index=train.index,
-                                          columns=[f"{col}_{i}" for i in range(n_features)])
-                hash_valid = pd.DataFrame(hash_valid.todense(), index=valid.index,
-                                          columns=[f"{col}_{i}" for i in range(n_features)])
+                hash_train = pd.DataFrame(
+                    hash_train.todense(), index=train.index, columns=[f"{col}_{i}" for i in range(n_features)]
+                )
+                hash_valid = pd.DataFrame(
+                    hash_valid.todense(), index=valid.index, columns=[f"{col}_{i}" for i in range(n_features)]
+                )
                 train = pd.concat([train, hash_train], axis=1)
                 valid = pd.concat([valid, hash_valid], axis=1)
             self.set_preprocessors({"encode_category": {"feature_hashing": {"n_features": n_features}}})
@@ -1425,10 +1424,7 @@ class Preprocess():
             if len(encoders) != 1:
                 raise RuntimeError("Single encoding method should be used for categorical variables.")
             for enc, params in encoders.items():
-                train, valid = eval(f"self.{enc}")(train,
-                                                   valid,
-                                                   target,
-                                                   any(params))
+                train, valid = eval(f"self.{enc}")(train, valid, target, any(params))
 
             self.train_raw = train
             self.valid_raw = valid

@@ -7,10 +7,14 @@ import pytest
 import os
 import datetime
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, \
-                                  PowerTransformer, QuantileTransformer, \
-                                  KBinsDiscretizer, TargetEncoder\
-
+from sklearn.preprocessing import (
+    StandardScaler,
+    MinMaxScaler,
+    PowerTransformer,
+    QuantileTransformer,
+    KBinsDiscretizer,
+    TargetEncoder,
+)
 from sklearn.feature_extraction import FeatureHasher
 
 from cyclic_boosting.tornado.core import preprocess
@@ -21,7 +25,7 @@ def create_time_series_test_data(n_rows, n_cols, start_date=None):
         start_date = datetime.datetime.today().date()
     else:
         start_date = pd.to_datetime(start_date).date()
-    dates = pd.date_range(start=start_date, periods=n_rows, freq='D')
+    dates = pd.date_range(start=start_date, periods=n_rows, freq="D")
     df = create_non_time_series_test_data(n_rows, n_cols)
     df["date"] = dates
 
@@ -29,12 +33,11 @@ def create_time_series_test_data(n_rows, n_cols, start_date=None):
 
 
 def create_non_time_series_test_data(n_rows, n_cols):
-    data_category = np.array([random.sample(range(1000), n_rows)
-                              for i in range(int(n_cols/2))]).T
-    data_continuous = np.random.random(size=(n_rows, n_cols-int(n_cols/2)))
+    data_category = np.array([random.sample(range(1000), n_rows) for i in range(int(n_cols / 2))]).T
+    data_continuous = np.random.random(size=(n_rows, n_cols - int(n_cols / 2)))
     data_target = np.random.random(size=(n_rows, 1))
-    cols_category = [f"category_{col}" for col in range(int(n_cols/2))]
-    cols_continuous = [f"continuous_{col}" for col in range(n_cols-int(n_cols/2))]
+    cols_category = [f"category_{col}" for col in range(int(n_cols / 2))]
+    cols_continuous = [f"continuous_{col}" for col in range(n_cols - int(n_cols / 2))]
     df_category = pd.DataFrame(data_category, columns=cols_category)
     df_continuous = pd.DataFrame(data_continuous, columns=cols_continuous)
     df_target = pd.DataFrame(data_target, columns=["target"])
@@ -43,14 +46,12 @@ def create_non_time_series_test_data(n_rows, n_cols):
     return df
 
 
-def create_autocorrelated_data(n_rows, n_cols, lag, start_date=None,
-                               autocorrelation_coefficient=0.9):
+def create_autocorrelated_data(n_rows, n_cols, lag, start_date=None, autocorrelation_coefficient=0.9):
     mean = 0
     std_deviation = 1
     data = [np.random.normal(mean, std_deviation)] * lag
     for _ in range(lag, n_rows):
-        new_value = (autocorrelation_coefficient * data[-lag]
-                     + np.random.normal(mean, std_deviation))
+        new_value = autocorrelation_coefficient * data[-lag] + np.random.normal(mean, std_deviation)
         data.append(new_value)
     df = create_time_series_test_data(n_rows, n_cols, start_date)
     df["target"] = data
@@ -59,8 +60,7 @@ def create_autocorrelated_data(n_rows, n_cols, lag, start_date=None,
 
 
 def create_str(n_character, last_character="z"):
-    string = ''.join(chr(random.choice(range(ord('a'), ord(last_character))))
-                     for _ in range(n_character))
+    string = "".join(chr(random.choice(range(ord("a"), ord(last_character)))) for _ in range(n_character))
 
     return string
 
@@ -79,8 +79,8 @@ def create_categorical_data(n_rows, n_cols, start_date=None):
 
 def create_categorical_duplicated_data(n_rows, n_cols, start_date=None):
     df = create_time_series_test_data(n_rows, n_cols, start_date)
-    cat = [create_str(2, "c") for i in range(int(n_rows*0.6))]
-    cat_duplicated = ["aa", "ab", "ba", "bb"] * int(n_rows*0.1)
+    cat = [create_str(2, "c") for i in range(int(n_rows * 0.6))]
+    cat_duplicated = ["aa", "ab", "ba", "bb"] * int(n_rows * 0.1)
     cat += cat_duplicated
     df["cat"] = cat
 
@@ -90,10 +90,7 @@ def create_categorical_duplicated_data(n_rows, n_cols, start_date=None):
 def split_dataset(df):
     test_size = 0.2
     seed = 0
-    train, valid = train_test_split(
-        df,
-        test_size=test_size,
-        random_state=seed)
+    train, valid = train_test_split(df, test_size=test_size, random_state=seed)
     return train, valid
 
 
@@ -134,7 +131,7 @@ def test_check_data():
         "expanding": {},
         "dayofweek": {},
         "dayofyear": {},
-        }
+    }
     test_data_time_series = create_time_series_test_data(10, 5)
     preprocessor.check_data(test_data_time_series, is_time_series=True)
     preprocessors = preprocessor.get_preprocessors()
@@ -149,7 +146,7 @@ def test_check_data():
         "check_dtype": {},
         "check_cardinality": {},
         "check_data_leakage": {},
-        }
+    }
     test_data_non_time_series = create_non_time_series_test_data(10, 5)
     preprocessor.check_data(test_data_non_time_series, is_time_series=False)
     preprocessors = preprocessor.get_preprocessors()
@@ -162,10 +159,7 @@ def test_apply():
     preprocessor = preprocess.Preprocess(opt={})
     # Testing with conversion type preprocessing ("todatetime")
     # and generation type preprocessing ("standardization")
-    preprocessor.set_preprocessors({
-        "todatetime": {},
-        "standardization": {}
-        })
+    preprocessor.set_preprocessors({"todatetime": {}, "standardization": {}})
     # Create time-series test data with the loaded state
     # ("date" column type is object)
     test_data_time_series = create_time_series_test_data(10, 2)
@@ -180,10 +174,8 @@ def test_apply():
     desired_valid_raw = desired_valid.copy()
     scaler = StandardScaler()
     scaler.fit(desired_train[["continuous_0"]])
-    desired_train["continuous_0_standardization"] = scaler.transform(
-        desired_train[["continuous_0"]])
-    desired_valid["continuous_0_standardization"] = scaler.transform(
-        desired_valid[["continuous_0"]])
+    desired_train["continuous_0_standardization"] = scaler.transform(desired_train[["continuous_0"]])
+    desired_valid["continuous_0_standardization"] = scaler.transform(desired_valid[["continuous_0"]])
     train, valid = preprocessor.apply(train, valid, "target")
 
     pd.testing.assert_frame_equal(train, desired_train)
@@ -196,9 +188,11 @@ def test_apply_with_opt():
     preprocessor = preprocess.Preprocess(opt={"standardization": {}})
     # Tests with "todatetime" as the default preprocessing method and
     # "standardization" as an optional preprocessing method
-    preprocessor.set_preprocessors({
-        "todatetime": {},
-        })
+    preprocessor.set_preprocessors(
+        {
+            "todatetime": {},
+        }
+    )
     # Create time-series test data with the loaded state
     # ("date" column type is object)
     test_data_time_series = create_time_series_test_data(10, 2)
@@ -213,10 +207,8 @@ def test_apply_with_opt():
     desired_valid_raw = desired_valid.copy()
     scaler = StandardScaler()
     scaler.fit(desired_train[["continuous_0"]])
-    desired_train["continuous_0_standardization"] = scaler.transform(
-        desired_train[["continuous_0"]])
-    desired_valid["continuous_0_standardization"] = scaler.transform(
-        desired_valid[["continuous_0"]])
+    desired_train["continuous_0_standardization"] = scaler.transform(desired_train[["continuous_0"]])
+    desired_valid["continuous_0_standardization"] = scaler.transform(desired_valid[["continuous_0"]])
     train, valid = preprocessor.apply(train, valid, "target")
 
     pd.testing.assert_frame_equal(train, desired_train)
@@ -238,10 +230,7 @@ def test_todatetime():
     desired_valid["date"] = pd.to_datetime(desired_valid["date"])
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.todatetime(train,
-                                           valid,
-                                           "target",
-                                           False)
+    train, valid = preprocessor.todatetime(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -273,10 +262,7 @@ def test_dayofweek():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.dayofweek(train,
-                                          valid,
-                                          "target",
-                                          False)
+    train, valid = preprocessor.dayofweek(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -296,10 +282,7 @@ def test_dayofyear():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.dayofyear(train,
-                                          valid,
-                                          "target",
-                                          False)
+    train, valid = preprocessor.dayofyear(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -308,15 +291,14 @@ def test_dayofyear():
 def test_create_time_based_average_data():
     preprocessor = preprocess.Preprocess(opt={})
     start_date = datetime.datetime.today().date()
-    dates = pd.date_range(start=start_date, periods=5, freq='D')
+    dates = pd.date_range(start=start_date, periods=5, freq="D")
     test_data_time_series = create_non_time_series_test_data(20, 2)
     test_data_time_series["date"] = np.tile(dates, 4)
 
     desired = test_data_time_series.groupby("date")["target"].mean()
     desired = pd.DataFrame(desired).sort_index()
 
-    dataset = preprocessor.create_time_based_average_data(
-        test_data_time_series, "target")
+    dataset = preprocessor.create_time_based_average_data(test_data_time_series, "target")
 
     pd.testing.assert_frame_equal(dataset, desired)
 
@@ -325,8 +307,7 @@ def test_check_corr():
     preprocessor = preprocess.Preprocess(opt={})
     lag = 5
     autocorrelated_data = create_autocorrelated_data(100, 2, lag)
-    argmax_acf, argmax_pacf = preprocessor.check_corr(
-        autocorrelated_data["target"])
+    argmax_acf, argmax_pacf = preprocessor.check_corr(autocorrelated_data["target"])
 
     assert argmax_acf == lag
     assert argmax_pacf == lag
@@ -337,10 +318,7 @@ def test_lag():
     lag = 5
     autocorrelated_data = create_autocorrelated_data(100, 2, lag)
     train, valid = split_dataset(autocorrelated_data)
-    train, valid = preprocessor.lag(train,
-                                    valid,
-                                    "target",
-                                    False)
+    train, valid = preprocessor.lag(train, valid, "target", False)
 
     autocorrelated_data["lag"] = autocorrelated_data["target"].shift(lag)
     desired_train, desired_valid = split_dataset(autocorrelated_data)
@@ -354,10 +332,7 @@ def test_rolling():
     lag = 5
     autocorrelated_data = create_autocorrelated_data(100, 2, lag)
     train, valid = split_dataset(autocorrelated_data)
-    train, valid = preprocessor.rolling(train,
-                                        valid,
-                                        "target",
-                                        False)
+    train, valid = preprocessor.rolling(train, valid, "target", False)
 
     lags = autocorrelated_data["target"].shift(1)
     autocorrelated_data["rolling"] = lags.rolling(lag - 1).mean()
@@ -372,10 +347,7 @@ def test_expanding():
     lag = 5
     autocorrelated_data = create_autocorrelated_data(100, 2, lag)
     train, valid = split_dataset(autocorrelated_data)
-    train, valid = preprocessor.expanding(train,
-                                          valid,
-                                          "target",
-                                          False)
+    train, valid = preprocessor.expanding(train, valid, "target", False)
 
     lags = autocorrelated_data["target"].shift(1)
     autocorrelated_data["expanding"] = lags.expanding().mean()
@@ -391,16 +363,15 @@ def test_check_cardinality(caplog):
     test_data_time_series = create_time_series_test_data(10, 4)
     test_data_time_series.loc[:, "category_0"] = 0
     train, valid = split_dataset(test_data_time_series)
-    train, valid = preprocessor.check_cardinality(train,
-                                                  valid,
-                                                  "target",
-                                                  False)
+    train, valid = preprocessor.check_cardinality(train, valid, "target", False)
 
-    msg = ("The cardinality of the ['category_1'] column is very high.\n"
-           "    By using methods such as hierarchical grouping,\n"
-           "    the cardinality can be reduced,\n"
-           "    leading to an improvement in inference accuracy.")
-    logger_name = 'cyclic_boosting.tornado.core.preprocess'
+    msg = (
+        "The cardinality of the ['category_1'] column is very high.\n"
+        "    By using methods such as hierarchical grouping,\n"
+        "    the cardinality can be reduced,\n"
+        "    leading to an improvement in inference accuracy."
+    )
+    logger_name = "cyclic_boosting.tornado.core.preprocess"
     assert [(logger_name, WARNING, msg)] == caplog.record_tuples
 
 
@@ -410,15 +381,14 @@ def test_check_dtype(caplog):
     test_data_time_series = create_time_series_test_data(10, 4)
     test_data_time_series.loc[:, "continuous_0"] = 1.0
     train, valid = split_dataset(test_data_time_series)
-    train, valid = preprocessor.check_dtype(train,
-                                            valid,
-                                            "target",
-                                            False)
+    train, valid = preprocessor.check_dtype(train, valid, "target", False)
 
-    msg = ("Please check the columns ['continuous_0'].\n"
-           "    Ensure that categorical variables are of 'int' type\n"
-           "    and continuous variables are of 'float' type.")
-    logger_name = 'cyclic_boosting.tornado.core.preprocess'
+    msg = (
+        "Please check the columns ['continuous_0'].\n"
+        "    Ensure that categorical variables are of 'int' type\n"
+        "    and continuous variables are of 'float' type."
+    )
+    logger_name = "cyclic_boosting.tornado.core.preprocess"
     assert [(logger_name, WARNING, msg)] == caplog.record_tuples
 
 
@@ -428,16 +398,15 @@ def test_check_data_leakage(caplog):
     test_data_time_series = create_time_series_test_data(10, 4)
     test_data_time_series.loc[:, "continuous_0"] = test_data_time_series.loc[:, "target"]
     train, valid = split_dataset(test_data_time_series)
-    train, valid = preprocessor.check_data_leakage(train,
-                                                   valid,
-                                                   "target",
-                                                   False)
+    train, valid = preprocessor.check_data_leakage(train, valid, "target", False)
 
-    msg = ("Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
-           "This means that there is a very high association (multi-collinearity)\n"
-           "between the explanatory variables and the objective variable.\n"
-           "Confirmation is recommended due to the possibility of target leakage.")
-    logger_name = 'cyclic_boosting.tornado.core.preprocess'
+    msg = (
+        "Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
+        "This means that there is a very high association (multi-collinearity)\n"
+        "between the explanatory variables and the objective variable.\n"
+        "Confirmation is recommended due to the possibility of target leakage."
+    )
+    logger_name = "cyclic_boosting.tornado.core.preprocess"
     assert [(logger_name, WARNING, msg)] == caplog.record_tuples
 
 
@@ -450,17 +419,12 @@ def test_standardization():
     desired_valid = valid.copy()
     scaler = StandardScaler()
     scaler.fit(desired_train[["continuous_0"]])
-    desired_train["continuous_0_standardization"] = scaler.transform(
-        desired_train[["continuous_0"]])
-    desired_valid["continuous_0_standardization"] = scaler.transform(
-        desired_valid[["continuous_0"]])
+    desired_train["continuous_0_standardization"] = scaler.transform(desired_train[["continuous_0"]])
+    desired_valid["continuous_0_standardization"] = scaler.transform(desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.standardization(train,
-                                                valid,
-                                                "target",
-                                                False)
+    train, valid = preprocessor.standardization(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -475,17 +439,12 @@ def test_minmax():
     desired_valid = valid.copy()
     scaler = MinMaxScaler()
     scaler.fit(desired_train[["continuous_0"]])
-    desired_train["continuous_0_minmax"] = scaler.transform(
-        desired_train[["continuous_0"]])
-    desired_valid["continuous_0_minmax"] = scaler.transform(
-        desired_valid[["continuous_0"]])
+    desired_train["continuous_0_minmax"] = scaler.transform(desired_train[["continuous_0"]])
+    desired_valid["continuous_0_minmax"] = scaler.transform(desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.minmax(train,
-                                       valid,
-                                       "target",
-                                       False)
+    train, valid = preprocessor.minmax(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -500,17 +459,12 @@ def test_logarithmic():
     desired_valid = valid.copy()
     scaler = PowerTransformer()
     scaler.fit(desired_train[["continuous_0"]])
-    desired_train["continuous_0_logarithmic"] = scaler.transform(
-        desired_train[["continuous_0"]])
-    desired_valid["continuous_0_logarithmic"] = scaler.transform(
-        desired_valid[["continuous_0"]])
+    desired_train["continuous_0_logarithmic"] = scaler.transform(desired_train[["continuous_0"]])
+    desired_valid["continuous_0_logarithmic"] = scaler.transform(desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.logarithmic(train,
-                                            valid,
-                                            "target",
-                                            False)
+    train, valid = preprocessor.logarithmic(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -530,10 +484,7 @@ def test_clipping():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.clipping(train,
-                                         valid,
-                                         "target",
-                                         False)
+    train, valid = preprocessor.clipping(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -546,23 +497,14 @@ def test_binning():
 
     desired_train = train.copy()
     desired_valid = valid.copy()
-    scaler = KBinsDiscretizer(n_bins=4,
-                              encode="ordinal",
-                              strategy="uniform",
-                              random_state=0,
-                              subsample=200000)
+    scaler = KBinsDiscretizer(n_bins=4, encode="ordinal", strategy="uniform", random_state=0, subsample=200000)
     scaler.fit(desired_train[["continuous_0"]])
-    desired_train["continuous_0_binning"] = scaler.transform(
-        desired_train[["continuous_0"]])
-    desired_valid["continuous_0_binning"] = scaler.transform(
-        desired_valid[["continuous_0"]])
+    desired_train["continuous_0_binning"] = scaler.transform(desired_train[["continuous_0"]])
+    desired_valid["continuous_0_binning"] = scaler.transform(desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.binning(train,
-                                        valid,
-                                        "target",
-                                        False)
+    train, valid = preprocessor.binning(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -575,21 +517,14 @@ def test_rank():
 
     desired_train = train.copy()
     desired_valid = valid.copy()
-    scaler = QuantileTransformer(n_quantiles=8,
-                                 output_distribution="uniform",
-                                 random_state=0)
+    scaler = QuantileTransformer(n_quantiles=8, output_distribution="uniform", random_state=0)
     scaler.fit(desired_train[["continuous_0"]])
-    desired_train["continuous_0_rank"] = scaler.transform(
-        desired_train[["continuous_0"]])
-    desired_valid["continuous_0_rank"] = scaler.transform(
-        desired_valid[["continuous_0"]])
+    desired_train["continuous_0_rank"] = scaler.transform(desired_train[["continuous_0"]])
+    desired_valid["continuous_0_rank"] = scaler.transform(desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.rank(train,
-                                     valid,
-                                     "target",
-                                     False)
+    train, valid = preprocessor.rank(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -602,21 +537,14 @@ def test_rankgauss():
 
     desired_train = train.copy()
     desired_valid = valid.copy()
-    scaler = QuantileTransformer(n_quantiles=8,
-                                 output_distribution="normal",
-                                 random_state=0)
+    scaler = QuantileTransformer(n_quantiles=8, output_distribution="normal", random_state=0)
     scaler.fit(desired_train[["continuous_0"]])
-    desired_train["continuous_0_rankgauss"] = scaler.transform(
-        desired_train[["continuous_0"]])
-    desired_valid["continuous_0_rankgauss"] = scaler.transform(
-        desired_valid[["continuous_0"]])
+    desired_train["continuous_0_rankgauss"] = scaler.transform(desired_train[["continuous_0"]])
+    desired_valid["continuous_0_rankgauss"] = scaler.transform(desired_valid[["continuous_0"]])
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.rankgauss(train,
-                                          valid,
-                                          "target",
-                                          False)
+    train, valid = preprocessor.rankgauss(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -640,10 +568,7 @@ def test_onehot_encoding():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.onehot_encoding(train,
-                                                valid,
-                                                "target",
-                                                False)
+    train, valid = preprocessor.onehot_encoding(train, valid, "target", False)
     train = train.reindex(columns=desired_train.columns)
     valid = valid.reindex(columns=desired_valid.columns)
 
@@ -672,10 +597,7 @@ def test_label_encoding():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.label_encoding(train,
-                                               valid,
-                                               "target",
-                                               False)
+    train, valid = preprocessor.label_encoding(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -690,10 +612,8 @@ def test_feature_hashing():
 
     desired = test_data_categorical.copy()
     fh = FeatureHasher(n_features=10, input_type="string", dtype=np.int64)
-    hash_desired = fh.transform(
-        desired["cat"].astype(str).values[:, np.newaxis].tolist())
-    hash_desired = pd.DataFrame(hash_desired.todense(),
-                                columns=[f"cat_{i}" for i in range(10)])
+    hash_desired = fh.transform(desired["cat"].astype(str).values[:, np.newaxis].tolist())
+    hash_desired = pd.DataFrame(hash_desired.todense(), columns=[f"cat_{i}" for i in range(10)])
     desired = pd.concat([desired, hash_desired], axis=1)
     desired.drop(columns="cat", inplace=True)
     desired_train, desired_valid = split_dataset(desired)
@@ -702,10 +622,7 @@ def test_feature_hashing():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.feature_hashing(train,
-                                                valid,
-                                                "target",
-                                                False)
+    train, valid = preprocessor.feature_hashing(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -730,10 +647,7 @@ def test_frequency_encoding():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.frequency_encoding(train,
-                                                   valid,
-                                                   "target",
-                                                   False)
+    train, valid = preprocessor.frequency_encoding(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -761,10 +675,7 @@ def test_target_encoding():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.target_encoding(train,
-                                                valid,
-                                                "target",
-                                                False)
+    train, valid = preprocessor.target_encoding(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
@@ -779,29 +690,22 @@ def test_encode_category_dtype_error():
     train, valid = split_dataset(test_data_categorical)
 
     with pytest.raises(RuntimeError) as e:
-        train, valid = preprocessor.encode_category(train,
-                                                    valid,
-                                                    "target",
-                                                    False)
+        train, valid = preprocessor.encode_category(train, valid, "target", False)
 
-    msg = ("The dataset has differenct dtype in same col")
+    msg = "The dataset has differenct dtype in same col"
     assert str(e.value) == msg
 
 
 def test_encode_category_n_encoders_error():
     preprocessor = preprocess.Preprocess(opt={})
-    preprocessor.set_preprocessors({"encode_category": {"onehot_encoding": {},
-                                                        "label_encoding": {}}})
+    preprocessor.set_preprocessors({"encode_category": {"onehot_encoding": {}, "label_encoding": {}}})
     test_data_categorical = create_categorical_duplicated_data(100, 2)
     train, valid = split_dataset(test_data_categorical)
 
     with pytest.raises(RuntimeError) as e:
-        train, valid = preprocessor.encode_category(train,
-                                                    valid,
-                                                    "target",
-                                                    False)
+        train, valid = preprocessor.encode_category(train, valid, "target", False)
 
-    msg = ("Single encoding method should be used for categorical variables.")
+    msg = "Single encoding method should be used for categorical variables."
     assert str(e.value) == msg
 
 
@@ -812,7 +716,7 @@ def test_encode_category():
     train, valid = split_dataset(test_data_categorical)
 
     desired = test_data_categorical.copy()
-    values = pd.Series([0, 1, 2, 3], index=['aa', 'ab', 'ba', 'bb'])
+    values = pd.Series([0, 1, 2, 3], index=["aa", "ab", "ba", "bb"])
     desired["cat_label_encoding"] = desired["cat"].map(values)
     desired.drop(columns="cat", inplace=True)
     desired_train, desired_valid = split_dataset(desired)
@@ -821,10 +725,7 @@ def test_encode_category():
 
     preprocessor.train = train.copy()
     preprocessor.valid = valid.copy()
-    train, valid = preprocessor.encode_category(train,
-                                                valid,
-                                                "target",
-                                                False)
+    train, valid = preprocessor.encode_category(train, valid, "target", False)
 
     pd.testing.assert_frame_equal(train, desired_train)
     pd.testing.assert_frame_equal(valid, desired_valid)
