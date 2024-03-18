@@ -22,6 +22,7 @@ from sklearn.preprocessing import (
     StandardScaler,
     TargetEncoder,
 )
+import warnings
 
 _logger = logging.getLogger(__name__)
 
@@ -734,17 +735,19 @@ class Preprocess():
         if not params_exist:
             dataset = pd.concat([train, valid])
             dataset = dataset.select_dtypes(include=["int", "float"])
+            dataset = dataset.dropna(axis=1)  # ignore columns included float with Nan
 
-            vif = pd.DataFrame(index=dataset.columns)
-            vif["VIF Factor"] = [variance_inflation_factor(dataset.values, i)
-                                 for i in range(dataset.shape[1])]
-            is_target_leaked = vif.loc[target, "VIF Factor"] == np.inf
+            with warnings.catch_warnings(record=True) as w:
+                vif = pd.DataFrame(index=dataset.columns)
+                vif["VIF Factor"] = [variance_inflation_factor(dataset.values, i)
+                                     for i in range(dataset.shape[1])]
+                is_target_leaked = vif.loc[target, "VIF Factor"] == np.inf
 
-            if is_target_leaked:
-                _logger.warning("Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
-                                "This means that there is a very high association (multi-collinearity)\n"
-                                "between the explanatory variables and the objective variable.\n"
-                                "Confirmation is recommended due to the possibility of target leakage.")
+                if is_target_leaked and len(w) > 0:
+                    _logger.warning("Variance Inflation Factor (VIF) of the objective variable is infinite.\n"
+                                    "This means that there is a very high association (multi-collinearity)\n"
+                                    "between the explanatory variables and the objective variable.\n"
+                                    "Confirmation is recommended due to the possibility of target leakage.")
 
             self.set_preprocessors({"check_data_leakage": {}})
 
