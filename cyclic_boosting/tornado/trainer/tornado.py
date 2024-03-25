@@ -295,11 +295,11 @@ class InteractionSearchModel(TornadoBase):
         output : str
             Output type. 'pmf' or 'func'. Default is 'pmf'.
 
-        range : lsit
+        range : list
             List containing the lower and upper bounds of the probability
-            distribution. If None, the lower bound is the minimum of the 0.01
+            distribution. If None, the lower bound is the minimum of the 0.05
             quantile of all samples, and the upper bound is the maximum of the
-            0.99 quantile of all samples. Default is None.
+            0.95 quantile of all samples. Default is None.
                 For example: [100, 200]
 
         Returns
@@ -616,11 +616,11 @@ class ForwardSelectionModel(TornadoBase):
         output : str
             Output type. 'pmf' or 'func'. Default is 'pmf'.
 
-        range : lsit
+        range : list
             List containing the lower and upper bounds of the probability
-            distribution. If None, the lower bound is the minimum of the 0.01
+            distribution. If None, the lower bound is the minimum of the 0.05
             quantile of all samples, and the upper bound is the maximum of the
-            0.99 quantile of all samples. Default is None.
+            0.95 quantile of all samples. Default is None.
                 For example: [100, 200]
 
         Returns
@@ -953,11 +953,11 @@ class PriorPredInteractionSearchModel(TornadoBase):
         output : str
             Output type. 'pmf' or 'func'. Default is 'pmf'.
 
-        range : lsit
+        range : list
             List containing the lower and upper bounds of the probability
-            distribution. If None, the lower bound is the minimum of the 0.01
+            distribution. If None, the lower bound is the minimum of the 0.05
             quantile of all samples, and the upper bound is the maximum of the
-            0.99 quantile of all samples. Default is None.
+            0.95 quantile of all samples. Default is None.
                 For example: [100, 200]
 
         Returns
@@ -1134,13 +1134,13 @@ class QPDInteractionSearchModel(TornadoBase):
         train_set, valid_set = self.data_deliverer.generate_trainset(
             target, test_size, seed, is_time_series=mgr_attr["is_time_series"]
         )
+        self.manager.init(train_set, target)
 
         stage = "\n=== [{0}] {1} ===\n"
         status = "START"
         _logger.info(stage.format(status, mgr_attr["first_round"]))
 
         # prior prediction for quick interaction search
-        self.manager.init(train_set, target)
         base_model = self.tornado(
             target,
             valid_set,
@@ -1194,12 +1194,14 @@ class QPDInteractionSearchModel(TornadoBase):
         _logger.info(stage.format(status, mgr_attr["second_round"]))
 
         # model setting for QPD estimation
-        _logger.info(status.format("QPD estimator training"))
         base = [x for x in init_model_attr["feature_properties"].keys()]
         interaction = logger.get_attr()["valid_interactions"]
         features = base + interaction
 
         # best quantile models for QPD
+        status = "START"
+        _logger.info(stage.format(status, "QPD estimator training"))
+
         X_train = mgr_attr["init_model_attr"]["X"]
         model_params = {
             "feature_properties": init_model_attr["feature_properties"],
@@ -1214,6 +1216,10 @@ class QPDInteractionSearchModel(TornadoBase):
             est = self.manager.build()
             est_quantiles.append(est)
 
+        _logger.info("Trained 3 quantile estimators\n")
+        status = "END"
+        _logger.info(stage.format(status, "QPD estimator training"))
+
         X = copy.deepcopy(mgr_attr["init_model_attr"]["X"])
         y = copy.deepcopy(mgr_attr["init_model_attr"]["y"])
         self.est_qpd = QPD_RegressorChain(
@@ -1224,7 +1230,7 @@ class QPDInteractionSearchModel(TornadoBase):
             l=self.lower,
             u=self.upper,
         )
-        _ = self.est_qpd.fit(X.copy(), y)
+        _ = self.est_qpd.fit(X, y)
 
     def tornado(self, target, valid_data, logger, evaluator, verbose, args) -> Pipeline:
         """Recursive learning in Tornado.
@@ -1332,11 +1338,11 @@ class QPDInteractionSearchModel(TornadoBase):
         output : str
             Output type. 'pdf' or 'func'. Default is 'pdf'.
 
-        range : lsit
+        range : list
             List containing the lower and upper bounds of the probability
-            distribution. If None, the lower bound is the minimum of the 0.01
+            distribution. If None, the lower bound is the minimum of the 0.05
             quantile of all samples, and the upper bound is the maximum of the
-            0.99 quantile of all samples. Default is None.
+            0.95 quantile of all samples. Default is None.
                 For example: [100, 200]
 
         Returns
@@ -1358,23 +1364,16 @@ class QPDInteractionSearchModel(TornadoBase):
         elif output == "pdf":
             from findiff import FinDiff
 
-            min_xs = list()
-            max_xs = list()
             if range is None:
-                for dist in qpd:
-                    min_xs.append(dist.ppf(0.05))
-                    max_xs.append(dist.ppf(0.95))
-                min_x = min(min_xs)
-                max_x = max(max_xs)
+                min_x = min(qpd.ppf(0.05))
+                max_x = max(qpd.ppf(0.95))
             else:
                 min_x = range[0]
                 max_x = range[1]
-            x = np.linspace(start=min_x, stop=max_x, num=100)
+            x = np.linspace(start=min_x, stop=max_x, num=int(1e6))
             dx = x[1] - x[0]
-            individual_pdfs = list()
-            derivative_func = FinDiff(0, dx, 1)
-            for dist in qpd:
-                cdf_value = dist.cdf(x)
-                individual_pdfs.append(derivative_func(cdf_value))
+            derivative = FinDiff(1, dx, 1)
+            cdf_value = qpd.cdf(x)
+            individual_pdf = derivative(cdf_value.T)
 
-            return pd.DataFrame(individual_pdfs, columns=x)
+            return pd.DataFrame(individual_pdf, columns=x)

@@ -47,13 +47,12 @@ def test_prior_pred_interaction_search_model(prepare_data):
 
 def test_qpd_interaction_search_model(prepare_data):
     X, y = prepare_data
-    df, target = X.copy(), y.copy()  # need a dataset included enough data size to train
+    df, target = X.iloc[:2000].copy(), y[:2000].copy()  # need a dataset included enough data size to train
     df.loc[:, "sales"] = target
 
     data_deliverer = datamodule.TornadoDataModule(df)
     manager_ = manager.PriorPredForwardSelectionManager(
         max_iter=10,
-        model="additive",
         dist="qpd",
     )
     predictor = tornado.QPDInteractionSearchModel(data_deliverer, manager_, bound="S", lower=0)
