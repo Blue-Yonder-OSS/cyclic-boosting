@@ -465,9 +465,12 @@ class Preprocess:
             >>> lag_size
             5
         """
+
         def calc_lag(data, lag_size) -> pd.Series:
             if train.shape[0] < lag_size:
-                raise RuntimeError(f"The provided data shape is {data.shape}. More than {lag_size} records are required.")
+                raise RuntimeError(
+                    f"The provided data shape is {data.shape}. More than {lag_size} records are required."
+                )
             lags = time_based_average_data.shift(lag_size)
             return lags
 
@@ -534,10 +537,13 @@ class Preprocess:
             >>> best_lag
             10
         """
+
         def calc_rolling(data, lag_start, lag_end) -> pd.Series:
             window_width = lag_start - lag_end
             if data.shape[0] < lag_end:
-                raise RuntimeError(f"The provided data shape is {data.shape}. More than {lag_end} records are required.")
+                raise RuntimeError(
+                    f"The provided data shape is {data.shape}. More than {lag_end} records are required."
+                )
             lags = time_based_average_data.shift(lag_end)
             rollings = lags.rolling(window_width).mean()
             return rollings
@@ -610,9 +616,12 @@ class Preprocess:
             >>> lag_size
             5
         """
+
         def calc_expanding(data, lag_end) -> pd.Series:
             if data.shape[0] < lag_end:
-                raise RuntimeError(f"The provided data shape is {data.shape}. More than {lag_end} records are required.")
+                raise RuntimeError(
+                    f"The provided data shape is {data.shape}. More than {lag_end} records are required."
+                )
             lags = time_based_average_data.shift(lag_end)
             expandings = lags.expanding().mean()
             return expandings
