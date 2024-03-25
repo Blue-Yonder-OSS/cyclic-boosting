@@ -1,6 +1,7 @@
 """Preparation (handling preprocessing) of data for the Tornado module."""
 
 import logging
+import os
 import pickle
 from itertools import combinations
 from typing import Tuple
@@ -144,8 +145,8 @@ class TornadoDataModule:
             if isinstance(self.src, str):
                 self.log_path = self.src[: self.src.rfind(".")] + ".pkl"
             else:
-                _logger.info("preprocessing log is created at current working directory")
-                self.log_path = "./preprocessing.pkl"
+                _logger.info(f"preprocessing log is created at {os.getcwd()}\n")
+                self.log_path = os.path.join(os.getcwd(), "preprocessing.pkl")
             self.preprocessors = {}
             self.features = []
 
