@@ -465,17 +465,24 @@ class Preprocess:
             >>> lag_size
             5
         """
+        def calc_lag(data, lag_size) -> pd.Series:
+            if train.shape[0] < lag_size:
+                raise RuntimeError(f"The provided data shape is {data.shape}. More than {lag_size} records are required.")
+            lags = time_based_average_data.shift(lag_size)
+            return lags
+
+        dataset = pd.concat([train, valid])
+        time_based_average_data = self.create_time_based_average_data(dataset, target)
         if params_exist:
-            lags = self.get_preprocessors()["lag"]["lags"]
+            lag_size = self.get_preprocessors()["lag"]["lag_size"]
+            lags = calc_lag(time_based_average_data, lag_size)
         else:
-            dataset = pd.concat([train, valid])
-            time_based_average_data = self.create_time_based_average_data(dataset, target)
             opt = self.get_opt("lag")
             opt.setdefault("lag_size", self.check_corr(time_based_average_data)[1])
             lag_size = opt["lag_size"]
             _logger.info(f"lag_size = {lag_size}")
-            lags = time_based_average_data.shift(lag_size)
-            self.set_preprocessors({"lag": {"lags": lags}})
+            self.set_preprocessors({"lag": {"lag_size": lag_size}})
+            lags = calc_lag(time_based_average_data, lag_size)
 
         train["lag"] = train["date"].map(lags[target])
         valid["lag"] = valid["date"].map(lags[target])
@@ -527,20 +534,25 @@ class Preprocess:
             >>> best_lag
             10
         """
+        def calc_rolling(data, lag_start, lag_end) -> pd.Series:
+            window_width = lag_start - lag_end
+            if data.shape[0] < lag_end:
+                raise RuntimeError(f"The provided data shape is {data.shape}. More than {lag_end} records are required.")
+            lags = time_based_average_data.shift(lag_end)
+            rollings = lags.rolling(window_width).mean()
+            return rollings
+
+        dataset = pd.concat([train, valid])
+        time_based_average_data = self.create_time_based_average_data(dataset, target)
+
         if params_exist:
-            dataset = pd.concat([train, valid])
-            time_based_average_data = self.create_time_based_average_data(dataset, target)
-            best_lag, lag_size = self.get_preprocessors()["rolling"]["rollings"]
+            best_lag, lag_size = self.get_preprocessors()["rolling"].values()
             if best_lag > lag_size:
-                lags = time_based_average_data.shift(lag_size)
-                rollings = lags.rolling(best_lag - lag_size).mean()
+                rollings = calc_rolling(time_based_average_data, best_lag, lag_size)
             else:
                 return train, valid
 
         else:
-            dataset = pd.concat([train, valid])
-            time_based_average_data = self.create_time_based_average_data(dataset, target)
-
             opt = self.get_opt("rolling")
             opt.setdefault("lag_size", 1)
             opt.setdefault("best_lag", self.check_corr(time_based_average_data)[0])
@@ -548,11 +560,10 @@ class Preprocess:
             lag_size = opt["lag_size"]
             best_lag = opt["best_lag"]
             _logger.info(f"best_lag = {best_lag}")
-            self.set_preprocessors({"rolling": {"rollings": [best_lag, lag_size]}})
+            self.set_preprocessors({"rolling": {"best_lag": best_lag, "lag_size": lag_size}})
 
             if best_lag > lag_size:
-                lags = time_based_average_data.shift(lag_size)
-                rollings = lags.rolling(best_lag - lag_size).mean()
+                rollings = calc_rolling(time_based_average_data, best_lag, lag_size)
             else:
                 return train, valid
 
@@ -599,20 +610,27 @@ class Preprocess:
             >>> lag_size
             5
         """
+        def calc_expanding(data, lag_end) -> pd.Series:
+            if data.shape[0] < lag_end:
+                raise RuntimeError(f"The provided data shape is {data.shape}. More than {lag_end} records are required.")
+            lags = time_based_average_data.shift(lag_end)
+            expandings = lags.expanding().mean()
+            return expandings
+
+        dataset = pd.concat([train, valid])
+        time_based_average_data = self.create_time_based_average_data(dataset, target)
+
         if params_exist:
-            expandings = self.get_preprocessors()["expanding"]["expandings"]
+            lag_size = self.get_preprocessors()["expanding"]["lag_size"]
+            expandings = calc_expanding(time_based_average_data, lag_size)
 
         else:
-            dataset = pd.concat([train, valid])
-            time_based_average_data = self.create_time_based_average_data(dataset, target)
-
             opt = self.get_opt("expanding")
             opt.setdefault("lag_size", 1)
 
             lag_size = opt["lag_size"]
-            lags = time_based_average_data.shift(lag_size)
-            expandings = lags.expanding().mean()
-            self.set_preprocessors({"expanding": {"expandings": expandings}})
+            self.set_preprocessors({"expanding": {"lag_size": lag_size}})
+            expandings = calc_expanding(time_based_average_data, lag_size)
 
         train["expanding"] = train["date"].map(expandings[target])
         valid["expanding"] = valid["date"].map(expandings[target])
