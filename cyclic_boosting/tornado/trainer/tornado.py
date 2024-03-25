@@ -37,29 +37,25 @@ class TornadoBase:
 
     Attributes
     ----------
-    data_deliverer : TornadoDataModule
-        A class that controls data preparation.
-
     manager : One of the classes in the manager.py
-        Base class is :class:`TornadoManager`
+        Base class is :class:`TornadoManager`.
     """
 
-    def __init__(self, DataModule, TornadoManager):
-        self.data_deliverer = DataModule
+    def __init__(self, TornadoManager):
         self.manager = TornadoManager
 
     @abc.abstractmethod
     def fit(
         self,
         target,
-        test_size=0.2,
-        seed=0,
+        train,
+        validation,
         save_dir="./models",
         criterion="COD",
         verbose=True,
     ) -> None:
         """Abstract method for model fitting."""
-        # write main fitting steps using Estimator, Evaluator, Logger, DataModule
+        # write main fitting steps using Estimator, Evaluator, Logger
         pass
 
     @abc.abstractmethod
@@ -86,29 +82,26 @@ class InteractionSearchModel(TornadoBase):
 
     Attributes
     ----------
-    data_deliverer : TornadoDataModule
-        Class that controls data preparation.
-
     manager : One of the manager classes
-        Class with TornadoManager as base class
+        Class with TornadoManager as base class.
 
     estimator : sklearn.pipeline.Pipeline
-        Pipeline with steps including binning and CB
+        Pipeline with steps including binning and CB.
 
     nbinomc : sklearn.pipeline.Pipeline
         Estimator for parameter c of the negative binomial distribution.
     """
 
-    def __init__(self, DataModule, TornadoManager):
-        super().__init__(DataModule, TornadoManager)
+    def __init__(self, TornadoManager):
+        super().__init__(TornadoManager)
         self.estimator = None
         self.nbinomc = None
 
     def fit(
         self,
         target,
-        test_size=0.2,
-        seed=0,
+        train,
+        validation,
         save_dir="./models",
         criterion="COD",
         verbose=True,
@@ -120,13 +113,13 @@ class InteractionSearchModel(TornadoBase):
         Parameters
         ----------
         target : str
-            Name of the target valiable
+            Name of the target valiable.
 
-        test_size : float
-            Ratio of test data in the whole dataset. Default is 0.2.
+        train : pandas.DataFrame
+            Train set.
 
-        seed : int
-            Random seed. Default is 0.
+        validation : pandas.DataFrame
+            Validation set.
 
         save_dir : str
             Path of the directory where the model will be stored. Default is
@@ -146,22 +139,15 @@ class InteractionSearchModel(TornadoBase):
         training_round = ["SKIP", mgr_attr["second_round"]]
         logger = ForwardLogger(criterion, save_dir, training_round)
 
-        train_set, valid_set = self.data_deliverer.generate_trainset(
-            target,
-            test_size,
-            seed,
-            is_time_series=mgr_attr["is_time_series"],
-        )
-
         # recursive interaction search
-        self.manager.init(train_set, target)
+        self.manager.init(train, target)
         stage = "\n=== [{0}] {1} ===\n"
         status = "START"
         _logger.info(stage.format(status, mgr_attr["second_round"]))
 
         logger_attr = self.tornado(
             target,
-            valid_set,
+            validation,
             logger,
             evaluator,
             verbose,
@@ -200,7 +186,7 @@ class InteractionSearchModel(TornadoBase):
 
             self.manager.set_attr({"dist": "nbinom"})
 
-    def tornado(self, target, valid_data, logger, evaluator, verbose) -> Pipeline:
+    def tornado(self, target, validation, logger, evaluator, verbose) -> Pipeline:
         """Recursive learning in Tornado.
 
         Recursive learning is performed by changing the explanatory variables
@@ -211,13 +197,13 @@ class InteractionSearchModel(TornadoBase):
         Parameters
         ----------
         target : str
-            Name of the target valiable
+            Name of the target valiable.
 
-        valid_data : pandas.DataFrame
-            Validation data
+        validation : pandas.DataFrame
+            Validation set.
 
         logger : logger.Logger
-            Instances to manage learning logs
+            Instances to manage learning logs.
 
         evaluator : evaluator.Evaluator
             nstance to evaluate models
@@ -239,8 +225,8 @@ class InteractionSearchModel(TornadoBase):
             _ = estimator.fit(X, y)
 
             # validation
-            y_valid = np.asarray(valid_data[target])
-            X_valid = valid_data.drop(target, axis=1)
+            y_valid = np.asarray(validation[target])
+            X_valid = validation.drop(target, axis=1)
             y_pred = estimator.predict(X_valid)
 
             # log
@@ -263,14 +249,13 @@ class InteractionSearchModel(TornadoBase):
         Parameter
         ---------
         X : pandas.DataFrame
-            Dataset to predict
+            Dataset to predict.
 
         Returns
         -------
         numpy.ndarray
-            Predicted values
+            Predicted values.
         """
-        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X)
 
         return y_pred
@@ -290,7 +275,7 @@ class InteractionSearchModel(TornadoBase):
         Parameter
         ---------
         X : pandas.DataFrame
-            Dataset to predict
+            Dataset to predict.
 
         output : str
             Output type. 'pmf' or 'func'. Default is 'pmf'.
@@ -312,7 +297,6 @@ class InteractionSearchModel(TornadoBase):
             pandas.DataFrame
                 Predicted probability distribution for each sample.
         """
-        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X.copy())
 
         mgr_attr = self.manager.get_attr()
@@ -372,29 +356,26 @@ class ForwardSelectionModel(TornadoBase):
 
     Attributes
     ----------
-    data_deliverer : TornadoDataModule
-        Class that controls data preparation.
-
     manager : One of the manager classes
-        Class with TornadoManager as base class
+        Class with TornadoManager as base class.
 
     estimator : sklearn.pipeline.Pipeline
-        Pipeline with steps including binning and CB
+        Pipeline with steps including binning and CB.
 
     nbinomc : sklearn.pipeline.Pipeline
         Estimator for parameter c of the negative binomial distribution.
     """
 
-    def __init__(self, DataModule, TornadoManager):
-        super().__init__(DataModule, TornadoManager)
+    def __init__(self, TornadoManager):
+        super().__init__(TornadoManager)
         self.estimator = None
         self.nbinomc = None
 
     def fit(
         self,
         target,
-        test_size=0.2,
-        seed=0,
+        train,
+        validation,
         save_dir="./models",
         criterion="COD",
         verbose=True,
@@ -409,13 +390,13 @@ class ForwardSelectionModel(TornadoBase):
         Parameters
         ----------
         target : str
-            Name of the target valiable
+            Name of the target valiable.
 
-        test_size : float
-            Ratio of test data in the whole dataset. Default is 0.2.
+        train : pandas.DataFrame
+            Train set.
 
-        seed : int
-            Random seed. Default is 0.
+        validation : pandas.DataFrame
+            Validation set.
 
         save_dir : str
             Path of the directory where the model will be stored. Default is
@@ -435,23 +416,16 @@ class ForwardSelectionModel(TornadoBase):
         training_round = [mgr_attr["first_round"], mgr_attr["second_round"]]
         logger = ForwardLogger(criterion, save_dir, training_round)
 
-        train_set, valid_set = self.data_deliverer.generate_trainset(
-            target,
-            test_size,
-            seed,
-            is_time_series=mgr_attr["is_time_series"],
-        )
-
         # 1. rucursive single variable regression
         # This step is to find valid features
-        self.manager.init(train_set, target)
+        self.manager.init(train, target)
         stage = "\n=== [{0}] {1} ===\n"
         status = "START"
         _logger.info(stage.format(status, mgr_attr["first_round"]))
 
         logger_attr = self.tornado(
             target,
-            valid_set,
+            validation,
             logger,
             evaluator,
             verbose,
@@ -480,7 +454,7 @@ class ForwardSelectionModel(TornadoBase):
 
         logger_attr = self.tornado(
             target,
-            valid_set,
+            validation,
             logger,
             evaluator,
             verbose,
@@ -520,7 +494,7 @@ class ForwardSelectionModel(TornadoBase):
 
             self.manager.set_attr({"dist": "nbinom"})
 
-    def tornado(self, target, valid_data, logger, evaluator, verbose) -> Pipeline:
+    def tornado(self, target, validation, logger, evaluator, verbose) -> Pipeline:
         """Recursive learning in Tornado.
 
         Recursive learning is performed by changing the explanatory variables
@@ -531,16 +505,16 @@ class ForwardSelectionModel(TornadoBase):
         Parameters
         ----------
         target : str
-            Name of the target valiable
+            Name of the target valiable.
 
-        valid_data : pandas.DataFrame
-            Validation data
+        validation : pandas.DataFrame
+            Validation set.
 
         logger : logger.Logger
-            Instances to manage learning logs
+            Instances to manage learning logs.
 
         evaluator : evaluator.Evaluator
-            nstance to evaluate models
+            nstance to evaluate models.
 
         verbose : bool
             Whether to display standard output or not.
@@ -559,8 +533,8 @@ class ForwardSelectionModel(TornadoBase):
             _ = estimator.fit(X, y)
 
             # validation
-            y_valid = np.asarray(valid_data[target])
-            X_valid = valid_data.drop(target, axis=1)
+            y_valid = np.asarray(validation[target])
+            X_valid = validation.drop(target, axis=1)
             y_pred = estimator.predict(X_valid)
             evaluator.eval(y_valid, y_pred, estimator, verbose)
 
@@ -584,14 +558,13 @@ class ForwardSelectionModel(TornadoBase):
         Parameter
         ---------
         X : pandas.DataFrame
-            Dataset to predict
+            Dataset to predict.
 
         Returns
         -------
         numpy.ndarray
-            Predicted values
+            Predicted values.
         """
-        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X)
 
         return y_pred
@@ -611,7 +584,7 @@ class ForwardSelectionModel(TornadoBase):
         Parameter
         ---------
         X : pandas.DataFrame
-            Dataset to predict
+            Dataset to predict.
 
         output : str
             Output type. 'pmf' or 'func'. Default is 'pmf'.
@@ -633,7 +606,6 @@ class ForwardSelectionModel(TornadoBase):
             pandas.DataFrame
                 Predicted probability distribution for each sample.
         """
-        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X.copy())
 
         mgr_attr = self.manager.get_attr()
@@ -697,29 +669,26 @@ class PriorPredInteractionSearchModel(TornadoBase):
 
     Attributes
     ----------
-    data_deliverer : TornadoDataModule
-        Class that controls data preparation.
-
     manager : One of the manager classes
-        Class with TornadoManager as base class
+        Class with TornadoManager as base class.
 
     estimator : sklearn.pipeline.Pipeline
-        Pipeline with steps including binning and CB
+        Pipeline with steps including binning and CB.
 
     nbinomc : sklearn.pipeline.Pipeline
         Estimator for parameter c of the negative binomial distribution.
     """
 
-    def __init__(self, DataModule, TornadoManager):
-        super().__init__(DataModule, TornadoManager)
+    def __init__(self, TornadoManager):
+        super().__init__(TornadoManager)
         self.estimator = None
         self.nbinomc = None
 
     def fit(
         self,
         target,
-        test_size=0.2,
-        seed=0,
+        train,
+        validation,
         save_dir="./models",
         criterion="COD",
         verbose=True,
@@ -736,13 +705,13 @@ class PriorPredInteractionSearchModel(TornadoBase):
         Parameters
         ----------
         target : str
-            Name of the target valiable
+            Name of the target valiable.
 
-        test_size : float
-            Ratio of test data in the whole dataset. Default is 0.2.
+        train : pandas.DataFrame
+            Train set.
 
-        seed : int
-            Random seed. Default is 0.
+        validation : pandas.DataFrame
+            Validation set.
 
         save_dir : str
             Path of the directory where the model will be stored. Default is
@@ -763,19 +732,15 @@ class PriorPredInteractionSearchModel(TornadoBase):
         training_round = [mgr_attr["first_round"], mgr_attr["second_round"]]
         logger = PriorPredForwardLogger(criterion, save_dir, training_round)
 
-        train_set, valid_set = self.data_deliverer.generate_trainset(
-            target, test_size, seed, is_time_series=mgr_attr["is_time_series"]
-        )
-
         # prior prediction for quick interaction search
-        self.manager.init(train_set, target)
+        self.manager.init(train, target)
         stage = "\n=== [{0}] {1} ===\n"
         status = "START"
         _logger.info(stage.format(status, mgr_attr["first_round"]))
 
         base_model = self.tornado(
             target,
-            valid_set,
+            validation,
             logger,
             evaluator,
             verbose,
@@ -783,13 +748,13 @@ class PriorPredInteractionSearchModel(TornadoBase):
 
         X_train_init = mgr_attr["init_model_attr"]["X"].copy()  # use at final step
         X_train = X_train_init.copy()
-        X_valid = valid_set.drop(target, axis=1)
+        X_valid = validation.drop(target, axis=1)
         pred_train = base_model.predict(X_train.copy())
         pred_valid = base_model.predict(X_valid.copy())
 
         col = "prior_pred"
         X_train[col] = pred_train
-        valid_set[col] = pred_valid
+        validation[col] = pred_valid
         init_model_attr = mgr_attr["init_model_attr"]
         init_model_attr["X"] = X_train.copy()
         model_params = {k: v for k, v in mgr_attr["model_params"].items()}
@@ -814,7 +779,7 @@ class PriorPredInteractionSearchModel(TornadoBase):
 
         _ = self.tornado(
             target,
-            valid_set,
+            validation,
             logger,
             evaluator,
             verbose,
@@ -865,7 +830,7 @@ class PriorPredInteractionSearchModel(TornadoBase):
 
             self.manager.set_attr({"dist": "nbinom"})
 
-    def tornado(self, target, valid_data, logger, evaluator, verbose) -> Pipeline:
+    def tornado(self, target, validation, logger, evaluator, verbose) -> Pipeline:
         """Recursive learning in Tornado.
 
         Recursive learning is performed by changing the explanatory variables
@@ -876,16 +841,16 @@ class PriorPredInteractionSearchModel(TornadoBase):
         Parameters
         ----------
         target : str
-            Name of the target valiable
+            Name of the target valiable.
 
-        valid_data : pandas.DataFrame
-            Validation data
+        validation : pandas.DataFrame
+            Validation data.
 
         logger : logger.Logger
-            Instances to manage learning logs
+            Instances to manage learning logs.
 
         evaluator : evaluator.Evaluator
-            nstance to evaluate models
+            nstance to evaluate models.
 
         verbose : bool
             Whether to display standard output or not.
@@ -902,8 +867,8 @@ class PriorPredInteractionSearchModel(TornadoBase):
             y = copy.deepcopy(self.manager.y)
             _ = estimator.fit(X, y)
 
-            y_valid = np.asarray(valid_data[target])
-            X_valid = valid_data.loc[:, X.columns]
+            y_valid = np.asarray(validation[target])
+            X_valid = validation.loc[:, X.columns]
             y_pred = estimator.predict(X_valid)
 
             eval_history = evaluator.eval(y_valid, y_pred, estimator, verbose=False)
@@ -921,14 +886,13 @@ class PriorPredInteractionSearchModel(TornadoBase):
         Parameter
         ---------
         X : pandas.DataFrame
-            Dataset to predict
+            Dataset to predict.
 
         Returns
         -------
         numpy.ndarray
-            Predicted values
+            Predicted values.
         """
-        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X)
 
         return y_pred
@@ -948,7 +912,7 @@ class PriorPredInteractionSearchModel(TornadoBase):
         Parameter
         ---------
         X : pandas.DataFrame
-            Dataset to predict
+            Dataset to predict.
 
         output : str
             Output type. 'pmf' or 'func'. Default is 'pmf'.
@@ -970,7 +934,6 @@ class PriorPredInteractionSearchModel(TornadoBase):
             pandas.DataFrame
                 Predicted probability distribution for each sample.
         """
-        X = self.data_deliverer.generate_testset(X)
         y_pred = self.estimator.predict(X.copy())
 
         mgr_attr = self.manager.get_attr()
@@ -1035,11 +998,8 @@ class QPDInteractionSearchModel(TornadoBase):
 
     Attributes
     ----------
-    data_deliverer : TornadoDataModule
-        Class that controls data preparation.
-
     manager : One of the manager classes
-        Class with TornadoManager as base class
+        Class with TornadoManager as base class.
 
     quantile : float
         Lower quantile QPD symmetric-percentile triplet (SPT). Defaoult is 0.1.
@@ -1057,22 +1017,21 @@ class QPDInteractionSearchModel(TornadoBase):
         is 1.0.
 
     loss : float
-        Loss of learning
+        Loss of learning.
 
     est_qpd : QPD_RegressorChain
-        Pipeline with steps including binning and CB
+        Pipeline with steps including binning and CB.
     """
 
     def __init__(
         self,
-        DataModule,
         TornadoManager,
         quantile=0.1,
         bound="S",
         lower=0.0,
         upper=1.0,
     ):
-        super().__init__(DataModule, TornadoManager)
+        super().__init__(TornadoManager)
         self.quantile = [quantile, 0.5, 1 - quantile]
         self.bound = bound
         self.lower = lower
@@ -1086,8 +1045,8 @@ class QPDInteractionSearchModel(TornadoBase):
     def fit(
         self,
         target,
-        test_size=0.2,
-        seed=0,
+        train,
+        validation,
         save_dir="./models",
         criterion="PINBALL",
         verbose=True,
@@ -1104,13 +1063,13 @@ class QPDInteractionSearchModel(TornadoBase):
         Parameters
         ----------
         target : str
-            Name of the target valiable
+            Name of the target valiable.
 
-        test_size : float
-            Ratio of test data in the whole dataset. Default is 0.2.
+        train : pandas.DataFrame
+            Train set.
 
-        seed : int
-            Random seed. Default is 0.
+        validation : pandas.DataFrame
+            Validation set.
 
         save_dir : str
             Path of the directory where the model will be stored. Default is
@@ -1131,10 +1090,7 @@ class QPDInteractionSearchModel(TornadoBase):
         training_round = [mgr_attr["first_round"], mgr_attr["second_round"]]
         logger = PriorPredForwardLogger(criterion, save_dir, training_round)
 
-        train_set, valid_set = self.data_deliverer.generate_trainset(
-            target, test_size, seed, is_time_series=mgr_attr["is_time_series"]
-        )
-        self.manager.init(train_set, target)
+        self.manager.init(train, target)
 
         stage = "\n=== [{0}] {1} ===\n"
         status = "START"
@@ -1143,7 +1099,7 @@ class QPDInteractionSearchModel(TornadoBase):
         # prior prediction for quick interaction search
         base_model = self.tornado(
             target,
-            valid_set,
+            validation,
             logger,
             evaluator,
             verbose,
@@ -1151,13 +1107,13 @@ class QPDInteractionSearchModel(TornadoBase):
         )
 
         X_train = mgr_attr["init_model_attr"]["X"].copy()
-        X_valid = valid_set.drop(target, axis=1)
+        X_valid = validation.drop(target, axis=1)
         pred_train = base_model.predict(X_train.copy())
         pred_valid = base_model.predict(X_valid.copy())
 
         col = "prior_pred"
         X_train[col] = pred_train
-        valid_set[col] = pred_valid
+        validation[col] = pred_valid
         init_model_attr = mgr_attr["init_model_attr"]
         init_model_attr["X"] = X_train.copy()
         model_params = {k: v for k, v in mgr_attr["model_params"].items()}
@@ -1182,7 +1138,7 @@ class QPDInteractionSearchModel(TornadoBase):
 
         _ = self.tornado(
             target,
-            valid_set,
+            validation,
             logger,
             evaluator,
             verbose,
@@ -1232,7 +1188,7 @@ class QPDInteractionSearchModel(TornadoBase):
         )
         _ = self.est_qpd.fit(X, y)
 
-    def tornado(self, target, valid_data, logger, evaluator, verbose, args) -> Pipeline:
+    def tornado(self, target, validation, logger, evaluator, verbose, args) -> Pipeline:
         """Recursive learning in Tornado.
 
         Recursive learning is performed by changing the explanatory variables
@@ -1243,16 +1199,16 @@ class QPDInteractionSearchModel(TornadoBase):
         Parameters
         ----------
         target : str
-            Name of the target valiable
+            Name of the target valiable.
 
-        valid_data : pandas.DataFrame
-            Validation data
+        validation : pandas.DataFrame
+            Validation set.
 
         logger : logger.Logger
-            Instances to manage learning logs
+            Instances to manage learning logs.
 
         evaluator : evaluator.Evaluator
-            nstance to evaluate models
+            nstance to evaluate models.
 
         verbose : bool
             Whether to display standard output or not.
@@ -1269,8 +1225,8 @@ class QPDInteractionSearchModel(TornadoBase):
             y = copy.deepcopy(self.manager.y)
             _ = estimator.fit(X, y)
 
-            y_valid = np.asarray(valid_data[target])
-            X_valid = valid_data.loc[:, X.columns]
+            y_valid = np.asarray(validation[target])
+            X_valid = validation.loc[:, X.columns]
             y_pred = estimator.predict(X_valid)
 
             eval_history = evaluator.eval(
@@ -1294,7 +1250,7 @@ class QPDInteractionSearchModel(TornadoBase):
         Parameter
         ---------
         X : pandas.DataFrame
-            Dataset to predict
+            Dataset to predict.
 
         quantile : str
             Quartile point to be predicted. "lower", "median" or "upper".
@@ -1302,9 +1258,8 @@ class QPDInteractionSearchModel(TornadoBase):
         Returns
         -------
         numpy.ndarray
-            Predicted values
+            Predicted values.
         """
-        X = self.data_deliverer.generate_testset(X)
         quantiles = self.est_qpd.predict(X)
 
         if quantile == "low":
@@ -1333,7 +1288,7 @@ class QPDInteractionSearchModel(TornadoBase):
         Parameter
         ---------
         X : pandas.DataFrame
-            Dataset to predict
+            Dataset to predict.
 
         output : str
             Output type. 'pdf' or 'func'. Default is 'pdf'.
@@ -1356,7 +1311,6 @@ class QPDInteractionSearchModel(TornadoBase):
                 Predicted PPF for every 0.05 for each sample. Shape of
                 dataframe is n_samples x 19.
         """
-        X = self.data_deliverer.generate_testset(X)
         _, _, _, qpd = self.est_qpd.predict(X)
 
         if output == "func":

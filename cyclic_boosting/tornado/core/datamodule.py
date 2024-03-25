@@ -243,7 +243,7 @@ class TornadoDataModule:
     def generate_trainset(
         self,
         target,
-        test_size,
+        test_size=0.2,
         seed=0,
         is_time_series=False,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -260,11 +260,11 @@ class TornadoDataModule:
             The name of the target variable.
 
         test_size : float
-            The proportion of the data to allocate as test data.
+            The proportion of the data to allocate as test data. Default is 0.2.
 
         seed : int
             The random seed used for splitting the data into training and
-            validation sets.
+            validation sets. Default is 0.
 
         is_time_series : bool
             Whether the data is a time series dataset or not.
