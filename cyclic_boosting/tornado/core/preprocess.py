@@ -528,7 +528,14 @@ class Preprocess:
             10
         """
         if params_exist:
-            rollings = self.get_preprocessors()["rolling"]["rollings"]
+            dataset = pd.concat([train, valid])
+            time_based_average_data = self.create_time_based_average_data(dataset, target)
+            best_lag, lag_size = self.get_preprocessors()["rolling"]["rollings"]
+            if best_lag > lag_size:
+                lags = time_based_average_data.shift(lag_size)
+                rollings = lags.rolling(best_lag - lag_size).mean()
+            else:
+                return train, valid
 
         else:
             dataset = pd.concat([train, valid])
@@ -541,11 +548,11 @@ class Preprocess:
             lag_size = opt["lag_size"]
             best_lag = opt["best_lag"]
             _logger.info(f"best_lag = {best_lag}")
+            self.set_preprocessors({"rolling": {"rollings": [best_lag, lag_size]}})
 
             if best_lag > lag_size:
                 lags = time_based_average_data.shift(lag_size)
                 rollings = lags.rolling(best_lag - lag_size).mean()
-                self.set_preprocessors({"rolling": {"rollings": rollings}})
             else:
                 return train, valid
 
