@@ -113,8 +113,8 @@ class Preprocess:
             Keys are names of preprocessing methods, and values are the
             variables used in those specific methods.
         """
-        for prep, params in preps.items():
-            self.preprocessors[prep] = params
+        for prep, config in preps.items():
+            self.preprocessors[prep] = config
 
     def get_opt(self, func_name) -> dict:
         """Get `self.opt`, the options for various preprocessing methods.
@@ -253,8 +253,8 @@ class Preprocess:
                 self.set_preprocessors({prep: {}})
         preprocessors = self.get_preprocessors().copy()
 
-        for prep, params in preprocessors.items():
-            train, valid = eval(f"self.{prep}")(self.train_raw.copy(), self.valid_raw.copy(), target, any(params))
+        for prep, config in preprocessors.items():
+            train, valid = eval(f"self.{prep}")(self.train_raw.copy(), self.valid_raw.copy(), target, config)
             train[self.train.columns] = self.train
             valid[self.valid.columns] = self.valid
             self.train = train.copy()
@@ -262,7 +262,7 @@ class Preprocess:
 
         return self.train, self.valid
 
-    def todatetime(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def todatetime(self, train, valid, *args) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Convert the data type of the "date" column to datetime.
 
         Parameters
@@ -272,12 +272,6 @@ class Preprocess:
 
         valid: pandas.DataFrame
             Validation data
-
-        target: str
-            Name of the target variable.
-
-        params_exist: bool
-            Whether parameters are given (manually or as history).
 
         Returns
         -------
@@ -314,7 +308,7 @@ class Preprocess:
 
         return dataset
 
-    def dayofweek(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def dayofweek(self, train, valid, *args) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate day-of-week feature from date feature.
 
         Parameters
@@ -324,12 +318,6 @@ class Preprocess:
 
         valid: pandas.DataFrame
             Validation data
-
-        target: str
-            Name of the target variable.
-
-        params_exist: bool
-            Whether parameters are given (manually or as history).
 
         Returns
         -------
@@ -345,7 +333,7 @@ class Preprocess:
 
         return train, valid
 
-    def dayofyear(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def dayofyear(self, train, valid, *args) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate day-of-year feature from date feature.
 
         Parameters
@@ -355,12 +343,6 @@ class Preprocess:
 
         valid: pandas.DataFrame
             Validation data
-
-        target: str
-            Name of the target variable.
-
-        params_exist: bool
-            Whether parameters are given (manually or as history).
 
         Returns
         -------
@@ -425,7 +407,7 @@ class Preprocess:
 
         return idx_autocorrelation, idx_partial_autocorrelation
 
-    def lag(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def lag(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate lag feature from date feature.
 
         Parameters
@@ -439,8 +421,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -465,24 +447,34 @@ class Preprocess:
             >>> lag_size
             5
         """
-        if params_exist:
-            lags = self.get_preprocessors()["lag"]["lags"]
+
+        def calc_lag(data, lag_size) -> pd.Series:
+            if train.shape[0] < lag_size:
+                raise RuntimeError(
+                    f"The provided data shape is {data.shape}. More than {lag_size} records are required."
+                )
+            lags = time_based_average_data.shift(lag_size)
+            return lags
+
+        dataset = pd.concat([train, valid])
+        time_based_average_data = self.create_time_based_average_data(dataset, target)
+        if config:
+            lag_size = self.get_preprocessors()["lag"]["lag_size"]
+            lags = calc_lag(time_based_average_data, lag_size)
         else:
-            dataset = pd.concat([train, valid])
-            time_based_average_data = self.create_time_based_average_data(dataset, target)
             opt = self.get_opt("lag")
             opt.setdefault("lag_size", self.check_corr(time_based_average_data)[1])
             lag_size = opt["lag_size"]
             _logger.info(f"lag_size = {lag_size}")
-            lags = time_based_average_data.shift(lag_size)
-            self.set_preprocessors({"lag": {"lags": lags}})
+            self.set_preprocessors({"lag": {"lag_size": lag_size}})
+            lags = calc_lag(time_based_average_data, lag_size)
 
         train["lag"] = train["date"].map(lags[target])
         valid["lag"] = valid["date"].map(lags[target])
 
         return train, valid
 
-    def rolling(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def rolling(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate rolling feature from date feature.
 
         Parameters
@@ -496,8 +488,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -527,13 +519,28 @@ class Preprocess:
             >>> best_lag
             10
         """
-        if params_exist:
-            rollings = self.get_preprocessors()["rolling"]["rollings"]
+
+        def calc_rolling(data, lag_start, lag_end) -> pd.Series:
+            window_width = lag_start - lag_end
+            if data.shape[0] < lag_end:
+                raise RuntimeError(
+                    f"The provided data shape is {data.shape}. More than {lag_end} records are required."
+                )
+            lags = time_based_average_data.shift(lag_end)
+            rollings = lags.rolling(window_width).mean()
+            return rollings
+
+        dataset = pd.concat([train, valid])
+        time_based_average_data = self.create_time_based_average_data(dataset, target)
+
+        if config:
+            best_lag, lag_size = self.get_preprocessors()["rolling"].values()
+            if best_lag > lag_size:
+                rollings = calc_rolling(time_based_average_data, best_lag, lag_size)
+            else:
+                return train, valid
 
         else:
-            dataset = pd.concat([train, valid])
-            time_based_average_data = self.create_time_based_average_data(dataset, target)
-
             opt = self.get_opt("rolling")
             opt.setdefault("lag_size", 1)
             opt.setdefault("best_lag", self.check_corr(time_based_average_data)[0])
@@ -541,11 +548,10 @@ class Preprocess:
             lag_size = opt["lag_size"]
             best_lag = opt["best_lag"]
             _logger.info(f"best_lag = {best_lag}")
+            self.set_preprocessors({"rolling": {"best_lag": best_lag, "lag_size": lag_size}})
 
             if best_lag > lag_size:
-                lags = time_based_average_data.shift(lag_size)
-                rollings = lags.rolling(best_lag - lag_size).mean()
-                self.set_preprocessors({"rolling": {"rollings": rollings}})
+                rollings = calc_rolling(time_based_average_data, best_lag, lag_size)
             else:
                 return train, valid
 
@@ -554,7 +560,7 @@ class Preprocess:
 
         return train, valid
 
-    def expanding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def expanding(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate rolling feature from date feature.
 
         Parameters
@@ -568,8 +574,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -592,27 +598,37 @@ class Preprocess:
             >>> lag_size
             5
         """
-        if params_exist:
-            expandings = self.get_preprocessors()["expanding"]["expandings"]
+
+        def calc_expanding(data, lag_end) -> pd.Series:
+            if data.shape[0] < lag_end:
+                raise RuntimeError(
+                    f"The provided data shape is {data.shape}. More than {lag_end} records are required."
+                )
+            lags = time_based_average_data.shift(lag_end)
+            expandings = lags.expanding().mean()
+            return expandings
+
+        dataset = pd.concat([train, valid])
+        time_based_average_data = self.create_time_based_average_data(dataset, target)
+
+        if config:
+            lag_size = self.get_preprocessors()["expanding"]["lag_size"]
+            expandings = calc_expanding(time_based_average_data, lag_size)
 
         else:
-            dataset = pd.concat([train, valid])
-            time_based_average_data = self.create_time_based_average_data(dataset, target)
-
             opt = self.get_opt("expanding")
             opt.setdefault("lag_size", 1)
 
             lag_size = opt["lag_size"]
-            lags = time_based_average_data.shift(lag_size)
-            expandings = lags.expanding().mean()
-            self.set_preprocessors({"expanding": {"expandings": expandings}})
+            self.set_preprocessors({"expanding": {"lag_size": lag_size}})
+            expandings = calc_expanding(time_based_average_data, lag_size)
 
         train["expanding"] = train["date"].map(expandings[target])
         valid["expanding"] = valid["date"].map(expandings[target])
 
         return train, valid
 
-    def check_cardinality(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def check_cardinality(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Warn for features with high cardinality.
 
         Users can set specific cardinality thresholds as an option.
@@ -628,8 +644,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -637,7 +653,7 @@ class Preprocess:
             (pandas.DataFrame, pandas.DataFrame)
             Training and validation data
         """
-        if not params_exist:
+        if not config:
             opt = self.get_opt("check_cardinality")
             opt.setdefault("cardinality_th", 0.8)
 
@@ -663,7 +679,7 @@ class Preprocess:
 
         return train, valid
 
-    def check_dtype(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def check_dtype(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Warn for float type features with no decimals.
 
         Parameters
@@ -677,8 +693,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -686,7 +702,7 @@ class Preprocess:
             (pandas.DataFrame, pandas.DataFrame)
             Training and validation data
         """
-        if not params_exist:
+        if not config:
             dataset = pd.concat([train, valid])
             float_dataset = dataset.drop(columns=target).select_dtypes("float")
 
@@ -706,7 +722,7 @@ class Preprocess:
 
         return train, valid
 
-    def check_data_leakage(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def check_data_leakage(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Warn for possible target leakage.
 
         Warn of possible target leakage when VIF (Variance Inflation Factor)
@@ -723,8 +739,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -732,7 +748,7 @@ class Preprocess:
             (pandas.DataFrame, pandas.DataFrame)
             Training and validation data
         """
-        if not params_exist:
+        if not config:
             dataset = pd.concat([train, valid])
             dataset = dataset.select_dtypes(include=["int", "float"])
             dataset = dataset.dropna(axis=1)  # ignore columns included float with Nan
@@ -754,7 +770,7 @@ class Preprocess:
 
         return train, valid
 
-    def standardization(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def standardization(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate features with standardization applied.
 
         Users can specify several arguments of the :class:`StandardScaler` as
@@ -771,8 +787,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -786,7 +802,7 @@ class Preprocess:
             opt = self.get_opt("standardization")
             scaler = StandardScaler(**opt)
 
-            if params_exist:
+            if config:
                 attr = self.get_preprocessors()["standardization"]["attr"]
                 setattr(scaler, "__dict__", attr)
             else:
@@ -800,7 +816,7 @@ class Preprocess:
 
         return train, valid
 
-    def minmax(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def minmax(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate features with min-max normalization applied.
 
         Users can specify several arguments of the :class:`MinMaxScaler` as
@@ -817,8 +833,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -832,7 +848,7 @@ class Preprocess:
             opt = self.get_opt("minmax")
             scaler = MinMaxScaler(**opt)
 
-            if params_exist:
+            if config:
                 attr = self.get_preprocessors()["minmax"]["attr"]
                 setattr(scaler, "__dict__", attr)
             else:
@@ -846,7 +862,7 @@ class Preprocess:
 
         return train, valid
 
-    def logarithmic(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def logarithmic(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate features with log-transformation applied.
 
         Users can specify several arguments of the :class:`PowerTransformer` as
@@ -863,8 +879,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -878,7 +894,7 @@ class Preprocess:
             opt = self.get_opt("logarithmic")
             pt = PowerTransformer(**opt)
 
-            if params_exist:
+            if config:
                 attr = self.get_preprocessors()["logarithmic"]["attr"]
                 setattr(pt, "__dict__", attr)
             else:
@@ -892,7 +908,7 @@ class Preprocess:
 
         return train, valid
 
-    def clipping(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def clipping(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate features with clipping applied.
 
         Users can set an upper and lower quartile limit for clipping data as
@@ -910,8 +926,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -923,7 +939,7 @@ class Preprocess:
         float_train = train.drop(columns=target).select_dtypes("float")
 
         if len(float_train.columns) > 0:
-            if params_exist:
+            if config:
                 p = self.get_preprocessors()["clipping"]
                 p_l = p["p_l"]
                 p_u = p["p_u"]
@@ -941,7 +957,7 @@ class Preprocess:
 
         return train, valid
 
-    def binning(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def binning(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate features with binning applied.
 
         Users can specify several arguments of the :class:`KBinsDiscretizer` as
@@ -958,8 +974,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -978,7 +994,7 @@ class Preprocess:
             opt.setdefault("subsample", 200000)
             binner = KBinsDiscretizer(**opt)
 
-            if params_exist:
+            if config:
                 attr = self.get_preprocessors()["binning"]["attr"]
                 setattr(binner, "__dict__", attr)
             else:
@@ -992,7 +1008,7 @@ class Preprocess:
 
         return train, valid
 
-    def rank(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def rank(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate features by converting to rank values.
 
         Users can specify several arguments of the :class:`QuantileTransformer`
@@ -1009,8 +1025,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -1027,7 +1043,7 @@ class Preprocess:
             opt.setdefault("random_state", 0)
             qt = QuantileTransformer(**opt)
 
-            if params_exist:
+            if config:
                 attr = self.get_preprocessors()["rank"]["attr"]
                 setattr(qt, "__dict__", attr)
             else:
@@ -1041,7 +1057,7 @@ class Preprocess:
 
         return train, valid
 
-    def rankgauss(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def rankgauss(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Generate features transformed by Rank Gauss normalization.
 
         Users can specify several arguments of the :class:`QuantileTransformer`
@@ -1058,8 +1074,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -1077,7 +1093,7 @@ class Preprocess:
             opt.setdefault("random_state", 0)
             qt = QuantileTransformer(**opt)
 
-            if params_exist:
+            if config:
                 attr = self.get_preprocessors()["rankgauss"]["attr"]
                 setattr(qt, "__dict__", attr)
             else:
@@ -1091,7 +1107,7 @@ class Preprocess:
 
         return train, valid
 
-    def onehot_encoding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def onehot_encoding(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Encode categorical features with one-hot encoding.
 
         Users can specify several arguments of the :class:`OneHotEncoder` as
@@ -1108,8 +1124,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -1128,7 +1144,7 @@ class Preprocess:
             opt.setdefault("dtype", np.int64)
             ohe = OneHotEncoder(**opt)
 
-            if params_exist:
+            if config:
                 attr = self.get_preprocessors()["encode_category"]["onehot_encoding"]["attr"]
                 setattr(ohe, "__dict__", attr)
             else:
@@ -1151,7 +1167,7 @@ class Preprocess:
 
         return train, valid
 
-    def label_encoding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def label_encoding(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Encode categorical features with label encoding.
 
         Users can specify several arguments of the :class:`OrdinalEncoder` as
@@ -1168,8 +1184,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -1189,7 +1205,7 @@ class Preprocess:
             opt.setdefault("dtype", np.int64)
             oe = OrdinalEncoder(**opt)
 
-            if params_exist:
+            if config:
                 attr = self.get_preprocessors()["encode_category"]["label_encoding"]["attr"]
                 setattr(oe, "__dict__", attr)
             else:
@@ -1208,7 +1224,7 @@ class Preprocess:
 
         return train, valid
 
-    def feature_hashing(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def feature_hashing(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Encode categorical features with feature hashing.
 
         Users can specify several arguments of the :class:`FeatureHasher` as
@@ -1225,8 +1241,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -1240,7 +1256,7 @@ class Preprocess:
 
         if len(object_train.columns) > 0:
             opt = self.get_opt("feature_hashing")
-            if params_exist:
+            if config:
                 opt.setdefault(
                     "n_features", self.get_preprocessors()["encode_category"]["feature_hashing"]["n_features"]
                 )
@@ -1272,7 +1288,7 @@ class Preprocess:
 
         return train, valid
 
-    def frequency_encoding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def frequency_encoding(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Encode categorical features with frequency encoding.
 
         Parameters
@@ -1286,8 +1302,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -1299,7 +1315,7 @@ class Preprocess:
         object_train = train.drop(columns=["date", target], errors="ignore").select_dtypes("object")
 
         if len(object_train.columns) > 0:
-            if params_exist:
+            if config:
                 freqs = self.get_preprocessors()["encode_category"]["frequency_encoding"]["freqs"]
             else:
                 freqs = {}
@@ -1317,7 +1333,7 @@ class Preprocess:
 
         return train, valid
 
-    def target_encoding(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def target_encoding(self, train, valid, target, config) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Encode categorical features with target encoding.
 
         Users can specify several arguments of the :class:`TargetEncoder` as
@@ -1334,8 +1350,8 @@ class Preprocess:
         target: str
             Name of the target variable.
 
-        params_exist: bool
-            Whether parameters are given (manually or as history).
+        config: dict
+            Configuration for the function (manually or as history).
 
         Returns
         -------
@@ -1348,7 +1364,7 @@ class Preprocess:
 
         if len(object_train.columns) > 0:
 
-            if params_exist:
+            if config:
                 attrs = self.get_preprocessors()["encode_category"]["target_encoding"]["attrs"]
                 for col in object_train.columns:
                     te = TargetEncoder()
@@ -1383,7 +1399,7 @@ class Preprocess:
 
         return train, valid
 
-    def encode_category(self, train, valid, target, params_exist) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def encode_category(self, train, valid, target, *args) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Encode categorical features.
 
         Parameters
@@ -1396,9 +1412,6 @@ class Preprocess:
 
         target: str
             Name of the target variable.
-
-        params_exist: bool
-            Whether parameters are given (manually or as history).
 
         Returns
         -------
@@ -1423,8 +1436,8 @@ class Preprocess:
             encoders = self.get_preprocessors().copy()["encode_category"]
             if len(encoders) != 1:
                 raise RuntimeError("Single encoding method should be used for categorical variables.")
-            for enc, params in encoders.items():
-                train, valid = eval(f"self.{enc}")(train, valid, target, any(params))
+            for enc, config in encoders.items():
+                train, valid = eval(f"self.{enc}")(train, valid, target, config)
 
             self.train_raw = train
             self.valid_raw = valid
