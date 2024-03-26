@@ -6,7 +6,7 @@ import shutil
 
 def test_interaction_search_model(prepare_data):
     X, y = prepare_data
-    df, target = X.iloc[:200].copy(), y[:200].copy()
+    df, target = X.iloc[:500].copy(), y[:500].copy()
     df.loc[:, "sales"] = target
     df_train, df_test = train_test_split(df, test_size=0.1, shuffle=False)
 
@@ -23,9 +23,9 @@ def test_interaction_search_model(prepare_data):
 
 def test_forward_selection_model(prepare_data):
     X, y = prepare_data
-    df, target = X.iloc[:200].copy(), y[:200].copy()
+    df, target = X.iloc[:500].copy(), y[:500].copy()
     df.loc[:, "sales"] = target
-    df_train, df_test = train_test_split(df, test_size=0.1, shuffle=False)
+    df_train, df_test = train_test_split(df, test_size=0.2, shuffle=False)
 
     data_deliverer = datamodule.TornadoDataModule(df_train)
     train, validation = data_deliverer.generate_trainset(test_size=0.2, seed=0, target="sales", is_time_series=True)
@@ -41,9 +41,9 @@ def test_forward_selection_model(prepare_data):
 
 def test_prior_pred_interaction_search_model(prepare_data):
     X, y = prepare_data
-    df, target = X.iloc[:200].copy(), y[:200].copy()
+    df, target = X.iloc[:500].copy(), y[:500].copy()
     df.loc[:, "sales"] = target
-    df_train, df_test = train_test_split(df, test_size=0.1, shuffle=False)
+    df_train, df_test = train_test_split(df, test_size=0.2, shuffle=False)
 
     data_deliverer = datamodule.TornadoDataModule(df_train)
     train, validation = data_deliverer.generate_trainset(test_size=0.2, seed=0, target="sales", is_time_series=True)
@@ -61,7 +61,7 @@ def test_qpd_interaction_search_model(prepare_data):
     X, y = prepare_data
     df, target = X.iloc[:3000].copy(), y[:3000].copy()  # need a dataset included enough data size to train
     df.loc[:, "sales"] = target
-    df_train, df_test = train_test_split(df, test_size=0.1, shuffle=False)
+    df_train, df_test = train_test_split(df, test_size=0.2, shuffle=False)
 
     data_deliverer = datamodule.TornadoDataModule(df_train)
     train, validation = data_deliverer.generate_trainset(test_size=0.2, seed=0, target="sales", is_time_series=True)
