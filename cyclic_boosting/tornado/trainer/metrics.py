@@ -191,7 +191,7 @@ def weighted_mean_absolute_percentage_error(y, yhat) -> float:
     Returns
     -------
     float
-        Symmetric mean absolute percentage error (SMAPE)
+        Weighted mean absolute percentage error (WMAPE)
     """
     wmape = nansum(abs(y - yhat)) / nansum(y)
     return wmape
