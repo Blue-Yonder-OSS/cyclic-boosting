@@ -14,9 +14,6 @@ from cyclic_boosting import common_smoothers, flags, observers
 from cyclic_boosting.pipelines import (
     pipeline_CBAdditiveQuantileRegressor as AdditiveQuantileRegressor,
 )
-from cyclic_boosting.pipelines import (
-    pipeline_CBMultiplicativeQuantileRegressor as MultiplicativeQuantileRegressor,
-)
 from cyclic_boosting.pipelines import pipeline_CBNBinomC as NBinomC
 from cyclic_boosting.pipelines import pipeline_CBPoissonRegressor as PoissonRegressor
 from cyclic_boosting.smoothing.onedim import IsotonicRegressor, SeasonalSmoother
@@ -126,7 +123,6 @@ class ManagerBase:
         max_iter=10,
         task="regression",
         dist="poisson",
-        model="multiplicative",
     ) -> None:
         self.manual_feature_property = manual_feature_property
         self.is_time_series = is_time_series
@@ -135,7 +131,6 @@ class ManagerBase:
         self.max_iter = max_iter
         self.task = task
         self.dist = dist
-        self.model = model
         self.X = None
         self.y = None
         self.target = None
@@ -355,12 +350,7 @@ class ManagerBase:
         # build
         if self.task == "regression":
             if self.dist == "qpd":
-                if self.model == "multiplicative":
-                    self.regressor = MultiplicativeQuantileRegressor(**param)
-                elif self.model == "additive":
-                    self.regressor = AdditiveQuantileRegressor(**param)
-                else:
-                    raise ValueError(f"{self.mode} mode is not exist")
+                self.regressor = AdditiveQuantileRegressor(**param)
 
             elif self.dist in ["poisson", "nbinom"]:
                 self.regressor = PoissonRegressor(**param)
@@ -432,7 +422,6 @@ class TornadoManager(ManagerBase):
         combination=2,
         max_iter=10,
         dist="poisson",
-        model=None,
     ) -> None:
         super().__init__(
             manual_feature_property,
@@ -441,7 +430,6 @@ class TornadoManager(ManagerBase):
             combination=combination,
             max_iter=max_iter,
             dist=dist,
-            model=model,
         )
         self.first_round = "dummy"
         self.second_round = "interaction search"
@@ -675,7 +663,6 @@ class PriorPredForwardSelectionManager(TornadoManager):
         combination=2,
         max_iter=10,
         dist="poisson",
-        model="additive",
     ) -> None:
         super().__init__(
             manual_feature_property,
@@ -683,7 +670,6 @@ class PriorPredForwardSelectionManager(TornadoManager):
             combination=combination,
             max_iter=max_iter,
             dist=dist,
-            model=model,
         )
         self.first_round = "prior_prediction_with_single_variables"
         self.second_round = "interaction_search"

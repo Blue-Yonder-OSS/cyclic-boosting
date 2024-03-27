@@ -1,6 +1,7 @@
 """Preparation (handling preprocessing) of data for the Tornado module."""
 
 import logging
+import os
 import pickle
 from itertools import combinations
 from typing import Tuple
@@ -144,8 +145,8 @@ class TornadoDataModule:
             if isinstance(self.src, str):
                 self.log_path = self.src[: self.src.rfind(".")] + ".pkl"
             else:
-                _logger.info("preprocessing log is created at current working directory")
-                self.log_path = "./preprocessing.pkl"
+                _logger.info(f"preprocessing log is created at {os.getcwd()}\n")
+                self.log_path = os.path.join(os.getcwd(), "preprocessing.pkl")
             self.preprocessors = {}
             self.features = []
 
@@ -242,7 +243,7 @@ class TornadoDataModule:
     def generate_trainset(
         self,
         target,
-        test_size,
+        test_size=0.2,
         seed=0,
         is_time_series=False,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -259,11 +260,11 @@ class TornadoDataModule:
             The name of the target variable.
 
         test_size : float
-            The proportion of the data to allocate as test data.
+            The proportion of the data to allocate as test data. Default is 0.2.
 
         seed : int
             The random seed used for splitting the data into training and
-            validation sets.
+            validation sets. Default is 0.
 
         is_time_series : bool
             Whether the data is a time series dataset or not.
