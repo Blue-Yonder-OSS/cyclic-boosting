@@ -21,6 +21,7 @@ from .logger import ForwardLogger, PriorPredForwardLogger
 
 if TYPE_CHECKING:
     from sklearn.pipeline import Pipeline
+    from quantile_matching import J_QPD_S, J_QPD_B
 
 
 _logger = logging.getLogger(__name__)
@@ -206,7 +207,7 @@ class InteractionSearchModel(TornadoBase):
             Instances to manage learning logs.
 
         evaluator : evaluator.Evaluator
-            nstance to evaluate models
+            Instance to evaluate models
 
         verbose : bool
             Whether to display standard output or not.
@@ -246,7 +247,7 @@ class InteractionSearchModel(TornadoBase):
     def predict(self, X) -> np.ndarray:
         """Predict using the best model explored in Tornado.
 
-        Parameter
+        Parameters
         ---------
         X : pandas.DataFrame
             Dataset to predict.
@@ -272,7 +273,7 @@ class InteractionSearchModel(TornadoBase):
         PMF (probability mass function) of a specific probability distribution
         is returned depending on `output`.
 
-        Parameter
+        Parameters
         ---------
         X : pandas.DataFrame
             Dataset to predict.
@@ -514,7 +515,7 @@ class ForwardSelectionModel(TornadoBase):
             Instances to manage learning logs.
 
         evaluator : evaluator.Evaluator
-            nstance to evaluate models.
+            Instance to evaluate models.
 
         verbose : bool
             Whether to display standard output or not.
@@ -555,7 +556,7 @@ class ForwardSelectionModel(TornadoBase):
     def predict(self, X) -> np.ndarray:
         """Predict using the best model explored in Tornado.
 
-        Parameter
+        Parameters
         ---------
         X : pandas.DataFrame
             Dataset to predict.
@@ -581,7 +582,7 @@ class ForwardSelectionModel(TornadoBase):
         PMF (probability mass function) of a specific probability distribution
         is returned depending on `output`.
 
-        Parameter
+        Parameters
         ---------
         X : pandas.DataFrame
             Dataset to predict.
@@ -850,7 +851,7 @@ class PriorPredInteractionSearchModel(TornadoBase):
             Instances to manage learning logs.
 
         evaluator : evaluator.Evaluator
-            nstance to evaluate models.
+            Instance to evaluate models.
 
         verbose : bool
             Whether to display standard output or not.
@@ -883,7 +884,7 @@ class PriorPredInteractionSearchModel(TornadoBase):
     def predict(self, X, quantile="median") -> np.ndarray:
         """Predict using the best model explored in Tornado.
 
-        Parameter
+        Parameters
         ---------
         X : pandas.DataFrame
             Dataset to predict.
@@ -909,7 +910,7 @@ class PriorPredInteractionSearchModel(TornadoBase):
         PMF (probability mass function) of a specific probability distribution
         is returned depending on `output`.
 
-        Parameter
+        Parameters
         ---------
         X : pandas.DataFrame
             Dataset to predict.
@@ -1208,7 +1209,7 @@ class QPDInteractionSearchModel(TornadoBase):
             Instances to manage learning logs.
 
         evaluator : evaluator.Evaluator
-            nstance to evaluate models.
+            Instance to evaluate models.
 
         verbose : bool
             Whether to display standard output or not.
@@ -1247,7 +1248,7 @@ class QPDInteractionSearchModel(TornadoBase):
     def predict(self, X, quantile="median") -> np.ndarray:
         """Predict using the best model explored in Tornado.
 
-        Parameter
+        Parameters
         ---------
         X : pandas.DataFrame
             Dataset to predict.
@@ -1278,14 +1279,14 @@ class QPDInteractionSearchModel(TornadoBase):
         X,
         output="pdf",
         range=None,
-    ) -> Union[list, pd.DataFrame]:
+    ) -> Union[J_QPD_S, J_QPD_B, pd.DataFrame]:
         """Probability estimates using the best model explored in Tornado.
 
         Instances of the fitted method collection for a particular probability
         distribution or PPF (Percent Point Function) are returned depending on
         `output`.
 
-        Parameter
+        Parameters
         ---------
         X : pandas.DataFrame
             Dataset to predict.
@@ -1302,11 +1303,12 @@ class QPDInteractionSearchModel(TornadoBase):
 
         Returns
         -------
-        list[J_QPD_S] or pandas.DataFrame
-            list[J_QPD_S]
-                List contains instances of :class:`J_QPD_S`. Each instance is
-                fitted to each prediction and contains several methods of the
-                probability distribution. Length of the list is n_sumples.
+        Union[J_QPD_S, J_QPD_B] or pandas.DataFrame
+            Union[J_QPD_S, J_QPD_B]
+                List contains instances of :class:`J_QPD_S` or :class:`J_QPD_B`.
+                Each instance is fitted to each prediction and contains several
+                methods of the probability distribution. Length of the list is
+                n_sumples.
             pandas.DataFrame
                 Predicted PPF for every 0.05 for each sample. Shape of
                 dataframe is n_samples x 19.

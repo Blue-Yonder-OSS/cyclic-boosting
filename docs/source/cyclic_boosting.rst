@@ -10,6 +10,7 @@ Subpackages
    cyclic_boosting.binning
    cyclic_boosting.plots
    cyclic_boosting.smoothing
+   cyclic_boosting.tornado
 
 Submodules
 ----------
