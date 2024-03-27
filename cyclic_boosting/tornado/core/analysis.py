@@ -51,14 +51,11 @@ class TornadoAnalysisModule:
         A dictionary with flag names as keys and lists of feature names that
         have been assigned these flags as values.
 
-    P_THRESH : float
-        The significance level used in analysis. default is 0.05.
-
-    W_THRESH : float
+    amplitude : float
         The amplitude threshold for frequency components used in seasonality
         test. default is 5.0.
 
-    C_THRESH : float
+    corr_coefficient : float
         The correlation coefficient threshold used for linearity test. default
         is 0.95.
 
@@ -82,9 +79,8 @@ class TornadoAnalysisModule:
             "has_missing": list(),
         }
         self.is_time_series = is_time_series
-        self.P_THRESH = 0.05
-        self.W_THRESH = 5.0
-        self.C_THRESH = 0.95
+        self.amplitude = 5.0
+        self.corr_coefficient = 0.95
         self.data_interval = data_interval
 
     def analyze(self) -> dict:
@@ -310,7 +306,7 @@ class TornadoAnalysisModule:
                 amp_list = self.fft(decmp_seasonal[_range])
                 amp_max = np.max(amp_list)
                 peak = np.abs(amp_max - amp_med) / amp_med
-                if peak > self.W_THRESH:
+                if peak > self.amplitude:
                     is_seasonality.append(True)
                 else:
                     is_seasonality.append(False)
@@ -339,7 +335,7 @@ class TornadoAnalysisModule:
         # NOTE: very rough
         for col in self.targets:
             corr = np.corrcoef(np.arange(len(self.dataset[col])), self.dataset[col].values)
-            if corr[0, 1] > self.C_THRESH:
+            if corr[0, 1] > self.corr_coefficient:
                 self.report["has_linearity"].append(col)
 
     def check_missing(self) -> None:
